@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'knox',
     'users',
     'friends',
+    'videos',
 ]
 
 CORS_ALLOWED_ORIGINS = [
