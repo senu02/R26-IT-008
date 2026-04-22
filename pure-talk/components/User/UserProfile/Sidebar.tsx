@@ -30,6 +30,7 @@ import {
   Gift
 } from 'lucide-react';
 import { getTheme } from '@/context/theme';
+import { authAPI } from '@/lib/api';
 
 const navigation = [
   { name: 'Profile', icon: User, href: '/users/user-profile', current: false },
@@ -52,6 +53,7 @@ export function Sidebar() {
   const [isDark, setIsDark] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const checkTheme = () => {
@@ -82,6 +84,20 @@ export function Sidebar() {
     router.push(href);
     setIsSettingsOpen(false);
     closeMobileSidebar();
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await authAPI.logout();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still redirect to login even if API call fails
+      router.push('/auth/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const isActivePath = (href: string) => {
@@ -173,7 +189,7 @@ export function Sidebar() {
             })}
           </nav>
 
-          {/* Bottom Section with Settings Dropdown */}
+          {/* Bottom Section with Settings Dropdown and Logout */}
           <div className={`p-4 border-t ${isDark ? 'border-white/10' : 'border-white/30'}`}>
             <div className="space-y-2">
               <button 
@@ -229,6 +245,18 @@ export function Sidebar() {
                   </div>
                 )}
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+                } hover:scale-[1.02]`}
+              >
+                <LogOut className={`h-5 w-5 transition-all ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+                <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+              </button>
 
               {/* Premium Badge */}
               <div className={`mt-4 pt-4 border-t ${isDark ? 'border-white/10' : 'border-white/30'}`}>
