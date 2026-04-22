@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'knox',
     'users',
+    'friends',
 ]
 
 CORS_ALLOWED_ORIGINS = [
