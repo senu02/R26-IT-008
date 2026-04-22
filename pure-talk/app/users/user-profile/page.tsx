@@ -1,11 +1,9 @@
 // app/profile/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/User/UserProfile/Sidebar';
-import { ProfileCard } from '@/components/User/UserProfile/ProfileCard';
-import { ActivityCard } from '@/components/User/UserProfile/ActivityCard';
-import { BackgroundWrapper, getBackgroundClasses } from '@/context/theme';
+import { BackgroundWrapper } from '@/context/theme';
 import { 
   UserPlus, 
   MessageCircle, 
@@ -17,9 +15,6 @@ import {
   Heart,
   Share2,
   Send,
-  Globe,
-  Users,
-  Lock,
   Briefcase,
   MapPin,
   Calendar,
@@ -27,13 +22,28 @@ import {
   Phone,
   Heart as HeartIcon,
   GraduationCap,
-  Home
+  Home,
+  X,
+  Upload,
+  Check
 } from 'lucide-react';
+import { getCurrentUserData, getImageUrl, authAPI, User } from '@/lib/api';
 
 export default function ProfilePage() {
   const [isDark, setIsDark] = useState(false);
   const [postContent, setPostContent] = useState('');
-  const [activeStory, setActiveStory] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showCoverModal, setShowCoverModal] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedCoverImage, setSelectedCoverImage] = useState<File | null>(null);
+  const [selectedAvatarImage, setSelectedAvatarImage] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkTheme = () => {
@@ -42,15 +52,150 @@ export default function ProfilePage() {
     checkTheme();
     const observer = new MutationObserver(checkTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    
+    // Load user data
+    loadUserData();
+    
     return () => observer.disconnect();
   }, []);
+
+  const loadUserData = () => {
+    const userData = getCurrentUserData();
+    setUser(userData);
+    setLoading(false);
+  };
+
+  const handleCoverImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedCoverImage(file);
+      setCoverPreview(URL.createObjectURL(file));
+      setShowCoverModal(true);
+    }
+  };
+
+  const handleAvatarImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedAvatarImage(file);
+      setAvatarPreview(URL.createObjectURL(file));
+      setShowAvatarModal(true);
+    }
+  };
+
+  const handleUploadCover = async () => {
+    if (!selectedCoverImage) return;
+    
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('cover_image', selectedCoverImage);
+      
+      const updatedUser = await authAPI.updateProfile(formData);
+      setUser(updatedUser);
+      
+      setUploadSuccess(true);
+      setTimeout(() => {
+        setShowCoverModal(false);
+        setSelectedCoverImage(null);
+        setCoverPreview(null);
+        setUploadSuccess(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error uploading cover image:', error);
+      alert('Failed to upload cover image. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!selectedAvatarImage) return;
+    
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('profile_picture', selectedAvatarImage);
+      
+      const updatedUser = await authAPI.updateProfile(formData);
+      setUser(updatedUser);
+      
+      setUploadSuccess(true);
+      setTimeout(() => {
+        setShowAvatarModal(false);
+        setSelectedAvatarImage(null);
+        setAvatarPreview(null);
+        setUploadSuccess(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert('Failed to upload profile picture. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Get account status display
+  const getAccountStatusDisplay = () => {
+    if (!user) return null;
+    
+    if (user.account_status === 'suspended') {
+      return (
+        <div className="mt-2 p-2 rounded-lg bg-yellow-500/20 border border-yellow-500/30">
+          <p className="text-xs text-yellow-600 dark:text-yellow-400">
+            ⚠️ Account Suspended until {user.suspended_until ? new Date(user.suspended_until).toLocaleDateString() : 'N/A'}
+            {user.suspension_reason && ` - Reason: ${user.suspension_reason}`}
+          </p>
+        </div>
+      );
+    }
+    
+    if (user.account_status === 'banned') {
+      return (
+        <div className="mt-2 p-2 rounded-lg bg-red-500/20 border border-red-500/30">
+          <p className="text-xs text-red-600 dark:text-red-400">
+            🚫 Account Banned - {user.banned_reason || 'No reason provided'}
+          </p>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  // Get role badge
+  const getRoleBadge = () => {
+    if (!user) return null;
+    
+    const roleColors = {
+      super_admin: 'bg-purple-500/20 text-purple-600 dark:text-purple-400',
+      admin: 'bg-red-500/20 text-red-600 dark:text-red-400',
+      moderator: 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+      user: 'bg-green-500/20 text-green-600 dark:text-green-400'
+    };
+    
+    const roleNames = {
+      super_admin: 'Super Admin',
+      admin: 'Admin',
+      moderator: 'Moderator',
+      user: 'Member'
+    };
+    
+    const role = user.role || 'user';
+    
+    return (
+      <span className={`inline-block px-2 py-1 rounded-lg text-xs font-medium ${roleColors[role as keyof typeof roleColors] || roleColors.user}`}>
+        {roleNames[role as keyof typeof roleNames] || role}
+      </span>
+    );
+  };
 
   // Sample posts data
   const posts = [
     {
       id: 1,
-      author: 'Nathan Garcia',
-      avatar: 'https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=Nathan+Garcia',
+      author: user?.full_name || 'User',
+      avatar: getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`,
       time: '2 hours ago',
       privacy: 'public',
       content: 'Just finished an amazing UI/UX workshop! Learned so much about user-centered design principles. 🎨✨',
@@ -62,8 +207,8 @@ export default function ProfilePage() {
     },
     {
       id: 2,
-      author: 'Nathan Garcia',
-      avatar: 'https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=Nathan+Garcia',
+      author: user?.full_name || 'User',
+      avatar: getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`,
       time: 'Yesterday at 3:45 PM',
       privacy: 'friends',
       content: 'Excited to announce that I\'m working on a new design system for our upcoming product! Stay tuned for updates. 🚀',
@@ -75,8 +220,8 @@ export default function ProfilePage() {
     },
     {
       id: 3,
-      author: 'Nathan Garcia',
-      avatar: 'https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=Nathan+Garcia',
+      author: user?.full_name || 'User',
+      avatar: getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`,
       time: '3 days ago',
       privacy: 'public',
       content: 'Check out this beautiful sunset I captured during my evening walk! 🌅',
@@ -88,81 +233,117 @@ export default function ProfilePage() {
     },
   ];
 
-  const stories = [
-    { id: 1, name: 'Nathan Garcia', avatar: 'https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=Nathan+Garcia', viewed: false },
-    { id: 2, name: 'Sarah Johnson', avatar: 'https://ui-avatars.com/api/?background=4a90e2&color=fff&size=128&name=Sarah+Johnson', viewed: false },
-    { id: 3, name: 'Mike Chen', avatar: 'https://ui-avatars.com/api/?background=34c759&color=fff&size=128&name=Mike+Chen', viewed: true },
-    { id: 4, name: 'Emma Wilson', avatar: 'https://ui-avatars.com/api/?background=ff9500&color=fff&size=128&name=Emma+Wilson', viewed: false },
-    { id: 5, name: 'Alex Turner', avatar: 'https://ui-avatars.com/api/?background=af52de&color=fff&size=128&name=Alex+Turner', viewed: true },
-  ];
-
   const friends = [
     { id: 1, name: 'Sarah Johnson', avatar: 'https://ui-avatars.com/api/?background=4a90e2&color=fff&size=128&name=Sarah+Johnson', mutual: 8 },
     { id: 2, name: 'Mike Chen', avatar: 'https://ui-avatars.com/api/?background=34c759&color=fff&size=128&name=Mike+Chen', mutual: 5 },
     { id: 3, name: 'Emma Wilson', avatar: 'https://ui-avatars.com/api/?background=ff9500&color=fff&size=128&name=Emma+Wilson', mutual: 12 },
     { id: 4, name: 'Alex Turner', avatar: 'https://ui-avatars.com/api/?background=af52de&color=fff&size=128&name=Alex+Turner', mutual: 3 },
-    { id: 5, name: 'Lisa Brown', avatar: 'https://ui-avatars.com/api/?background=64d2ff&color=fff&size=128&name=Lisa+Brown', mutual: 7 },
-    { id: 6, name: 'Tom Harris', avatar: 'https://ui-avatars.com/api/?background=ff6b6b&color=fff&size=128&name=Tom+Harris', mutual: 4 },
   ];
 
+  if (loading) {
+    return (
+      <BackgroundWrapper isDark={isDark}>
+        <Sidebar />
+        <div className="flex-1 lg:ml-64 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#fd297b] mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading profile...</p>
+          </div>
+        </div>
+      </BackgroundWrapper>
+    );
+  }
 
   return (
     <BackgroundWrapper isDark={isDark}>
       {/* Left Sidebar - Fixed */}
       <Sidebar />
 
-      {/* Main Content Area with proper margin for fixed sidebar */}
+      {/* Main Content Area */}
       <div className="flex-1 lg:ml-64 min-h-screen">
         <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-6xl">
-          {/* Mobile padding for menu button */}
+          {/* Mobile padding */}
           <div className="lg:hidden h-12"></div>
           
           {/* Cover Photo Section */}
           <div className="relative mb-28">
-            <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden shadow-xl">
+            <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden shadow-xl group">
               {/* Cover Image */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#fd297b] via-[#ff4d6d] to-[#ff655b]"></div>
-              <img 
-                src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200"
-                alt="Cover"
-                className="w-full h-full object-cover opacity-90"
-              />
+              {user?.cover_image ? (
+                <img 
+                  src={getImageUrl(user.cover_image) || undefined}
+                  alt="Cover"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-r from-[#fd297b] via-[#ff4d6d] to-[#ff655b]"></div>
+              )}
               
-              {/* Edit Cover Button */}
-              <button className={`absolute right-4 bottom-4 rounded-lg px-3 py-1.5 text-sm font-medium backdrop-blur-md transition-all ${
-                isDark ? 'bg-black/50 text-white hover:bg-black/60' : 'bg-white/50 text-slate-700 hover:bg-white/60'
-              }`}>
-                <Camera className="inline h-4 w-4 mr-1" />
-                Edit Cover
-              </button>
+              {/* Cover overlay for edit button */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                <button 
+                  onClick={() => coverInputRef.current?.click()}
+                  className="rounded-lg px-4 py-2 text-sm font-medium bg-white/90 text-slate-700 hover:bg-white transition-all"
+                >
+                  <Camera className="inline h-4 w-4 mr-2" />
+                  Edit Cover Photo
+                </button>
+              </div>
+              
+              {/* Hidden file input for cover */}
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleCoverImageSelect}
+                className="hidden"
+              />
             </div>
 
             {/* Profile Info Overlay */}
             <div className="absolute -bottom-20 left-4 md:left-8 flex flex-col md:flex-row md:items-end gap-4">
-              {/* Avatar */}
-              <div className="relative">
+              {/* Avatar with edit button */}
+              <div className="relative group">
                 <div className={`rounded-full border-4 shadow-xl ${isDark ? 'border-white/20 bg-white/10' : 'border-white/60 bg-white/40'} backdrop-blur-sm`}>
                   <div className="h-24 w-24 md:h-32 md:w-32 overflow-hidden rounded-full">
                     <img
-                      src="https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=Nathan+Garcia"
-                      alt="Nathan Garcia"
+                      src={getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`}
+                      alt={user?.full_name || 'User'}
                       className="h-full w-full object-cover"
                     />
                   </div>
                 </div>
-                <button className="absolute bottom-0 right-0 rounded-full p-1.5 bg-[#fd297b] text-white shadow-lg">
+                
+                {/* Edit avatar button */}
+                <button 
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 rounded-full p-1.5 bg-[#fd297b] text-white shadow-lg hover:scale-110 transition-transform duration-200"
+                >
                   <Camera className="h-3 w-3" />
                 </button>
+                
+                {/* Hidden file input for avatar */}
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarImageSelect}
+                  className="hidden"
+                />
               </div>
 
               {/* Name and Bio */}
               <div className="mb-2">
-                <h1 className={`text-2xl md:text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Nathan Garcia
-                </h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className={`text-2xl md:text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    {user?.full_name || 'User Name'}
+                  </h1>
+                  {getRoleBadge()}
+                </div>
                 <p className={`text-sm ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
-                  UI/UX Designer • Creative Problem Solver • Design Thinker
+                  {user?.bio || 'No bio yet'}
                 </p>
+                {getAccountStatusDisplay()}
               </div>
             </div>
 
@@ -186,8 +367,135 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* Cover Image Upload Modal */}
+          {showCoverModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => !uploading && setShowCoverModal(false)}>
+              <div className={`relative max-w-lg w-full rounded-2xl overflow-hidden ${isDark ? 'bg-gray-900' : 'bg-white'} shadow-2xl animate-in zoom-in duration-300`} onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Update Cover Photo
+                  </h3>
+                  <button
+                    onClick={() => !uploading && setShowCoverModal(false)}
+                    className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="p-6">
+                  {coverPreview && (
+                    <div className="mb-4">
+                      <img src={coverPreview} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowCoverModal(false);
+                        setSelectedCoverImage(null);
+                        setCoverPreview(null);
+                      }}
+                      className="flex-1 px-4 py-2 rounded-xl text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                      disabled={uploading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUploadCover}
+                      disabled={uploading}
+                      className="flex-1 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                    >
+                      {uploading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Uploading...
+                        </>
+                      ) : uploadSuccess ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Uploaded!
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Upload Cover
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* Main Content Grid - Left side for posts, Right side for Intro/Friends/Photos */}
+          {/* Avatar Image Upload Modal */}
+          {showAvatarModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => !uploading && setShowAvatarModal(false)}>
+              <div className={`relative max-w-md w-full rounded-2xl overflow-hidden ${isDark ? 'bg-gray-900' : 'bg-white'} shadow-2xl animate-in zoom-in duration-300`} onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Update Profile Picture
+                  </h3>
+                  <button
+                    onClick={() => !uploading && setShowAvatarModal(false)}
+                    className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="p-6">
+                  {avatarPreview && (
+                    <div className="mb-4 flex justify-center">
+                      <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-[#fd297b]">
+                        <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowAvatarModal(false);
+                        setSelectedAvatarImage(null);
+                        setAvatarPreview(null);
+                      }}
+                      className="flex-1 px-4 py-2 rounded-xl text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                      disabled={uploading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUploadAvatar}
+                      disabled={uploading}
+                      className="flex-1 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                    >
+                      {uploading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Uploading...
+                        </>
+                      ) : uploadSuccess ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Uploaded!
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Upload Photo
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column - Posts Feed */}
             <div className="lg:col-span-2 space-y-4">
@@ -195,13 +503,13 @@ export default function ProfilePage() {
               <div className={`rounded-2xl shadow-xl p-4 ${isDark ? 'bg-white/5 backdrop-blur-md border border-white/10' : 'bg-white/40 backdrop-blur-md border border-white/50'}`}>
                 <div className="flex gap-3">
                   <img 
-                    src="https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=Nathan+Garcia"
+                    src={getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`}
                     alt="Your avatar"
                     className="w-10 h-10 rounded-full"
                   />
                   <input
                     type="text"
-                    placeholder="What's on your mind, Nathan?"
+                    placeholder={`What's on your mind, ${user?.full_name?.split(' ')[0] || 'User'}?`}
                     value={postContent}
                     onChange={(e) => setPostContent(e.target.value)}
                     className={`flex-1 rounded-full px-4 py-2 text-sm outline-none transition-all ${
@@ -230,7 +538,6 @@ export default function ProfilePage() {
               {/* Posts */}
               {posts.map((post) => (
                 <div key={post.id} className={`rounded-2xl shadow-xl overflow-hidden ${isDark ? 'bg-white/5 backdrop-blur-md border border-white/10' : 'bg-white/40 backdrop-blur-md border border-white/50'}`}>
-                  {/* Post Header */}
                   <div className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex gap-3">
@@ -239,11 +546,6 @@ export default function ProfilePage() {
                           <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{post.author}</h4>
                           <div className="flex items-center gap-1 text-xs">
                             <span className={isDark ? 'text-white/50' : 'text-slate-500'}>{post.time}</span>
-                            <span className={isDark ? 'text-white/30' : 'text-slate-300'}>•</span>
-                            <div className={`flex items-center gap-1 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
-                         
-                              <span className="text-xs capitalize">{post.privacy}</span>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -252,17 +554,14 @@ export default function ProfilePage() {
                       </button>
                     </div>
                     
-                    {/* Post Content */}
                     <p className={`mt-3 text-sm ${isDark ? 'text-white/80' : 'text-slate-700'}`}>{post.content}</p>
                     
-                    {/* Post Image */}
                     {post.image && (
                       <div className="mt-3 -mx-4">
                         <img src={post.image} alt="Post" className="w-full" />
                       </div>
                     )}
                     
-                    {/* Post Stats */}
                     <div className="flex items-center justify-between mt-3 pt-2 text-xs">
                       <div className="flex items-center gap-1">
                         <ThumbsUp className="h-4 w-4 text-blue-500" />
@@ -276,7 +575,6 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   
-                  {/* Post Actions */}
                   <div className={`flex border-t ${isDark ? 'border-white/10' : 'border-white/30'}`}>
                     <button className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all ${
                       post.liked 
@@ -309,44 +607,36 @@ export default function ProfilePage() {
               ))}
             </div>
 
-            {/* Right Column - Intro, Friends, Photos */}
+            {/* Right Column */}
             <div className="lg:col-span-1 space-y-4">
               {/* Intro Card */}
               <div className={`rounded-2xl shadow-xl p-4 ${isDark ? 'bg-white/5 backdrop-blur-md border border-white/10' : 'bg-white/40 backdrop-blur-md border border-white/50'}`}>
                 <h3 className={`text-base font-semibold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>Intro</h3>
                 <div className="space-y-3 text-sm">
-                  <div className="flex items-center gap-3">
-                    <Briefcase className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>UI/UX Designer at Design Studio</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <GraduationCap className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Studied at California College of the Arts</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Home className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Lives in San Francisco, California</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <MapPin className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>From New York, USA</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <HeartIcon className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Single</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Calendar className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Born January 15, 1992</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>+1 234 567 8900</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Mail className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    <span className={isDark ? 'text-white/80' : 'text-slate-700'}>nathan.garcia@example.com</span>
-                  </div>
+                  {user?.location && (
+                    <div className="flex items-center gap-3">
+                      <MapPin className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
+                      <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Lives in {user.location}</span>
+                    </div>
+                  )}
+                  {user?.email && (
+                    <div className="flex items-center gap-3">
+                      <Mail className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
+                      <span className={isDark ? 'text-white/80' : 'text-slate-700'}>{user.email}</span>
+                    </div>
+                  )}
+                  {user?.mobile_number && (
+                    <div className="flex items-center gap-3">
+                      <Phone className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
+                      <span className={isDark ? 'text-white/80' : 'text-slate-700'}>{user.mobile_number}</span>
+                    </div>
+                  )}
+                  {user?.birthday && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className={`h-4 w-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
+                      <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Born {new Date(user.birthday).toLocaleDateString()}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -113,7 +113,7 @@ export function getWaveColors(isDark: boolean) {
   ];
 }
 
-// ========== NEW ADDITIONS (පහත සියල්ල අලුතෙන් එකතු කළා) ==========
+// ========== NEW ADDITIONS () ==========
 
 // Animation keyframes as CSS strings
 export const animationStyles = `
@@ -153,14 +153,14 @@ export const animationStyles = `
   }
 `;
 
-// Space background component (JSX) - තරු ගණන අඩු කරන ලදී
+// Space background component (JSX) 
 export function getSpaceBackground(isDark: boolean) {
   if (!isDark) return null;
   
   return {
     container: "fixed inset-0 bg-black",
     gradient: "absolute inset-0 bg-gradient-to-br from-black via-[#0a0a0a] to-[#050510]",
-    stars: [...Array(80)].map((_, i) => ({  // 300 න් 80 ට අඩු කළා
+    stars: [...Array(80)].map((_, i) => ({  
       key: i,
       className: "absolute rounded-full bg-white animate-twinkle",
       style: {
@@ -173,7 +173,7 @@ export function getSpaceBackground(isDark: boolean) {
         opacity: Math.random() * 0.8 + 0.2,
       }
     })),
-    brightStars: [...Array(20)].map((_, i) => ({  // 80 න් 20 ට අඩු කළා
+    brightStars: [...Array(20)].map((_, i) => ({  
       key: `bright-${i}`,
       className: "absolute rounded-full bg-white animate-pulse-glow",
       style: {
@@ -195,7 +195,7 @@ export function getSpaceBackground(isDark: boolean) {
   };
 }
 
-// Background wrapper component - තරු ගණන අඩු කරන ලදී
+// Background wrapper component
 export function BackgroundWrapper({ isDark, children }: { isDark: boolean; children: React.ReactNode }) {
   return (
     <div className="relative min-h-screen">
@@ -259,8 +259,8 @@ export function getBackgroundClasses(isDark: boolean): string {
   return "bg-gradient-to-br from-[#fff0f5] via-[#ffe4ef] to-[#fff8f0]";
 }
 
-// Helper function to get stars (for custom implementation) - තරු ගණන අඩු කරන ලදී
-export function getStars(isDark: boolean, count: number = 80) {  // පෙරනිමි ගණන 300 න් 80 ට වෙනස් කළා
+// Helper function to get stars (for custom implementation) 
+export function getStars(isDark: boolean, count: number = 80) { 
   if (!isDark) return [];
   
   return Array(count).fill(null).map((_, i) => ({
