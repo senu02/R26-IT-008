@@ -258,7 +258,7 @@ export default function LoginPage() {
       } else if (userRole === 'moderator') {
         router.push('/moderator/dashboard');
       } else {
-        router.push('/');
+        router.push('/users/user-profile');
       }
       
     } catch (err: unknown) {
