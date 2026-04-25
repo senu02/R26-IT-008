@@ -82,56 +82,61 @@ export default function AdminVideosPage() {
       params.search = search;
     }
     
-    const result = await videoActions.getVideos(params);
-    
-    if (result.success && result.data) {
-      const transformedVideos = (result.data as any[]).map((v: any) => {
-        const userData = v.user_details || {};
-        const videoUrl = getFullMediaUrl(v.video_url || v.video_file);
-        const thumbnailUrl = getFullMediaUrl(v.thumbnail_url || v.thumbnail);
-        const profilePicture = userData.profile_picture 
-          ? getFullMediaUrl(userData.profile_picture)
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.full_name || userData.email || 'User')}&background=6366f1&color=fff&length=2&bold=true`;
-        
-        return {
-          id: v.id,
-          title: v.title,
-          description: v.description || '',
-          video_url: videoUrl || '',
-          thumbnail_url: thumbnailUrl,
-          duration: v.duration || 0,
-          views_count: v.views_count || 0,
-          likes_count: v.likes_count || 0,
-          comments_count: v.comments_count || 0,
-          shares_count: v.shares_count || 0,
-          privacy: v.privacy || 'public',
-          allow_comments: v.allow_comments !== false,
-          allow_sharing: v.allow_sharing !== false,
-          is_flagged: v.is_flagged || false,
-          flagged_reason: v.flagged_reason || null,
-          flagged_at: v.flagged_at || null,
-          is_blocked: v.is_blocked || false,
-          blocked_reason: v.blocked_reason || null,
-          blocked_at: v.blocked_at || null,
-          created_at: v.created_at,
-          updated_at: v.updated_at,
-          user: {
-            id: userData.id || v.user,
-            email: userData.email || '',
-            full_name: userData.full_name || userData.email?.split('@')[0] || 'Unknown User',
-            profile_picture: profilePicture,
-            role: userData.role || 'user',
-            account_status: userData.account_status || 'active',
-          },
-        };
-      });
-      setVideos(transformedVideos);
-      showSuccess(`Loaded ${transformedVideos.length} videos successfully`);
-    } else {
-      showError(result.error || 'Failed to fetch videos');
+    try {
+      const result = await videoActions.getVideos(params);
+      
+      if (result.success && result.data) {
+        const transformedVideos = (result.data as any[]).map((v: any) => {
+          const userData = v.user_details || {};
+          const videoUrl = getFullMediaUrl(v.video_url || v.video_file);
+          const thumbnailUrl = getFullMediaUrl(v.thumbnail_url || v.thumbnail);
+          const profilePicture = userData.profile_picture 
+            ? getFullMediaUrl(userData.profile_picture)
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.full_name || userData.email || 'User')}&background=6366f1&color=fff&length=2&bold=true`;
+          
+          return {
+            id: v.id,
+            title: v.title,
+            description: v.description || '',
+            video_url: videoUrl || '',
+            thumbnail_url: thumbnailUrl,
+            duration: v.duration || 0,
+            views_count: v.views_count || 0,
+            likes_count: v.likes_count || 0,
+            comments_count: v.comments_count || 0,
+            shares_count: v.shares_count || 0,
+            privacy: v.privacy || 'public',
+            allow_comments: v.allow_comments !== false,
+            allow_sharing: v.allow_sharing !== false,
+            is_flagged: v.is_flagged || false,
+            flagged_reason: v.flagged_reason || null,
+            flagged_at: v.flagged_at || null,
+            is_blocked: v.is_blocked || false,
+            blocked_reason: v.blocked_reason || null,
+            blocked_at: v.blocked_at || null,
+            created_at: v.created_at,
+            updated_at: v.updated_at,
+            user: {
+              id: userData.id || v.user,
+              email: userData.email || '',
+              full_name: userData.full_name || userData.email?.split('@')[0] || 'Unknown User',
+              profile_picture: profilePicture,
+              role: userData.role || 'user',
+              account_status: userData.account_status || 'active',
+            },
+          };
+        });
+        setVideos(transformedVideos);
+        showSuccess(`Loaded ${transformedVideos.length} videos successfully`);
+      } else {
+        showError(result.error || 'Failed to fetch videos');
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      showError('Network error: Unable to fetch videos');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -157,21 +162,25 @@ export default function AdminVideosPage() {
       return;
     }
     
-    const result = await videoActions.blockVideo(video.id, reason);
-    
-    if (result.success) {
-      setVideos(videos.map(v => v.id === video.id ? {
-        ...v,
-        is_blocked: true,
-        blocked_reason: reason,
-        blocked_at: new Date().toISOString()
-      } : v));
-      setShowBlockModal(false);
-      setBlockReason('');
-      setSelectedVideo(null);
-      showSuccess(`Video "${video.title}" has been blocked successfully`);
-    } else {
-      showError(result.error || 'Failed to block video');
+    try {
+      const result = await videoActions.blockVideo(video.id, reason);
+      
+      if (result.success) {
+        setVideos(videos.map(v => v.id === video.id ? {
+          ...v,
+          is_blocked: true,
+          blocked_reason: reason,
+          blocked_at: new Date().toISOString()
+        } : v));
+        setShowBlockModal(false);
+        setBlockReason('');
+        setSelectedVideo(null);
+        showSuccess(`Video "${video.title}" has been blocked successfully`);
+      } else {
+        showError(result.error || 'Failed to block video');
+      }
+    } catch (error) {
+      showError('Network error: Unable to block video');
     }
   };
 
@@ -181,31 +190,39 @@ export default function AdminVideosPage() {
       return;
     }
     
-    const result = await videoActions.unblockVideo(video.id);
-    
-    if (result.success) {
-      setVideos(videos.map(v => v.id === video.id ? {
-        ...v,
-        is_blocked: false,
-        blocked_reason: null,
-        blocked_at: null
-      } : v));
-      showSuccess(`Video "${video.title}" has been unblocked successfully`);
-    } else {
-      showError(result.error || 'Failed to unblock video');
+    try {
+      const result = await videoActions.unblockVideo(video.id);
+      
+      if (result.success) {
+        setVideos(videos.map(v => v.id === video.id ? {
+          ...v,
+          is_blocked: false,
+          blocked_reason: null,
+          blocked_at: null
+        } : v));
+        showSuccess(`Video "${video.title}" has been unblocked successfully`);
+      } else {
+        showError(result.error || 'Failed to unblock video');
+      }
+    } catch (error) {
+      showError('Network error: Unable to unblock video');
     }
   };
 
   const handleDeleteVideo = async (video: Video) => {
     if (confirm(`Are you sure you want to delete "${video.title}"? This action cannot be undone.`)) {
-      const result = await videoActions.deleteVideo(video.id);
-      
-      if (result.success) {
-        setVideos(videos.filter(v => v.id !== video.id));
-        setSelectedVideos(selectedVideos.filter(id => id !== video.id));
-        showSuccess(`Video "${video.title}" has been deleted successfully`);
-      } else {
-        showError(result.error || 'Failed to delete video');
+      try {
+        const result = await videoActions.deleteVideo(video.id);
+        
+        if (result.success) {
+          setVideos(videos.filter(v => v.id !== video.id));
+          setSelectedVideos(selectedVideos.filter(id => id !== video.id));
+          showSuccess(`Video "${video.title}" has been deleted successfully`);
+        } else {
+          showError(result.error || 'Failed to delete video');
+        }
+      } catch (error) {
+        showError('Network error: Unable to delete video');
       }
     }
   };
@@ -218,11 +235,15 @@ export default function AdminVideosPage() {
       
       for (const videoId of selectedVideos) {
         const video = videos.find(v => v.id === videoId);
-        const result = await videoActions.deleteVideo(videoId);
-        if (result.success) {
-          successCount++;
-          if (video) deletedTitles.push(video.title);
-        } else {
+        try {
+          const result = await videoActions.deleteVideo(videoId);
+          if (result.success) {
+            successCount++;
+            if (video) deletedTitles.push(video.title);
+          } else {
+            failCount++;
+          }
+        } catch (error) {
           failCount++;
         }
       }
@@ -251,10 +272,14 @@ export default function AdminVideosPage() {
       let failCount = 0;
       
       for (const videoId of selectedVideos) {
-        const result = await videoActions.blockVideo(videoId, reason);
-        if (result.success) {
-          successCount++;
-        } else {
+        try {
+          const result = await videoActions.blockVideo(videoId, reason);
+          if (result.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
           failCount++;
         }
       }
@@ -282,18 +307,22 @@ export default function AdminVideosPage() {
       return;
     }
     
-    const result = await videoActions.resolveFlag(video.id);
-    
-    if (result.success) {
-      setVideos(videos.map(v => v.id === video.id ? {
-        ...v,
-        is_flagged: false,
-        flagged_reason: null,
-        flagged_at: null
-      } : v));
-      showSuccess(`Flag resolved for video "${video.title}"`);
-    } else {
-      showError(result.error || 'Failed to resolve flag');
+    try {
+      const result = await videoActions.resolveFlag(video.id);
+      
+      if (result.success) {
+        setVideos(videos.map(v => v.id === video.id ? {
+          ...v,
+          is_flagged: false,
+          flagged_reason: null,
+          flagged_at: null
+        } : v));
+        showSuccess(`Flag resolved for video "${video.title}"`);
+      } else {
+        showError(result.error || 'Failed to resolve flag');
+      }
+    } catch (error) {
+      showError('Network error: Unable to resolve flag');
     }
   };
 
