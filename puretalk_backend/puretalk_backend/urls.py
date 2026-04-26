@@ -13,6 +13,7 @@ urlpatterns = [
     path('logoutall/',knox_views.LogoutAllView.as_view(), name='knox_logout'),
     path('api/', include('friends.urls')), 
     path('api/videos/', include('videos.urls')),
+    path('api/', include('posts.urls')),  # Posts URLs
 ]
 
 if settings.DEBUG:
