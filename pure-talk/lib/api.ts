@@ -342,6 +342,132 @@ export const userAPI = {
   },
 };
 
+/** Home feed post shape from `FeedPostSerializer` */
+export interface FeedMediaItem {
+  id?: number;
+  file_url: string | null;
+  media_type?: string;
+}
+
+export interface FeedCommentPreview {
+  id: number;
+  content: string;
+  author_detail?: User & { display_name?: string };
+}
+
+export interface FeedPost {
+  id: number;
+  author_detail: User & { display_name?: string };
+  content: string | null;
+  post_type: string;
+  privacy?: string;
+  media: FeedMediaItem[];
+  like_count: number;
+  comment_count: number;
+  share_count: number;
+  user_has_liked: boolean;
+  user_has_saved?: boolean;
+  recent_comments: FeedCommentPreview[];
+  created_at: string;
+  location_name?: string | null;
+}
+
+export const postsAPI = {
+  feed: async (): Promise<FeedPost[]> => {
+    const res = await apiCall<FeedPost[] | { results: FeedPost[] }>(
+      '/api/posts/feed/'
+    );
+    if (Array.isArray(res)) return res;
+    return res.results ?? [];
+  },
+
+  likePost: async (
+    postId: number
+  ): Promise<{ like_count: number; user_reaction: string | null }> => {
+    return await apiCall<{ like_count: number; user_reaction: string | null }>(
+      `/api/posts/${postId}/like/`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reaction_type: 'like' }),
+      }
+    );
+  },
+
+  savePost: async (
+    postId: number
+  ): Promise<{ message?: string; saved?: boolean }> => {
+    return await apiCall<{ message?: string; saved?: boolean }>(
+      `/api/posts/${postId}/save/`,
+      { method: 'POST', body: JSON.stringify({}) }
+    );
+  },
+
+  /** Creates a “share” post pointing at the original (increments share_count on original). */
+  createShare: async (
+    originalPostId: number,
+    shareMessage?: string
+  ): Promise<void> => {
+    await apiCall('/api/posts/', {
+      method: 'POST',
+      body: JSON.stringify({
+        post_type: 'share',
+        original_post: originalPostId,
+        privacy: 'public',
+        content: shareMessage ?? '',
+      }),
+    });
+  },
+
+  createComment: async (postId: number, content: string): Promise<void> => {
+    await apiCall('/api/comments/', {
+      method: 'POST',
+      body: JSON.stringify({ post: postId, content }),
+    });
+  },
+};
+
+export interface StoryFeedItem {
+  id: number;
+  user_id: number;
+  author_name: string;
+  author_avatar: string | null;
+  image_url: string;
+  created_at: string;
+}
+
+export interface FriendListItem {
+  id: number;
+  friend: number;
+  friend_detail: User;
+}
+
+export const friendsAPI = {
+  list: async (): Promise<{ count: number; results: FriendListItem[] }> => {
+    return await apiCall<{ count: number; results: FriendListItem[] }>(
+      '/api/friends/list/'
+    );
+  },
+};
+
+export const storyAPI = {
+  feed: async (): Promise<StoryFeedItem[]> => {
+    return await apiCall<StoryFeedItem[]>('/api/stories/feed/');
+  },
+
+  create: async (image: File): Promise<StoryFeedItem> => {
+    const formData = new FormData();
+    formData.append('image', image);
+    return await apiCall<StoryFeedItem>('/api/stories/', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  remove: async (id: number): Promise<void> => {
+    await apiCall<void>(`/api/stories/${id}/`, { method: 'DELETE' });
+  },
+};
+
 export const isAuthenticated = (): boolean => {
   return !!localStorage.getItem('auth_token');
 };
@@ -375,14 +501,17 @@ export const canManageUsers = (): boolean => {
   return role === 'admin' || role === 'super_admin';
 };
 
-export default { 
-  authAPI, 
-  userAPI, 
-  isAuthenticated, 
-  getCurrentUserData, 
+export default {
+  authAPI,
+  userAPI,
+  friendsAPI,
+  postsAPI,
+  storyAPI,
+  isAuthenticated,
+  getCurrentUserData,
   getUserRole,
-  isAdmin, 
+  isAdmin,
   isModerator,
   canManageUsers,
-  getImageUrl
+  getImageUrl,
 };

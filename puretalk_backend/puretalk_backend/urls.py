@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/', include('friends.urls')), 
     path('api/videos/', include('videos.urls')),
     path('api/', include('posts.urls')),  # Posts URLs
+    path('api/', include('stories.urls')),
 ]
 
 if settings.DEBUG:
