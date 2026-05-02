@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'users',
     'friends',
     'videos',
-    'posts'
+    'posts',
+    'stories',
 ]
 
 CORS_ALLOWED_ORIGINS = [
