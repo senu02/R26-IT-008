@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from .models import FriendRequest, Friendship, FriendBlock
 from .serializers import (
     FriendRequestSerializer, SendFriendRequestSerializer,
-    FriendRequestActionSerializer, FriendListSerializer,
+    FriendRequestActionSerializer,
     PendingRequestSerializer, SentRequestSerializer,
     BlockUserSerializer, UnblockUserSerializer, FriendSuggestionSerializer
 )
@@ -112,16 +112,32 @@ class FriendViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'], url_path='list')
     def friends_list(self, request):
-        """Get all friends of the current user"""
-        friendships = Friendship.objects.filter(
-            user=request.user
-        ).select_related('friend')
-        
-        serializer = FriendListSerializer(friendships, many=True)
-        return Response({
-            'count': friendships.count(),
-            'results': serializer.data
-        })
+        """Get all friends of the current user (both directions of friendship rows)."""
+        as_owner = Friendship.objects.filter(user=request.user).select_related('friend')
+        as_friend = Friendship.objects.filter(friend=request.user).select_related('user')
+
+        other_by_id = {}
+        for row in as_owner:
+            other_by_id[row.friend_id] = row.friend
+        for row in as_friend:
+            other_by_id[row.user_id] = row.user
+
+        results = []
+        for friend_user in sorted(
+            other_by_id.values(),
+            key=lambda u: (u.get_full_name_display() or u.email or '').lower(),
+        ):
+            results.append(
+                {
+                    'id': friend_user.id,
+                    'friend': friend_user.id,
+                    'friend_detail': UserProfileSerializer(
+                        friend_user, context={'request': request}
+                    ).data,
+                }
+            )
+
+        return Response({'count': len(results), 'results': results})
     
     @action(detail=False, methods=['get'], url_path='suggestions')
     def suggestions(self, request):

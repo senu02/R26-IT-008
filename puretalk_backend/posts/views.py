@@ -141,9 +141,11 @@ class PostViewSet(viewsets.ModelViewSet):
         """Get user's feed (posts from friends and pages)"""
         user = request.user
         
-        # Get friends
+        # Friends (both directions)
         from friends.models import Friendship
-        friend_ids = Friendship.objects.filter(user=user).values_list('friend_id', flat=True)
+        ids_owner = Friendship.objects.filter(user=user).values_list('friend_id', flat=True)
+        ids_other = Friendship.objects.filter(friend=user).values_list('user_id', flat=True)
+        friend_ids = list(set(ids_owner) | set(ids_other))
         
         # Get blocked users
         from friends.models import FriendBlock
