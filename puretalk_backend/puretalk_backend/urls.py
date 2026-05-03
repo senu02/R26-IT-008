@@ -15,6 +15,7 @@ urlpatterns = [
     path('api/videos/', include('videos.urls')),
     path('api/', include('posts.urls')),  # Posts URLs
     path('api/', include('stories.urls')),
+     path('api/', include('toxicity_detection.urls')),
 ]
 
 if settings.DEBUG:

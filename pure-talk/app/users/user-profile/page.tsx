@@ -4,34 +4,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/User/UserProfile/Sidebar';
 import { BackgroundWrapper } from '@/context/theme';
+import PostSection from '@/components/User/Posts/PostSection';
+import { getTheme } from '@/context/theme';
 import { 
   UserPlus, 
   MessageCircle, 
   MoreHorizontal, 
   Camera, 
-  Smile, 
-  Image as ImageIcon,
-  ThumbsUp,
-  Heart,
-  Share2,
-  Send,
-  Briefcase,
   MapPin,
-  Calendar,
   Mail,
   Phone,
-  Heart as HeartIcon,
-  GraduationCap,
-  Home,
-  X,
+  Calendar,
   Upload,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { getCurrentUserData, getImageUrl, authAPI, User } from '@/lib/api';
 
 export default function ProfilePage() {
   const [isDark, setIsDark] = useState(false);
-  const [postContent, setPostContent] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCoverModal, setShowCoverModal] = useState(false);
@@ -44,6 +35,8 @@ export default function ProfilePage() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  
+  const theme = getTheme(isDark);
 
   useEffect(() => {
     const checkTheme = () => {
@@ -189,49 +182,6 @@ export default function ProfilePage() {
       </span>
     );
   };
-
-  // Sample posts data
-  const posts = [
-    {
-      id: 1,
-      author: user?.full_name || 'User',
-      avatar: getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`,
-      time: '2 hours ago',
-      privacy: 'public',
-      content: 'Just finished an amazing UI/UX workshop! Learned so much about user-centered design principles. 🎨✨',
-      image: 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=800',
-      likes: 124,
-      comments: 18,
-      shares: 5,
-      liked: false,
-    },
-    {
-      id: 2,
-      author: user?.full_name || 'User',
-      avatar: getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`,
-      time: 'Yesterday at 3:45 PM',
-      privacy: 'friends',
-      content: 'Excited to announce that I\'m working on a new design system for our upcoming product! Stay tuned for updates. 🚀',
-      image: null,
-      likes: 89,
-      comments: 12,
-      shares: 3,
-      liked: true,
-    },
-    {
-      id: 3,
-      author: user?.full_name || 'User',
-      avatar: getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`,
-      time: '3 days ago',
-      privacy: 'public',
-      content: 'Check out this beautiful sunset I captured during my evening walk! 🌅',
-      image: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=800',
-      likes: 256,
-      comments: 34,
-      shares: 12,
-      liked: false,
-    },
-  ];
 
   const friends = [
     { id: 1, name: 'Sarah Johnson', avatar: 'https://ui-avatars.com/api/?background=4a90e2&color=fff&size=128&name=Sarah+Johnson', mutual: 8 },
@@ -497,114 +447,9 @@ export default function ProfilePage() {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Posts Feed */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Create Post */}
-              <div className={`rounded-2xl shadow-xl p-4 ${isDark ? 'bg-white/5 backdrop-blur-md border border-white/10' : 'bg-white/40 backdrop-blur-md border border-white/50'}`}>
-                <div className="flex gap-3">
-                  <img 
-                    src={getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`}
-                    alt="Your avatar"
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <input
-                    type="text"
-                    placeholder={`What's on your mind, ${user?.full_name?.split(' ')[0] || 'User'}?`}
-                    value={postContent}
-                    onChange={(e) => setPostContent(e.target.value)}
-                    className={`flex-1 rounded-full px-4 py-2 text-sm outline-none transition-all ${
-                      isDark 
-                        ? 'bg-white/10 text-white placeholder-white/50' 
-                        : 'bg-white/50 text-slate-900 placeholder-slate-500'
-                    }`}
-                  />
-                </div>
-                <div className="flex justify-around mt-3 pt-3 border-t border-white/20">
-                  <button className={`flex items-center gap-2 px-4 py-1 rounded-lg text-sm transition-all ${
-                    isDark ? 'text-white/70 hover:bg-white/10' : 'text-slate-600 hover:bg-white/30'
-                  }`}>
-                    <ImageIcon className="h-5 w-5 text-green-500" />
-                    Photo/Video
-                  </button>
-                  <button className={`flex items-center gap-2 px-4 py-1 rounded-lg text-sm transition-all ${
-                    isDark ? 'text-white/70 hover:bg-white/10' : 'text-slate-600 hover:bg-white/30'
-                  }`}>
-                    <Smile className="h-5 w-5 text-yellow-500" />
-                    Feeling/Activity
-                  </button>
-                </div>
-              </div>
-
-              {/* Posts */}
-              {posts.map((post) => (
-                <div key={post.id} className={`rounded-2xl shadow-xl overflow-hidden ${isDark ? 'bg-white/5 backdrop-blur-md border border-white/10' : 'bg-white/40 backdrop-blur-md border border-white/50'}`}>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-3">
-                        <img src={post.avatar} alt={post.author} className="w-10 h-10 rounded-full" />
-                        <div>
-                          <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{post.author}</h4>
-                          <div className="flex items-center gap-1 text-xs">
-                            <span className={isDark ? 'text-white/50' : 'text-slate-500'}>{post.time}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <button className={isDark ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-600'}>
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
-                    </div>
-                    
-                    <p className={`mt-3 text-sm ${isDark ? 'text-white/80' : 'text-slate-700'}`}>{post.content}</p>
-                    
-                    {post.image && (
-                      <div className="mt-3 -mx-4">
-                        <img src={post.image} alt="Post" className="w-full" />
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between mt-3 pt-2 text-xs">
-                      <div className="flex items-center gap-1">
-                        <ThumbsUp className="h-4 w-4 text-blue-500" />
-                        <Heart className="h-4 w-4 text-red-500" />
-                        <span className={isDark ? 'text-white/50' : 'text-slate-500'}>{post.likes}</span>
-                      </div>
-                      <div className="flex gap-3">
-                        <span className={isDark ? 'text-white/50' : 'text-slate-500'}>{post.comments} comments</span>
-                        <span className={isDark ? 'text-white/50' : 'text-slate-500'}>{post.shares} shares</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className={`flex border-t ${isDark ? 'border-white/10' : 'border-white/30'}`}>
-                    <button className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all ${
-                      post.liked 
-                        ? 'text-[#fd297b]' 
-                        : isDark ? 'text-white/60 hover:bg-white/5' : 'text-slate-600 hover:bg-white/20'
-                    }`}>
-                      <ThumbsUp className="h-5 w-5" />
-                      Like
-                    </button>
-                    <button className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all ${
-                      isDark ? 'text-white/60 hover:bg-white/5' : 'text-slate-600 hover:bg-white/20'
-                    }`}>
-                      <MessageCircle className="h-5 w-5" />
-                      Comment
-                    </button>
-                    <button className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all ${
-                      isDark ? 'text-white/60 hover:bg-white/5' : 'text-slate-600 hover:bg-white/20'
-                    }`}>
-                      <Share2 className="h-5 w-5" />
-                      Share
-                    </button>
-                    <button className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all ${
-                      isDark ? 'text-white/60 hover:bg-white/5' : 'text-slate-600 hover:bg-white/20'
-                    }`}>
-                      <Send className="h-5 w-5" />
-                      Send
-                    </button>
-                  </div>
-                </div>
-              ))}
+            {/* Left Column - Posts Feed using PostSection */}
+            <div className="lg:col-span-2">
+              <PostSection theme={theme} isDark={isDark} />
             </div>
 
             {/* Right Column */}
