@@ -82,13 +82,27 @@ class BehaviorViewSet(viewsets.GenericViewSet):
 
         profile = get_object_or_404(UserBehaviorProfile, id=profile_id)
         from django.utils import timezone
+        from knox.models import AuthToken
+
         hours = int(request.data.get('hours', 24))
         reason = request.data.get('reason', 'Manual suspension by admin.')
+        suspended_until = timezone.now() + timezone.timedelta(hours=hours)
 
-        profile.is_suspended    = True
-        profile.suspended_until = timezone.now() + timezone.timedelta(hours=hours)
+        # Update behavior profile
+        profile.is_suspended      = True
+        profile.suspended_until   = suspended_until
         profile.suspension_reason = reason
         profile.save()
+
+        # ── Sync to CustomUser so login is blocked ──
+        user = profile.user
+        user.account_status    = 'suspended'
+        user.suspended_until   = suspended_until
+        user.suspension_reason = reason
+        user.save(update_fields=['account_status', 'suspended_until', 'suspension_reason'])
+
+        # Invalidate all existing sessions
+        AuthToken.objects.filter(user=user).delete()
 
         return Response({
             'message': f"User suspended for {hours} hours.",
@@ -101,10 +115,19 @@ class BehaviorViewSet(viewsets.GenericViewSet):
             return Response({'error': 'Admin access required'}, status=403)
 
         profile = get_object_or_404(UserBehaviorProfile, id=profile_id)
-        profile.is_suspended    = False
-        profile.suspended_until = None
+
+        # Update behavior profile
+        profile.is_suspended      = False
+        profile.suspended_until   = None
         profile.suspension_reason = None
         profile.save()
+
+        # ── Sync to CustomUser so login is re-allowed ──
+        user = profile.user
+        user.account_status    = 'active'
+        user.suspended_until   = None
+        user.suspension_reason = None
+        user.save(update_fields=['account_status', 'suspended_until', 'suspension_reason'])
 
         return Response({'message': 'Suspension lifted.'})
 

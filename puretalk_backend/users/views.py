@@ -49,16 +49,38 @@ class LoginViewSet(viewsets.ViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
+        # Auto-clear suspension if it has expired
+        if user.account_status == 'suspended' and user.suspended_until:
+            if timezone.now() > user.suspended_until:
+                user.account_status = 'active'
+                user.suspended_until = None
+                user.suspension_reason = None
+                user.save(update_fields=['account_status', 'suspended_until', 'suspension_reason'])
+                # Also clear behavior profile suspension if it exists
+                try:
+                    bp = user.behavior_profile
+                    bp.is_suspended = False
+                    bp.suspended_until = None
+                    bp.suspension_reason = None
+                    bp.save(update_fields=['is_suspended', 'suspended_until', 'suspension_reason'])
+                except Exception:
+                    pass
+
         # Check account status
         if user.account_status == 'suspended':
+            until_str = ""
+            if user.suspended_until:
+                until_str = f" until {user.suspended_until.strftime('%Y-%m-%d %H:%M UTC')}"
+            reason_str = f" Reason: {user.suspension_reason}" if user.suspension_reason else ""
             return Response(
-                {"error": f"Account suspended until {user.suspended_until}. Reason: {user.suspension_reason or 'No reason provided'}"}, 
+                {"error": f"Your account has been suspended{until_str}.{reason_str}"}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
         if user.account_status == 'banned':
+            reason_str = f" Reason: {user.banned_reason}" if user.banned_reason else ""
             return Response(
-                {"error": f"Account banned. Reason: {user.banned_reason or 'No reason provided'}"}, 
+                {"error": f"Your account has been permanently banned.{reason_str}"}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
