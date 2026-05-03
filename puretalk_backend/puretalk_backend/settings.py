@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'videos',
     'posts',
     'stories',
+    'toxicity_detection',
 ]
 
 CORS_ALLOWED_ORIGINS = [
