@@ -84,7 +84,7 @@ const Sidebar = () => {
           <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
           <NavItem href="/notifications" icon={<Heart className="h-6 w-6" />} label="Notifications" active={pathname === '/notifications'} badge={unreadNotifications} />
-          <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
+          <NavItem href="/create" icon={<PlusSquare className="h-6 w-6" />} label="Create" active={pathname === '/create'} />
           <NavItem 
             href="/users/user-profile" 
             icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src={userAvatar} alt="profile" className="h-full w-full object-cover" /></div>} 

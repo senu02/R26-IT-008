@@ -263,8 +263,16 @@ export const authAPI = {
 // User management endpoints
 export const userAPI = {
   getAllUsers: async (): Promise<User[]> => {
-    const response = await apiCall<{ count: number; users: User[] }>('/users/');
-    return response.users || [];
+    try {
+      const response = await apiCall<any>('/users/');
+      if (Array.isArray(response)) return response;
+      if (response.users) return response.users;
+      if (response.results) return response.results;
+      return [];
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      return [];
+    }
   },
 
   getUserById: async (userId: number): Promise<User> => {
@@ -424,6 +432,24 @@ export const postsAPI = {
       body: JSON.stringify({ post: postId, content }),
     });
   },
+
+  createPost: async (content: string, files?: File[], privacy = 'public'): Promise<FeedPost> => {
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('privacy', privacy);
+    formData.append('post_type', files && files.length > 0 ? 'image' : 'text');
+    
+    if (files && files.length > 0) {
+      files.forEach(file => {
+        formData.append('media', file); // Adjust field name if the backend expects something else like 'images' or array notation
+      });
+    }
+
+    return await apiCall<FeedPost>('/api/posts/', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 export interface StoryFeedItem {
@@ -453,15 +479,25 @@ export interface FriendRequest {
 
 export const friendsAPI = {
   list: async (): Promise<{ count: number; results: FriendListItem[] }> => {
-    return await apiCall<{ count: number; results: FriendListItem[] }>(
-      '/api/friends/list/'
-    );
+    try {
+      const response = await apiCall<any>('/api/friends/list/');
+      if (Array.isArray(response)) return { count: response.length, results: response };
+      if (response.results) return { count: response.count || response.results.length, results: response.results };
+      return { count: 0, results: [] };
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+      return { count: 0, results: [] };
+    }
   },
 
   getRequests: async (): Promise<{ count: number; results: FriendRequest[] }> => {
     try {
-      return await apiCall<{ count: number; results: FriendRequest[] }>('/api/friends/requests/');
-    } catch {
+      const response = await apiCall<any>('/api/friends/requests/');
+      if (Array.isArray(response)) return { count: response.length, results: response };
+      if (response.results) return { count: response.count || response.results.length, results: response.results };
+      return { count: 0, results: [] };
+    } catch (error) {
+      console.error('Error fetching friend requests:', error);
       return { count: 0, results: [] };
     }
   },
