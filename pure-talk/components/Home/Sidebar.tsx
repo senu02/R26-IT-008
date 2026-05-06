@@ -13,9 +13,10 @@ import {
   Menu,
   Moon,
   Sun,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react';
-import { getCurrentUserData, getImageUrl } from '@/lib/api';
+import { getCurrentUserData, getImageUrl, notificationsAPI } from '@/lib/api';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -23,6 +24,7 @@ const Sidebar = () => {
   const [mounted, setMounted] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
@@ -30,6 +32,20 @@ const Sidebar = () => {
     const currentUser = getCurrentUserData();
     if (currentUser) {
       setUserAvatar(getImageUrl(currentUser.profile_picture) || 'https://i.pravatar.cc/150?img=11');
+    }
+
+    // Fetch unread notifications count
+    const fetchNotifications = async () => {
+      try {
+        const data = await notificationsAPI.list();
+        setUnreadNotifications(data.unread_count || 0);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    
+    if (currentUser) {
+      fetchNotifications();
     }
   }, []);
 
@@ -64,10 +80,10 @@ const Sidebar = () => {
         {/* Navigation */}
         <div className="flex w-full flex-col gap-2">
           <NavItem href="/home" icon={<Home className="h-6 w-6" />} label="Home" active={pathname === '/home'} />
-          <NavItem href="#" icon={<Search className="h-6 w-6" />} label="Search" />
+          <NavItem href="/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
           <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
-          <NavItem href="#" icon={<Heart className="h-6 w-6" />} label="Notifications" />
+          <NavItem href="/notifications" icon={<Heart className="h-6 w-6" />} label="Notifications" active={pathname === '/notifications'} badge={unreadNotifications} />
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
@@ -121,14 +137,19 @@ const Sidebar = () => {
   );
 };
 
-const NavItem = ({ href, icon, label, active = false }: { href: string, icon: React.ReactNode, label: string, active?: boolean }) => {
+const NavItem = ({ href, icon, label, active = false, badge }: { href: string, icon: React.ReactNode, label: string, active?: boolean, badge?: number }) => {
   return (
     <Link
       href={href}
-      className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${active ? 'font-bold' : 'font-normal'}`}
+      className={`group relative flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${active ? 'font-bold' : 'font-normal'}`}
     >
-      <div className={`transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px]' : ''}`}>
+      <div className={`relative transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px]' : ''}`}>
         {icon}
+        {badge !== undefined && badge > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)]">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
       </div>
       <span className="hidden lg:block text-[15px]">{label}</span>
     </Link>

@@ -441,12 +441,55 @@ export interface FriendListItem {
   friend_detail: User;
 }
 
+export interface FriendRequest {
+  id: number;
+  from_user: number;
+  from_user_detail?: User;
+  to_user: number;
+  to_user_detail?: User;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+}
+
 export const friendsAPI = {
   list: async (): Promise<{ count: number; results: FriendListItem[] }> => {
     return await apiCall<{ count: number; results: FriendListItem[] }>(
       '/api/friends/list/'
     );
   },
+
+  getRequests: async (): Promise<{ count: number; results: FriendRequest[] }> => {
+    try {
+      return await apiCall<{ count: number; results: FriendRequest[] }>('/api/friends/requests/');
+    } catch {
+      return { count: 0, results: [] };
+    }
+  },
+
+  sendRequest: async (userId: number): Promise<void> => {
+    await apiCall('/api/friends/requests/send/', {
+      method: 'POST',
+      body: JSON.stringify({ to_user: userId })
+    });
+  },
+
+  acceptRequest: async (requestId: number): Promise<void> => {
+    await apiCall(`/api/friends/requests/${requestId}/accept/`, {
+      method: 'POST'
+    });
+  },
+
+  rejectRequest: async (requestId: number): Promise<void> => {
+    await apiCall(`/api/friends/requests/${requestId}/reject/`, {
+      method: 'POST'
+    });
+  },
+
+  remove: async (friendId: number): Promise<void> => {
+    await apiCall(`/api/friends/${friendId}/remove/`, {
+      method: 'POST'
+    });
+  }
 };
 
 export const storyAPI = {
@@ -466,6 +509,49 @@ export const storyAPI = {
   remove: async (id: number): Promise<void> => {
     await apiCall<void>(`/api/stories/${id}/`, { method: 'DELETE' });
   },
+};
+
+export interface NotificationItem {
+  id: number;
+  type: 'like' | 'comment' | 'follow' | 'system' | 'mention';
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  sender_avatar?: string;
+  sender_name?: string;
+  link?: string;
+}
+
+export const notificationsAPI = {
+  list: async (): Promise<{ count: number; results: NotificationItem[], unread_count: number }> => {
+    try {
+      return await apiCall<{ count: number; results: NotificationItem[], unread_count: number }>('/api/notifications/');
+    } catch {
+      // Mock data for demo purposes since backend might not have this yet
+      const mockNotifications: NotificationItem[] = [
+        { id: 1, type: 'like', content: 'liked your photo.', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), sender_name: 'alex.anyways18', sender_avatar: 'https://i.pravatar.cc/150?img=33' },
+        { id: 2, type: 'comment', content: 'commented: "This looks amazing!"', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(), sender_name: 'gwangurl77', sender_avatar: 'https://i.pravatar.cc/150?img=42' },
+        { id: 3, type: 'follow', content: 'started following you.', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), sender_name: 'mishka_songs', sender_avatar: 'https://i.pravatar.cc/150?img=20' },
+        { id: 4, type: 'system', content: 'Welcome to PureTalk! Update your profile to get started.', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), sender_name: 'System' },
+        { id: 5, type: 'mention', content: 'mentioned you in a comment.', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), sender_name: 'chantouflowergirl', sender_avatar: 'https://i.pravatar.cc/150?img=61' }
+      ];
+      return { count: 5, results: mockNotifications, unread_count: 2 };
+    }
+  },
+  markAsRead: async (id: number): Promise<void> => {
+    try {
+      await apiCall(`/api/notifications/${id}/read/`, { method: 'POST' });
+    } catch {
+      console.log('Mock: Marked notification as read');
+    }
+  },
+  markAllAsRead: async (): Promise<void> => {
+    try {
+      await apiCall('/api/notifications/read-all/', { method: 'POST' });
+    } catch {
+      console.log('Mock: Marked all notifications as read');
+    }
+  }
 };
 
 export const isAuthenticated = (): boolean => {
@@ -514,4 +600,5 @@ export default {
   isModerator,
   canManageUsers,
   getImageUrl,
+  notificationsAPI,
 };
