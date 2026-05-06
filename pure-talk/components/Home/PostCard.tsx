@@ -6,9 +6,34 @@ import {
   MessageCircle,
   Send,
   Bookmark,
-  Loader2,
 } from "lucide-react";
-import { postsAPI, getImageUrl, type FeedPost } from "@/lib/api";
+
+// Local type definitions (removed from API import)
+type FeedPost = {
+  id: number;
+  author_detail: {
+    id: number;
+    email: string;
+    full_name: string;
+    profile_picture: string;
+    display_name?: string;
+  };
+  content: string;
+  post_type: string;
+  media: Array<{ file_url: string; media_type: string }>;
+  like_count: number;
+  comment_count: number;
+  share_count: number;
+  user_has_liked: boolean;
+  user_has_saved: boolean;
+  recent_comments: Array<{
+    id: number;
+    content: string;
+    author_detail?: FeedPost["author_detail"];
+  }>;
+  created_at: string;
+  location_name: string | null;
+};
 
 function authorLabel(d: FeedPost["author_detail"]): string {
   const withDisplay = d as { display_name?: string };
@@ -20,11 +45,11 @@ function authorLabel(d: FeedPost["author_detail"]): string {
 function firstImageUrl(post: FeedPost): string | null {
   for (const m of post.media ?? []) {
     if (m?.file_url && m.media_type !== "video" && m.media_type !== "audio") {
-      return getImageUrl(m.file_url) ?? m.file_url;
+      return m.file_url;
     }
   }
   for (const m of post.media ?? []) {
-    if (m?.file_url) return getImageUrl(m.file_url) ?? m.file_url;
+    if (m?.file_url) return m.file_url;
   }
   return null;
 }
@@ -35,16 +60,12 @@ interface PostCardProps {
   onUpdated?: () => void;
 }
 
-const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
+const PostCard = ({ post, isDemo = true, onUpdated }: PostCardProps) => {
   const [liked, setLiked] = useState(post.user_has_liked);
   const [saved, setSaved] = useState(!!post.user_has_saved);
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [commentCount, setCommentCount] = useState(post.comment_count);
   const [shareCount, setShareCount] = useState(post.share_count);
-  const [likeBusy, setLikeBusy] = useState(false);
-  const [commentBusy, setCommentBusy] = useState(false);
-  const [shareBusy, setShareBusy] = useState(false);
-  const [saveBusy, setSaveBusy] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [hint, setHint] = useState<string | null>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -66,13 +87,13 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
 
   const user = authorLabel(post.author_detail);
   const avatar =
-    getImageUrl(post.author_detail.profile_picture ?? undefined) ??
+    post.author_detail.profile_picture ??
     "https://i.pravatar.cc/150?img=12";
   const imageUrl = firstImageUrl(post);
   const location = post.location_name ?? undefined;
 
   const needLogin = () => {
-    setHint("Log in to use this.");
+    setHint("Please login to interact with posts.");
     setTimeout(() => setHint(null), 3000);
   };
 
@@ -81,19 +102,10 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
       needLogin();
       return;
     }
-    setLikeBusy(true);
-    setHint(null);
-    try {
-      const r = await postsAPI.likePost(post.id);
-      setLikeCount(r.like_count);
-      setLiked(!!r.user_reaction);
-      onUpdated?.();
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      setHint(err.message ?? "Could not update like.");
-    } finally {
-      setLikeBusy(false);
-    }
+    // Demo mode - just toggle locally
+    setLiked(!liked);
+    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+    onUpdated?.();
   };
 
   const handleComment = () => {
@@ -111,32 +123,16 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
     }
     const t = commentText.trim();
     if (!t) return;
-    setCommentBusy(true);
-    setHint(null);
-    try {
-      await postsAPI.createComment(post.id, t);
-      setCommentText("");
-      setCommentCount((c) => c + 1);
-      onUpdated?.();
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      setHint(err.message ?? "Could not post comment.");
-    } finally {
-      setCommentBusy(false);
-    }
+    setCommentText("");
+    setCommentCount((c) => c + 1);
+    onUpdated?.();
+    setHint("Comment posted!");
+    setTimeout(() => setHint(null), 2000);
   };
 
   const handleShare = async () => {
     if (isDemo) {
-      needLogin();
-      return;
-    }
-    setShareBusy(true);
-    setHint(null);
-    try {
-      await postsAPI.createShare(post.id);
       setShareCount((s) => s + 1);
-      onUpdated?.();
       if (typeof navigator !== "undefined" && navigator.share) {
         try {
           await navigator.share({
@@ -148,31 +144,31 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
           /* user cancelled share sheet */
         }
       }
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      setHint(err.message ?? "Could not share post.");
-    } finally {
-      setShareBusy(false);
+      return;
+    }
+    setShareCount((s) => s + 1);
+    onUpdated?.();
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "PureTalk",
+          text: post.content?.slice(0, 160) || "Post on PureTalk",
+          url: typeof window !== "undefined" ? window.location.origin + "/home" : "",
+        });
+      } catch {
+        /* user cancelled share sheet */
+      }
     }
   };
 
   const handleSave = async () => {
     if (isDemo) {
-      needLogin();
+      setSaved(!saved);
+      onUpdated?.();
       return;
     }
-    setSaveBusy(true);
-    setHint(null);
-    try {
-      const r = await postsAPI.savePost(post.id);
-      if (r.saved !== undefined) setSaved(r.saved);
-      onUpdated?.();
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      setHint(err.message ?? "Could not save post.");
-    } finally {
-      setSaveBusy(false);
-    }
+    setSaved(!saved);
+    onUpdated?.();
   };
 
   const formatCount = (n: number) => n.toLocaleString();
@@ -225,19 +221,14 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            disabled={likeBusy}
             onClick={handleLike}
-            className="hover:opacity-60 disabled:opacity-50"
+            className="hover:opacity-60"
             aria-label={liked ? "Unlike" : "Like"}
           >
-            {likeBusy ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              <Heart
-                className={`h-6 w-6 ${liked ? "fill-red-500 stroke-red-500" : ""}`}
-                strokeWidth={liked ? 0 : 1.75}
-              />
-            )}
+            <Heart
+              className={`h-6 w-6 ${liked ? "fill-red-500 stroke-red-500" : ""}`}
+              strokeWidth={liked ? 0 : 1.75}
+            />
           </button>
           <button
             type="button"
@@ -249,33 +240,23 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
           </button>
           <button
             type="button"
-            disabled={shareBusy}
             onClick={handleShare}
-            className="hover:opacity-60 disabled:opacity-50"
+            className="hover:opacity-60"
             aria-label="Share"
           >
-            {shareBusy ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              <Send className="h-6 w-6" strokeWidth={1.75} />
-            )}
+            <Send className="h-6 w-6" strokeWidth={1.75} />
           </button>
         </div>
         <button
           type="button"
-          disabled={saveBusy}
           onClick={handleSave}
-          className="hover:opacity-60 disabled:opacity-50"
+          className="hover:opacity-60"
           aria-label={saved ? "Unsave" : "Save"}
         >
-          {saveBusy ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
-          ) : (
-            <Bookmark
-              className={`h-6 w-6 ${saved ? "fill-[var(--foreground)] stroke-[var(--foreground)]" : ""}`}
-              strokeWidth={1.75}
-            />
-          )}
+          <Bookmark
+            className={`h-6 w-6 ${saved ? "fill-[var(--foreground)] stroke-[var(--foreground)]" : ""}`}
+            strokeWidth={1.75}
+          />
         </button>
       </div>
 
@@ -297,7 +278,7 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
           {post.recent_comments.slice(0, 2).map((c) => (
             <p key={c.id} className="text-sm">
               <span className="mr-2 font-semibold">
-                {c.author_detail ? authorLabel(c.author_detail as FeedPost["author_detail"]) : "User"}
+                {c.author_detail ? authorLabel(c.author_detail) : "User"}
               </span>
               <span>{c.content}</span>
             </p>
@@ -331,11 +312,11 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
         />
         <button
           type="button"
-          disabled={commentBusy || !commentText.trim()}
+          disabled={!commentText.trim()}
           onClick={submitComment}
           className="shrink-0 text-sm font-semibold text-[var(--ig-link)] opacity-90 hover:opacity-100 disabled:opacity-40"
         >
-          {commentBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+          Post
         </button>
       </div>
     </article>

@@ -1,7 +1,30 @@
 "use client";
 import React, { useCallback, useEffect, useState } from "react";
 import PostCard from "./PostCard";
-import { postsAPI, isAuthenticated, type FeedPost, type User } from "@/lib/api";
+
+// Local type definitions
+type User = {
+  id: number;
+  email: string;
+  full_name: string;
+  profile_picture: string;
+};
+
+type FeedPost = {
+  id: number;
+  author_detail: User & { display_name: string };
+  content: string;
+  post_type: string;
+  media: Array<{ file_url: string; media_type: string }>;
+  like_count: number;
+  comment_count: number;
+  share_count: number;
+  user_has_liked: boolean;
+  user_has_saved: boolean;
+  recent_comments: any[];
+  created_at: string;
+  location_name: string | null;
+};
 
 const demoSeed: Array<{
   user: string;
@@ -65,34 +88,13 @@ function toDemoFeedPosts(): FeedPost[] {
 const Feed = () => {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(false);
-  const auth = isAuthenticated();
-
-  const load = useCallback(async () => {
-    if (!auth) {
-      setPosts(toDemoFeedPosts());
-      setDemoMode(true);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const list = await postsAPI.feed();
-      setPosts(list);
-      setDemoMode(false);
-    } catch {
-      setPosts(toDemoFeedPosts());
-      setDemoMode(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [auth]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    setPosts(toDemoFeedPosts());
+    setLoading(false);
+  }, []);
 
-  if (loading && auth) {
+  if (loading) {
     return (
       <div className="flex w-full flex-col items-center py-12 text-sm text-[var(--ig-muted)]">
         Loading feed…
@@ -100,7 +102,7 @@ const Feed = () => {
     );
   }
 
-  if (auth && !demoMode && posts.length === 0) {
+  if (posts.length === 0) {
     return (
       <div className="flex w-full flex-col items-center py-12 px-4 text-center text-sm text-[var(--ig-muted)]">
         <p>No posts in your feed yet.</p>
@@ -115,8 +117,8 @@ const Feed = () => {
         <PostCard
           key={post.id}
           post={post}
-          isDemo={demoMode}
-          onUpdated={demoMode ? undefined : load}
+          isDemo={true}
+          onUpdated={undefined}
         />
       ))}
     </div>
