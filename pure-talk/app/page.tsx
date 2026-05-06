@@ -56,7 +56,7 @@ export default function Home() {
             Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link
-            href="/auth/login"
+            href="/home"
             className="flex items-center justify-center w-full sm:w-auto px-10 py-5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full font-semibold text-lg backdrop-blur-md transition-all duration-300 hover:-translate-y-1"
           >
             Sign In

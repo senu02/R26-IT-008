@@ -15,16 +15,22 @@ import {
   Sun,
   Settings
 } from 'lucide-react';
+import { getCurrentUserData, getImageUrl } from '@/lib/api';
 
 const Sidebar = () => {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
     setMounted(true);
+    const currentUser = getCurrentUserData();
+    if (currentUser) {
+      setUserAvatar(getImageUrl(currentUser.profile_picture) || 'https://i.pravatar.cc/150?img=11');
+    }
   }, []);
 
   return (
@@ -65,7 +71,7 @@ const Sidebar = () => {
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
-            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src="https://i.pravatar.cc/150?img=11" alt="profile" className="h-full w-full object-cover" /></div>} 
+            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src={userAvatar} alt="profile" className="h-full w-full object-cover" /></div>} 
             label="Profile" 
             active={pathname === '/users/user-profile'}
           />
