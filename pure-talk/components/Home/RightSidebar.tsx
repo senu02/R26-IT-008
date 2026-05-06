@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
+import { getCurrentUserData, getImageUrl } from '@/lib/api';
 
 const mockSuggestions = [
   { id: 1, user: 'alex.anyways18', subText: 'Suggested for you', image: 'https://i.pravatar.cc/150?img=33' },
@@ -9,16 +11,29 @@ const mockSuggestions = [
 ];
 
 const RightSidebar = () => {
+  const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
+  const [userName, setUserName] = useState('azevedo_drdr');
+  const [fullName, setFullName] = useState('Azevedo');
+
+  useEffect(() => {
+    const currentUser = getCurrentUserData();
+    if (currentUser) {
+      setUserAvatar(getImageUrl(currentUser.profile_picture) || 'https://i.pravatar.cc/150?img=11');
+      setUserName(currentUser.full_name?.toLowerCase().replace(/\s/g, '_') || currentUser.email?.split('@')[0] || 'user');
+      setFullName(currentUser.full_name || 'User');
+    }
+  }, []);
+
   return (
     <div className="flex w-full max-w-[320px] flex-col text-sm text-[var(--foreground)]">
       <div className="mb-5 flex items-center justify-between">
         <div className="flex min-w-0 cursor-pointer items-center gap-3">
           <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[var(--ig-border)]">
-            <img src="https://i.pravatar.cc/150?img=11" alt="azevedo_drdr" className="h-full w-full object-cover" />
+            <img src={userAvatar} alt={userName} className="h-full w-full object-cover" />
           </div>
           <div className="min-w-0 flex flex-col text-sm">
-            <span className="truncate font-semibold">azevedo_drdr</span>
-            <span className="truncate text-[var(--ig-muted)]">Azevedo</span>
+            <span className="truncate font-semibold">{userName}</span>
+            <span className="truncate text-[var(--ig-muted)]">{fullName}</span>
           </div>
         </div>
         <button type="button" className="shrink-0 text-xs font-semibold text-[var(--ig-link)] hover:opacity-80">
