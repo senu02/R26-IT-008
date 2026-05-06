@@ -1,93 +1,290 @@
+// app/friends/page.tsx
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, UserPlus, UserCheck, UserX, Users, X, Sparkles, Compass } from 'lucide-react';
+import { Search, UserPlus, UserCheck, UserX, Users, X, Sparkles, Compass, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Home/Sidebar';
+import {
+  getFriendsList,
+  getPendingRequests,
+  getFriendSuggestions,
+  getDiscoverUsers,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  removeFriend,
+  searchUsers,
+  User,
+  FriendRequest,
+  Friendship,
+  FriendSuggestion,
+} from '@/app/services/friends/actions';
+import { getImageUrl, getCurrentUserData } from '@/lib/api';
 
 const PLACEHOLDER_AVATAR = 'https://i.pravatar.cc/150?img=11';
-
-// Mock Data
-const MOCK_USERS = [
-  { id: 1, full_name: 'Alice Johnson', email: 'alice@example.com', profile_picture: null },
-  { id: 2, full_name: 'Bob Smith', email: 'bob@example.com', profile_picture: null },
-  { id: 3, full_name: 'Charlie Brown', email: 'charlie@example.com', profile_picture: null },
-  { id: 4, full_name: 'Diana Prince', email: 'diana@example.com', profile_picture: null },
-  { id: 5, full_name: 'Evan Wright', email: 'evan@example.com', profile_picture: null },
-];
-
-const MOCK_FRIENDS = [
-  { id: 1, friend: 101, friend_detail: { id: 101, full_name: 'Sarah Parker', email: 'sarah@example.com', profile_picture: null } },
-  { id: 2, friend: 102, friend_detail: { id: 102, full_name: 'Mike Ross', email: 'mike@example.com', profile_picture: null } },
-];
-
-const MOCK_REQUESTS = [
-  { id: 1, from_user_detail: { id: 201, full_name: 'Emma Watson', email: 'emma@example.com', profile_picture: null }, created_at: '2024-01-01' },
-  { id: 2, from_user_detail: { id: 202, full_name: 'John Doe', email: 'john@example.com', profile_picture: null }, created_at: '2024-01-02' },
-];
 
 export default function FriendsPage() {
   const [activeTab, setActiveTab] = useState<'discover' | 'requests' | 'friends'>('discover');
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [discoverUsers, setDiscoverUsers] = useState(MOCK_USERS);
-  const [friends, setFriends] = useState(MOCK_FRIENDS);
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  const [discoverUsers, setDiscoverUsers] = useState<User[]>([]);
+  const [friends, setFriends] = useState<Friendship[]>([]);
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [suggestions, setSuggestions] = useState<FriendSuggestion[]>([]);
   
+  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<Record<number, boolean>>({});
+  const [error, setError] = useState<string | null>(null);
+  
+  // Get token from localStorage
+  const [token, setToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const handleSendRequest = async (userId: number) => {
-    setActionLoading(prev => ({ ...prev, [userId]: true }));
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setDiscoverUsers(prev => prev.filter(u => u.id !== userId));
-    setActionLoading(prev => ({ ...prev, [userId]: false }));
+  // Load token and user data on mount
+  useEffect(() => {
+    const authToken = localStorage.getItem('auth_token');
+    const userData = getCurrentUserData();
+    setToken(authToken);
+    setCurrentUser(userData);
+    
+    if (authToken) {
+      loadInitialData(authToken);
+    } else {
+      setError('Please login to view friends');
+      setLoading(false);
+    }
+  }, []);
+
+  const loadInitialData = async (authToken: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Load all data in parallel
+      const [friendsData, requestsData, suggestionsData, discoverData] = await Promise.all([
+        getFriendsList(authToken),
+        getPendingRequests(authToken),
+        getFriendSuggestions(authToken),
+        getDiscoverUsers(authToken),
+      ]);
+      
+      setFriends(friendsData);
+      setRequests(requestsData);
+      setSuggestions(suggestionsData);
+      
+      // For discover tab, use discover API results first
+      if (discoverData && discoverData.length > 0) {
+        setDiscoverUsers(discoverData);
+      } else {
+        // Fallback to suggestions if no discover users
+        const suggestedUsers = suggestionsData.map(s => s.user);
+        setDiscoverUsers(suggestedUsers);
+      }
+    } catch (err: any) {
+      console.error('Error loading data:', err);
+      if (err.status === 401) {
+        setError('Session expired. Please login again.');
+        // Clear localStorage
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('user_role');
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } else {
+        setError(err.message || 'Failed to load data');
+      }
+      
+      // Fallback: try to load at least friends and requests
+      try {
+        const [friendsData, requestsData] = await Promise.all([
+          getFriendsList(authToken),
+          getPendingRequests(authToken),
+        ]);
+        setFriends(friendsData);
+        setRequests(requestsData);
+      } catch (fallbackErr) {
+        console.error('Fallback loading also failed:', fallbackErr);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAcceptRequest = async (reqId: number) => {
-    setActionLoading(prev => ({ ...prev, [reqId]: true }));
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const acceptedReq = requests.find(r => r.id === reqId);
-    if (acceptedReq) {
-      const newFriend = {
-        id: Date.now(),
-        friend: acceptedReq.from_user_detail.id,
-        friend_detail: acceptedReq.from_user_detail
-      };
-      setFriends(prev => [...prev, newFriend]);
-      setRequests(prev => prev.filter(r => r.id !== reqId));
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!token) return;
+    
+    if (query.trim()) {
+      try {
+        const results = await searchUsers(token, query);
+        // Filter out users who are already friends or have pending requests
+        const friendIds = new Set(friends.map(f => f.friend));
+        const requestIds = new Set(requests.map(r => r.from_user));
+        
+        const filteredResults = results.results.filter(user => 
+          !friendIds.has(user.id) && 
+          !requestIds.has(user.id) &&
+          user.id !== currentUser?.id
+        );
+        
+        setDiscoverUsers(filteredResults);
+      } catch (err: any) {
+        console.error('Search error:', err);
+        setError(err.message);
+      }
+    } else {
+      // Reset to discover users
+      try {
+        const discoverData = await getDiscoverUsers(token);
+        if (discoverData && discoverData.length > 0) {
+          setDiscoverUsers(discoverData);
+        } else {
+          const suggestionsData = await getFriendSuggestions(token);
+          setDiscoverUsers(suggestionsData.map(s => s.user));
+        }
+      } catch (err) {
+        console.error('Error resetting discover users:', err);
+      }
     }
-    setActionLoading(prev => ({ ...prev, [reqId]: false }));
+  };
+
+  const handleSendRequest = async (userId: number) => {
+    if (!token) return;
+    setActionLoading(prev => ({ ...prev, [userId]: true }));
+    try {
+      await sendFriendRequest(token, userId);
+      // Remove user from discover list
+      setDiscoverUsers(prev => prev.filter(u => u.id !== userId));
+      setError(null);
+    } catch (err: any) {
+      console.error('Error sending request:', err);
+      setError(err.message || 'Failed to send friend request');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const handleAcceptRequest = async (reqId: number, fromUser: User) => {
+    if (!token) return;
+    setActionLoading(prev => ({ ...prev, [reqId]: true }));
+    try {
+      await acceptFriendRequest(token, reqId);
+      
+      // Add to friends list
+      const newFriendship: Friendship = {
+        id: Date.now(),
+        friend: fromUser.id,
+        friend_detail: fromUser,
+        created_at: new Date().toISOString(),
+      };
+      setFriends(prev => [...prev, newFriendship]);
+      
+      // Remove from requests
+      setRequests(prev => prev.filter(r => r.id !== reqId));
+      setError(null);
+    } catch (err: any) {
+      console.error('Error accepting request:', err);
+      setError(err.message || 'Failed to accept friend request');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [reqId]: false }));
+    }
   };
 
   const handleRejectRequest = async (reqId: number) => {
+    if (!token) return;
     setActionLoading(prev => ({ ...prev, [reqId]: true }));
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setRequests(prev => prev.filter(r => r.id !== reqId));
-    setActionLoading(prev => ({ ...prev, [reqId]: false }));
+    try {
+      await rejectFriendRequest(token, reqId);
+      setRequests(prev => prev.filter(r => r.id !== reqId));
+      setError(null);
+    } catch (err: any) {
+      console.error('Error rejecting request:', err);
+      setError(err.message || 'Failed to reject friend request');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [reqId]: false }));
+    }
   };
 
   const handleRemoveFriend = async (friendId: number) => {
+    if (!token) return;
     setActionLoading(prev => ({ ...prev, [friendId]: true }));
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setFriends(prev => prev.filter(f => f.friend !== friendId));
-    const removedFriend = friends.find(f => f.friend === friendId);
-    if (removedFriend) {
-      setDiscoverUsers(prev => [...prev, removedFriend.friend_detail]);
+    try {
+      await removeFriend(token, friendId);
+      setFriends(prev => prev.filter(f => f.friend !== friendId));
+      setError(null);
+    } catch (err: any) {
+      console.error('Error removing friend:', err);
+      setError(err.message || 'Failed to remove friend');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [friendId]: false }));
     }
-    setActionLoading(prev => ({ ...prev, [friendId]: false }));
   };
 
-  const getImageUrl = (url: string | null | undefined): string => {
+  const getUserImageUrl = (profilePicture: string | null | undefined): string => {
+    const url = getImageUrl(profilePicture);
     return url || PLACEHOLDER_AVATAR;
   };
 
-  const filteredDiscover = discoverUsers.filter(u => 
-    (u.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filtered data - computed values
+  const getFilteredDiscover = () => {
+    if (!searchQuery.trim()) return discoverUsers;
+    
+    return discoverUsers.filter((user: User) => 
+      (user.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (user.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
 
-  const filteredFriends = friends.filter(f => 
-    (f.friend_detail?.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getFilteredFriends = () => {
+    if (!searchQuery.trim()) return friends;
+    
+    return friends.filter((f: Friendship) => 
+      (f.friend_detail?.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const getFilteredRequests = () => {
+    if (!searchQuery.trim()) return requests;
+    
+    return requests.filter((r: FriendRequest) => 
+      (r.from_user_detail?.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const filteredDiscover = getFilteredDiscover();
+  const filteredFriendsList = getFilteredFriends();
+  const filteredRequestsList = getFilteredRequests();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen w-full bg-[var(--background)]">
+        <Sidebar />
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#fd297b]" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="flex min-h-screen w-full bg-[var(--background)]">
+        <Sidebar />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">Please login to access friends page</p>
+            <button 
+              onClick={() => window.location.href = '/login'}
+              className="px-4 py-2 bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white rounded-lg"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen w-full bg-[var(--background)] text-[var(--foreground)] font-sans relative overflow-x-hidden">
@@ -107,6 +304,14 @@ export default function FriendsPage() {
             </p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500 text-sm">
+              {error}
+              <button onClick={() => setError(null)} className="ml-2 underline">Dismiss</button>
+            </div>
+          )}
+
           {/* Search Bar */}
           <div className="relative mb-8 group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -116,12 +321,12 @@ export default function FriendsPage() {
               type="text" 
               placeholder="Search people by name or email..." 
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               className="w-full pl-11 pr-4 py-4 rounded-2xl border border-[var(--ig-border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[#fd297b]/50 focus:border-[#fd297b]/50 shadow-sm transition-all text-sm"
             />
             {searchQuery && (
               <button 
-                onClick={() => setSearchQuery('')}
+                onClick={() => handleSearch('')}
                 className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X className="h-4 w-4" />
@@ -136,20 +341,21 @@ export default function FriendsPage() {
               onClick={() => setActiveTab('discover')}
               icon={<Compass size={18} />}
               label="Discover"
+              badge={filteredDiscover.length > 0 ? filteredDiscover.length : undefined}
             />
             <TabButton 
               active={activeTab === 'requests'} 
               onClick={() => setActiveTab('requests')}
               icon={<UserPlus size={18} />}
               label="Requests"
-              badge={requests.length > 0 ? requests.length : undefined}
+              badge={filteredRequestsList.length > 0 ? filteredRequestsList.length : undefined}
             />
             <TabButton 
               active={activeTab === 'friends'} 
               onClick={() => setActiveTab('friends')}
               icon={<Users size={18} />}
               label="My Friends"
-              badge={friends.length > 0 ? friends.length : undefined}
+              badge={filteredFriendsList.length > 0 ? filteredFriendsList.length : undefined}
             />
           </div>
 
@@ -168,11 +374,11 @@ export default function FriendsPage() {
                   className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
                   {filteredDiscover.length > 0 ? (
-                    filteredDiscover.map(user => (
+                    filteredDiscover.map((user: User) => (
                       <UserCard 
                         key={user.id} 
                         user={user} 
-                        getImageUrl={getImageUrl}
+                        getImageUrl={getUserImageUrl}
                         actionBtn={
                           <ActionButton 
                             icon={<UserPlus size={16} />} 
@@ -185,7 +391,11 @@ export default function FriendsPage() {
                       />
                     ))
                   ) : (
-                    <EmptyState icon={<Sparkles size={48} />} title="No new faces found" desc="You seem to know everyone or try a different search!" />
+                    <EmptyState 
+                      icon={<Sparkles size={48} />} 
+                      title={searchQuery ? "No users found" : "No new faces found"} 
+                      desc={searchQuery ? "Try a different search term" : "Check back later for new people to connect with!"} 
+                    />
                   )}
                 </motion.div>
               )}
@@ -200,25 +410,28 @@ export default function FriendsPage() {
                   transition={{ duration: 0.2 }}
                   className="flex flex-col gap-4"
                 >
-                  {requests.length > 0 ? (
-                    requests.map(req => (
+                  {filteredRequestsList.length > 0 ? (
+                    filteredRequestsList.map((req: FriendRequest) => (
                       <div key={req.id} className="flex items-center justify-between p-4 rounded-2xl border border-[var(--ig-border)] bg-[var(--background)] hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-4">
                           <img 
-                            src={getImageUrl(req.from_user_detail?.profile_picture)} 
+                            src={getUserImageUrl(req.from_user_detail?.profile_picture)} 
                             alt="avatar" 
                             className="w-14 h-14 rounded-full object-cover border border-[var(--ig-border)]"
                           />
                           <div>
                             <p className="font-semibold text-[var(--foreground)] text-base">{req.from_user_detail?.full_name || 'User'}</p>
                             <p className="text-xs text-[var(--ig-muted)]">Sent you a friend request</p>
+                            {req.message && (
+                              <p className="text-xs text-[var(--ig-muted)] mt-1 italic">"{req.message}"</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <ActionButton 
                             icon={<UserCheck size={16} />} 
                             label="Accept" 
-                            onClick={() => handleAcceptRequest(req.id)}
+                            onClick={() => req.from_user_detail && handleAcceptRequest(req.id, req.from_user_detail)}
                             loading={actionLoading[req.id]}
                             variant="primary"
                           />
@@ -233,7 +446,11 @@ export default function FriendsPage() {
                       </div>
                     ))
                   ) : (
-                    <EmptyState icon={<UserCheck size={48} />} title="No pending requests" desc="You're all caught up! Go discover some new people." />
+                    <EmptyState 
+                      icon={<UserCheck size={48} />} 
+                      title="No pending requests" 
+                      desc="You're all caught up! Go discover some new people." 
+                    />
                   )}
                 </motion.div>
               )}
@@ -248,12 +465,12 @@ export default function FriendsPage() {
                   transition={{ duration: 0.2 }}
                   className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
-                  {filteredFriends.length > 0 ? (
-                    filteredFriends.map(f => (
+                  {filteredFriendsList.length > 0 ? (
+                    filteredFriendsList.map((f: Friendship) => (
                       <UserCard 
                         key={f.id} 
-                        user={f.friend_detail} 
-                        getImageUrl={getImageUrl}
+                        user={f.friend_detail!} 
+                        getImageUrl={getUserImageUrl}
                         actionBtn={
                           <ActionButton 
                             icon={<UserX size={16} />} 
@@ -266,7 +483,11 @@ export default function FriendsPage() {
                       />
                     ))
                   ) : (
-                    <EmptyState icon={<Users size={48} />} title="It's a little quiet here" desc="Add some friends to see them appear on this list." />
+                    <EmptyState 
+                      icon={<Users size={48} />} 
+                      title="It's a little quiet here" 
+                      desc="Add some friends to see them appear on this list." 
+                    />
                   )}
                 </motion.div>
               )}
@@ -281,7 +502,13 @@ export default function FriendsPage() {
 }
 
 // Subcomponents (same as before)
-function TabButton({ active, onClick, icon, label, badge }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, badge?: number }) {
+function TabButton({ active, onClick, icon, label, badge }: { 
+  active: boolean; 
+  onClick: () => void; 
+  icon: React.ReactNode; 
+  label: string; 
+  badge?: number 
+}) {
   return (
     <button
       onClick={onClick}
@@ -293,9 +520,9 @@ function TabButton({ active, onClick, icon, label, badge }: { active: boolean, o
     >
       {icon}
       <span>{label}</span>
-      {badge && (
+      {badge !== undefined && badge > 0 && (
         <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#fd297b] text-[10px] font-bold text-white">
-          {badge}
+          {badge > 99 ? '99+' : badge}
         </span>
       )}
       {active && (
@@ -308,7 +535,11 @@ function TabButton({ active, onClick, icon, label, badge }: { active: boolean, o
   );
 }
 
-function UserCard({ user, actionBtn, getImageUrl }: { user: any, actionBtn: React.ReactNode, getImageUrl: (url: string | null | undefined) => string }) {
+function UserCard({ user, actionBtn, getImageUrl }: { 
+  user: User; 
+  actionBtn: React.ReactNode; 
+  getImageUrl: (url: string | null | undefined) => string 
+}) {
   return (
     <div className="flex items-center justify-between p-4 rounded-2xl border border-[var(--ig-border)] bg-[var(--background)] hover:shadow-lg transition-all hover:-translate-y-0.5 group">
       <div className="flex items-center gap-4 min-w-0">
@@ -331,7 +562,13 @@ function UserCard({ user, actionBtn, getImageUrl }: { user: any, actionBtn: Reac
   );
 }
 
-function ActionButton({ icon, label, onClick, loading, variant }: { icon: React.ReactNode, label: string, onClick: () => void, loading?: boolean, variant: 'primary' | 'secondary' | 'danger' }) {
+function ActionButton({ icon, label, onClick, loading, variant }: { 
+  icon: React.ReactNode; 
+  label: string; 
+  onClick: () => void; 
+  loading?: boolean; 
+  variant: 'primary' | 'secondary' | 'danger' 
+}) {
   const baseClasses = "flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50 active:scale-95";
   let variantClasses = "";
   
@@ -349,13 +586,17 @@ function ActionButton({ icon, label, onClick, loading, variant }: { icon: React.
       disabled={loading}
       className={`${baseClasses} ${variantClasses}`}
     >
-      {icon}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
       <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
 
-function EmptyState({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) {
+function EmptyState({ icon, title, desc }: { 
+  icon: React.ReactNode; 
+  title: string; 
+  desc: string 
+}) {
   return (
     <div className="col-span-full flex flex-col items-center justify-center text-center py-16 px-4 bg-black/5 dark:bg-white/5 rounded-3xl border border-[var(--ig-border)] border-dashed">
       <div className="w-20 h-20 bg-gradient-to-br from-[#fd297b]/20 to-[#ff655b]/20 text-[#fd297b] rounded-full flex items-center justify-center mb-6">
