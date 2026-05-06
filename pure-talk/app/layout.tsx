@@ -4,7 +4,6 @@ import { Inter, Geist, Geist_Mono } from 'next/font/google';
 import '@/app/globals.css';
 import { ThemeProvider } from '@/app/providers';
 import Script from 'next/script';
-import SplashScreen from '@/components/SplashScreen';
 import CookieConsent from '@/components/CookieConsent';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -37,7 +36,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <SplashScreen />
           <CookieConsent />
           {children}
         </ThemeProvider>
