@@ -81,7 +81,7 @@ const Sidebar = () => {
         <div className="flex w-full flex-col gap-2">
           <NavItem href="/home" icon={<Home className="h-6 w-6" />} label="Home" active={pathname === '/home'} />
           <NavItem href="/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
-          <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
+          <NavItem href="/explore" icon={<Compass className="h-6 w-6" />} label="Explore" active={pathname === '/explore'} />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
           <NavItem href="/notifications" icon={<Heart className="h-6 w-6" />} label="Notifications" active={pathname === '/notifications'} badge={unreadNotifications} />
           <NavItem href="/create" icon={<PlusSquare className="h-6 w-6" />} label="Create" active={pathname === '/create'} />
