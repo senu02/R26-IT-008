@@ -41,9 +41,14 @@ const StoryRow = () => {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [viewer, setViewer] = useState<StoryFeedItem | null>(null);
+  const [auth, setAuth] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const auth = isAuthenticated();
-  const currentUser = getCurrentUserData();
+  useEffect(() => {
+    setAuth(isAuthenticated());
+    setCurrentUser(getCurrentUserData());
+  }, []);
+
   const myAvatar =
     getImageUrl(currentUser?.profile_picture ?? undefined) ?? PLACEHOLDER_AVATAR;
 

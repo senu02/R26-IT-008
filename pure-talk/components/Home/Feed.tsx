@@ -1,6 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useState } from "react";
 import PostCard from "./PostCard";
+import DiscoverPeopleCarousel from "./DiscoverPeopleCarousel";
 import { postsAPI, isAuthenticated, type FeedPost, type User } from "@/lib/api";
 
 const demoSeed: Array<{
@@ -66,7 +67,11 @@ const Feed = () => {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
-  const auth = isAuthenticated();
+  const [auth, setAuth] = useState(false);
+
+  useEffect(() => {
+    setAuth(isAuthenticated());
+  }, []);
 
   const load = useCallback(async () => {
     if (!auth) {
@@ -111,13 +116,15 @@ const Feed = () => {
 
   return (
     <div className="flex w-full flex-col">
-      {posts.map((post) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          isDemo={demoMode}
-          onUpdated={demoMode ? undefined : load}
-        />
+      {posts.map((post, index) => (
+        <React.Fragment key={post.id}>
+          <PostCard
+            post={post}
+            isDemo={demoMode}
+            onUpdated={demoMode ? undefined : load}
+          />
+          {index === 0 && <DiscoverPeopleCarousel />}
+        </React.Fragment>
       ))}
     </div>
   );

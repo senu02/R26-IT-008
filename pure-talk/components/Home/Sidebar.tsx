@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { getCurrentUserData, getImageUrl, type User } from '@/lib/api';
 import { 
   Home, 
   Search, 
@@ -13,7 +14,8 @@ import {
   Menu,
   Moon,
   Sun,
-  Settings
+  Settings,
+  UserPlus
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -21,11 +23,15 @@ const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
     setMounted(true);
+    setUser(getCurrentUserData());
   }, []);
+
+  const profileImageUrl = getImageUrl(user?.profile_picture) || 'https://i.pravatar.cc/150?img=11';
 
   return (
     <>
@@ -60,12 +66,13 @@ const Sidebar = () => {
           <NavItem href="/home" icon={<Home className="h-6 w-6" />} label="Home" active={pathname === '/home'} />
           <NavItem href="#" icon={<Search className="h-6 w-6" />} label="Search" />
           <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
-          <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
+          <NavItem href="/messages" icon={<MessageCircle className="h-6 w-6" />} label="Messages" active={pathname === '/messages'} />
           <NavItem href="#" icon={<Heart className="h-6 w-6" />} label="Notifications" />
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
+          <NavItem href="/add-friends" icon={<UserPlus className="h-6 w-6" />} label="Add Friends" active={pathname === '/add-friends'} />
           <NavItem 
             href="/users/user-profile" 
-            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src="https://i.pravatar.cc/150?img=11" alt="profile" className="h-full w-full object-cover" /></div>} 
+            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src={profileImageUrl} alt="profile" className="h-full w-full object-cover" /></div>} 
             label="Profile" 
             active={pathname === '/users/user-profile'}
           />
