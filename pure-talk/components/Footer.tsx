@@ -7,7 +7,7 @@ import { MessageCircleHeart, ArrowRight } from 'lucide-react';
 export default function AdvancedFooter() {
   return (
     <footer className="relative w-full border-t border-white/10 bg-[#0a0a0a]/80 backdrop-blur-3xl pt-20 pb-10 overflow-hidden z-20 mt-20">
-      {/* Decorative top border glow */}
+      
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-[#fd297b]/50 to-transparent" />
       
       <div className="max-w-7xl mx-auto px-6">
