@@ -12,6 +12,7 @@ import {
   ChevronDown,
   User,
   Shield,
+  ShieldAlert,
   HelpCircle,
   Folder,
   BarChart3,
@@ -33,10 +34,11 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { icon: <LayoutDashboard size={18} />, label: 'Dashboard', href: '/admin/dashboard', badge: null },
-  { icon: <Users size={18} />, label: 'User Management', href: '/admin/user-management', badge: null },
-  { icon: <Video size={18} />, label: 'Videos', href: '/admin/videos', badge: null },
-  { icon: <BarChart3 size={18} />, label: 'Analytics', href: '/admin/analytics', badge: 'New' },
+  { icon: <LayoutDashboard size={18} />, label: 'Dashboard',           href: '/admin/dashboard',            badge: null  },
+  { icon: <Users         size={18} />, label: 'User Management',       href: '/admin/user-management',      badge: null  },
+  { icon: <Video         size={18} />, label: 'Videos',                href: '/admin/videos',               badge: null  },
+  { icon: <ShieldAlert   size={18} />, label: 'Adaptive Shielding',    href: '/admin/adaptive-shielding',   badge: 'AI'  },
+  { icon: <BarChart3     size={18} />, label: 'Analytics',             href: '/admin/analytics',            badge: 'New' },
 ];
 
 const sidebarBottom = [

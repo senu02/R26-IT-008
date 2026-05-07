@@ -14,6 +14,7 @@ import {
   getCurrentUserAvatar,
   type PostData 
 } from '@/app/services/posts/actions';
+import { adaptiveShieldingAPI } from '@/lib/api';
 import { Lock, SendHorizontal, Loader2, PlusCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PostSectionProps {
@@ -32,6 +33,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   const [comments, setComments] = useState<{ [key: string]: CommentData[] }>({});
   const [loadingComments, setLoadingComments] = useState<{ [key: string]: boolean }>({});
   const [showCommentsForPost, setShowCommentsForPost] = useState<{ [key: string]: boolean }>({});
+  const [shieldAlert, setShieldAlert] = useState<{ [key: string]: { type: string; message: string } | null }>({});
 
   const filterOptions = ['For You', 'My Posts', 'Saved'];
 
@@ -189,19 +191,53 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     }
 
     const content = commentText[postId];
-    if (!content || !content.trim()) {
-      return;
-    }
+    if (!content || !content.trim()) return;
 
     setSubmittingComment(prev => ({ ...prev, [postId]: true }));
+    // Clear any previous shield alert for this post
+    setShieldAlert(prev => ({ ...prev, [postId]: null }));
 
     try {
-      const newComment = await postAPI.createComment(postId, content);
-      
+      // ── Adaptive Shielding Check ──────────────────────────────────
+      let finalContent = content;
+      try {
+        const shield = await adaptiveShieldingAPI.analyzeMessage(content);
+        if (shield.strategy === 'Filtering') {
+          setShieldAlert(prev => ({
+            ...prev,
+            [postId]: { type: 'block', message: '🚫 Comment blocked: your message contains highly toxic content.' }
+          }));
+          setSubmittingComment(prev => ({ ...prev, [postId]: false }));
+          return;
+        } else if (shield.strategy === 'Rewriting') {
+          finalContent = shield.output;
+          setShieldAlert(prev => ({
+            ...prev,
+            [postId]: { type: 'rewrite', message: '✏️ Your comment was auto-rewritten to keep things positive.' }
+          }));
+        } else if (shield.strategy === 'Warning') {
+          setShieldAlert(prev => ({
+            ...prev,
+            [postId]: { type: 'warn', message: '⚠️ Your comment contains potentially harmful language.' }
+          }));
+        } else if (shield.strategy === 'Blurring') {
+          setShieldAlert(prev => ({
+            ...prev,
+            [postId]: { type: 'blur', message: '🌫️ Some words in your comment have been blurred.' }
+          }));
+          finalContent = shield.output;
+        }
+      } catch (shieldErr) {
+        // Shield unavailable — allow comment to pass through silently
+        console.warn('Shield check skipped:', shieldErr);
+      }
+      // ─────────────────────────────────────────────────────────────
+
+      const newComment = await postAPI.createComment(postId, finalContent);
       if (newComment) {
         await fetchCommentsForPost(postId);
-        setPosts(posts.map(p => 
-          p.id === postId 
+        setPosts(posts.map(p =>
+          p.id === postId
             ? { ...p, comments: (p.comments || 0) + 1 }
             : p
         ));
@@ -509,6 +545,20 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             className={`w-full ${theme.surface.glassHover} rounded-xl px-4 py-2 text-sm ${theme.text.primary} placeholder:${theme.text.muted} outline-none resize-none transition-all duration-200`}
                             rows={2}
                           />
+                          {/* Shield Alert Banner */}
+                          {shieldAlert[post.id] && (
+                            <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
+                              shieldAlert[post.id]?.type === 'block'
+                                ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                                : shieldAlert[post.id]?.type === 'warn'
+                                ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30'
+                                : shieldAlert[post.id]?.type === 'rewrite'
+                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                            }`}>
+                              {shieldAlert[post.id]?.message}
+                            </div>
+                          )}
                           <div className="flex justify-end mt-2">
                             <button
                               onClick={() => handleComment(post.id)}
@@ -526,6 +576,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             </button>
                           </div>
                         </div>
+
                       </div>
                     </div>
                   </div>
