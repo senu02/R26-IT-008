@@ -8,7 +8,7 @@ import {
   Bookmark,
   Loader2,
 } from "lucide-react";
-import { postsAPI, getImageUrl, type FeedPost } from "@/lib/api";
+import { postsAPI, getImageUrl, adaptiveShieldingAPI, type FeedPost } from "@/lib/api";
 
 function authorLabel(d: FeedPost["author_detail"]): string {
   const withDisplay = d as { display_name?: string };
@@ -114,10 +114,25 @@ const PostCard = ({ post, isDemo = false, onUpdated }: PostCardProps) => {
     setCommentBusy(true);
     setHint(null);
     try {
-      await postsAPI.createComment(post.id, t);
+      const analysis = await adaptiveShieldingAPI.analyzeMessage(t);
+      
+      if (analysis.strategy === "Filtering") {
+        setHint(analysis.output);
+        setCommentBusy(false);
+        return;
+      }
+      
+      const finalContent = analysis.output;
+      await postsAPI.createComment(post.id, finalContent);
+      
       setCommentText("");
       setCommentCount((c) => c + 1);
       onUpdated?.();
+      
+      if (analysis.strategy === "Warning" || analysis.strategy === "Rewriting") {
+        setHint(analysis.strategy === "Warning" ? "Warning: Toxic words detected." : "Message was rewritten to be more positive.");
+        setTimeout(() => setHint(null), 4000);
+      }
     } catch (e: unknown) {
       const err = e as { message?: string };
       setHint(err.message ?? "Could not post comment.");

@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/', include('stories.urls')),
     path('api/', include('toxicity_detection.urls')),
     path('api/', include('toxicity_behavior.urls')), 
+    path('api/adaptive-shielding/', include('AdptiveShelding.Urls')),
 ]
 
 if settings.DEBUG:
