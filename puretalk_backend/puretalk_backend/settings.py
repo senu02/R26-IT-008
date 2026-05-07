@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'stories',
     'toxicity_detection',
     'toxicity_behavior',
-    'AdptiveShelding',
 ]
 
 CORS_ALLOWED_ORIGINS = [

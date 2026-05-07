@@ -22,8 +22,7 @@ import {
   Rocket,
   Users,
   Loader2,
-  Video,
-  ShieldAlert
+  Video
 } from 'lucide-react';
 import { useThemeColors } from '@/context/adminTheme';
 import { authAPI } from '@/lib/api';
@@ -36,7 +35,6 @@ interface SidebarProps {
 const menuItems = [
   { icon: <LayoutDashboard size={18} />, label: 'Dashboard', href: '/admin/dashboard', badge: null },
   { icon: <Users size={18} />, label: 'User Management', href: '/admin/user-management', badge: null },
-  { icon: <ShieldAlert size={18} />, label: 'Adaptive Shielding', href: '/admin/adaptive-shielding', badge: 'AI' },
   { icon: <Video size={18} />, label: 'Videos', href: '/admin/videos', badge: null },
   { icon: <BarChart3 size={18} />, label: 'Analytics', href: '/admin/analytics', badge: 'New' },
 ];

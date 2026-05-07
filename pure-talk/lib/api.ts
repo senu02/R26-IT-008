@@ -594,47 +594,6 @@ export const isAuthenticated = (): boolean => {
   return !!localStorage.getItem('auth_token');
 };
 
-export interface AnalyzeMessageResult {
-  toxicity: number;
-  behavior: number;
-  final_score: number;
-  strategy: 'accept' | 'blur' | 'warn' | 'block';
-  output: string;
-}
-
-export interface ToxicityRecord {
-  id: number;
-  user?: string;
-  message: string;
-  strategy: string;
-  toxicity_score: number;
-  behavior_score?: number;
-  final_score: number;
-  processed_output: string;
-  created_at: string;
-}
-
-export const adaptiveShieldingAPI = {
-  analyzeMessage: async (text: string): Promise<AnalyzeMessageResult> => {
-    return await apiCall<AnalyzeMessageResult>('/api/adaptive-shielding/analyze/', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
-  },
-
-  getHistory: async (): Promise<ToxicityRecord[]> => {
-    return await apiCall<ToxicityRecord[]>('/api/adaptive-shielding/history/');
-  },
-
-  getBehaviorScore: async (): Promise<{ behavior_score: number; based_on: number }> => {
-    return await apiCall<{ behavior_score: number; based_on: number }>('/api/adaptive-shielding/behavior-score/');
-  },
-
-  getAdminRecords: async (): Promise<ToxicityRecord[]> => {
-    return await apiCall<ToxicityRecord[]>('/api/adaptive-shielding/admin-records/');
-  },
-};
-
 export const getCurrentUserData = (): User | null => {
   const userData = localStorage.getItem('user_data');
   if (!userData) return null;
@@ -678,5 +637,4 @@ export default {
   canManageUsers,
   getImageUrl,
   notificationsAPI,
-  adaptiveShieldingAPI,
 };
