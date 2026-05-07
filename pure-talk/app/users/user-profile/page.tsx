@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/User/UserProfile/Sidebar';
 import { BackgroundWrapper } from '@/context/theme';
-import PostSection from '@/components/User/Posts/PostSection';
+import PostsPage from '@/app/users/posts/page'; // Posts page eka import karanawa
 import { getTheme } from '@/context/theme';
 import { 
   UserPlus, 
@@ -46,7 +46,6 @@ export default function ProfilePage() {
     const observer = new MutationObserver(checkTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     
-    // Load user data
     loadUserData();
     
     return () => observer.disconnect();
@@ -128,7 +127,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Get account status display
   const getAccountStatusDisplay = () => {
     if (!user) return null;
     
@@ -156,7 +154,6 @@ export default function ProfilePage() {
     return null;
   };
 
-  // Get role badge
   const getRoleBadge = () => {
     if (!user) return null;
     
@@ -447,9 +444,10 @@ export default function ProfilePage() {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Posts Feed using PostSection */}
+            {/* Left Column - Posts Feed */}
             <div className="lg:col-span-2">
-              <PostSection theme={theme} isDark={isDark} />
+              {/* Etanne Posts page eka */}
+              <PostsPage />
             </div>
 
             {/* Right Column */}

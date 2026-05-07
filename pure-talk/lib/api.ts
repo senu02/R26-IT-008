@@ -263,16 +263,8 @@ export const authAPI = {
 // User management endpoints
 export const userAPI = {
   getAllUsers: async (): Promise<User[]> => {
-    try {
-      const response = await apiCall<any>('/users/');
-      if (Array.isArray(response)) return response;
-      if (response.users) return response.users;
-      if (response.results) return response.results;
-      return [];
-    } catch (error) {
-      console.error('Error fetching all users:', error);
-      return [];
-    }
+    const response = await apiCall<{ count: number; users: User[] }>('/users/');
+    return response.users || [];
   },
 
   getUserById: async (userId: number): Promise<User> => {
@@ -350,246 +342,6 @@ export const userAPI = {
   },
 };
 
-/** Home feed post shape from `FeedPostSerializer` */
-export interface FeedMediaItem {
-  id?: number;
-  file_url: string | null;
-  media_type?: string;
-}
-
-export interface FeedCommentPreview {
-  id: number;
-  content: string;
-  author_detail?: User & { display_name?: string };
-}
-
-export interface FeedPost {
-  id: number;
-  author_detail: User & { display_name?: string };
-  content: string | null;
-  post_type: string;
-  privacy?: string;
-  media: FeedMediaItem[];
-  like_count: number;
-  comment_count: number;
-  share_count: number;
-  user_has_liked: boolean;
-  user_has_saved?: boolean;
-  recent_comments: FeedCommentPreview[];
-  created_at: string;
-  location_name?: string | null;
-}
-
-export const postsAPI = {
-  feed: async (): Promise<FeedPost[]> => {
-    const res = await apiCall<FeedPost[] | { results: FeedPost[] }>(
-      '/api/posts/feed/'
-    );
-    if (Array.isArray(res)) return res;
-    return res.results ?? [];
-  },
-
-  likePost: async (
-    postId: number
-  ): Promise<{ like_count: number; user_reaction: string | null }> => {
-    return await apiCall<{ like_count: number; user_reaction: string | null }>(
-      `/api/posts/${postId}/like/`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ reaction_type: 'like' }),
-      }
-    );
-  },
-
-  savePost: async (
-    postId: number
-  ): Promise<{ message?: string; saved?: boolean }> => {
-    return await apiCall<{ message?: string; saved?: boolean }>(
-      `/api/posts/${postId}/save/`,
-      { method: 'POST', body: JSON.stringify({}) }
-    );
-  },
-
-  /** Creates a “share” post pointing at the original (increments share_count on original). */
-  createShare: async (
-    originalPostId: number,
-    shareMessage?: string
-  ): Promise<void> => {
-    await apiCall('/api/posts/', {
-      method: 'POST',
-      body: JSON.stringify({
-        post_type: 'share',
-        original_post: originalPostId,
-        privacy: 'public',
-        content: shareMessage ?? '',
-      }),
-    });
-  },
-
-  createComment: async (postId: number, content: string): Promise<void> => {
-    await apiCall('/api/comments/', {
-      method: 'POST',
-      body: JSON.stringify({ post: postId, content }),
-    });
-  },
-
-  createPost: async (content: string, files?: File[], privacy = 'public'): Promise<FeedPost> => {
-    const formData = new FormData();
-    formData.append('content', content);
-    formData.append('privacy', privacy);
-    formData.append('post_type', files && files.length > 0 ? 'image' : 'text');
-    
-    if (files && files.length > 0) {
-      files.forEach(file => {
-        formData.append('media', file); // Adjust field name if the backend expects something else like 'images' or array notation
-      });
-    }
-
-    return await apiCall<FeedPost>('/api/posts/', {
-      method: 'POST',
-      body: formData,
-    });
-  },
-};
-
-export interface StoryFeedItem {
-  id: number;
-  user_id: number;
-  author_name: string;
-  author_avatar: string | null;
-  image_url: string;
-  created_at: string;
-}
-
-export interface FriendListItem {
-  id: number;
-  friend: number;
-  friend_detail: User;
-}
-
-export interface FriendRequest {
-  id: number;
-  from_user: number;
-  from_user_detail?: User;
-  to_user: number;
-  to_user_detail?: User;
-  status: 'pending' | 'accepted' | 'rejected';
-  created_at: string;
-}
-
-export const friendsAPI = {
-  list: async (): Promise<{ count: number; results: FriendListItem[] }> => {
-    try {
-      const response = await apiCall<any>('/api/friends/list/');
-      if (Array.isArray(response)) return { count: response.length, results: response };
-      if (response.results) return { count: response.count || response.results.length, results: response.results };
-      return { count: 0, results: [] };
-    } catch (error) {
-      console.error('Error fetching friends:', error);
-      return { count: 0, results: [] };
-    }
-  },
-
-  getRequests: async (): Promise<{ count: number; results: FriendRequest[] }> => {
-    try {
-      const response = await apiCall<any>('/api/friends/requests/');
-      if (Array.isArray(response)) return { count: response.length, results: response };
-      if (response.results) return { count: response.count || response.results.length, results: response.results };
-      return { count: 0, results: [] };
-    } catch (error) {
-      console.error('Error fetching friend requests:', error);
-      return { count: 0, results: [] };
-    }
-  },
-
-  sendRequest: async (userId: number): Promise<void> => {
-    await apiCall('/api/friends/requests/send/', {
-      method: 'POST',
-      body: JSON.stringify({ to_user: userId })
-    });
-  },
-
-  acceptRequest: async (requestId: number): Promise<void> => {
-    await apiCall(`/api/friends/requests/${requestId}/accept/`, {
-      method: 'POST'
-    });
-  },
-
-  rejectRequest: async (requestId: number): Promise<void> => {
-    await apiCall(`/api/friends/requests/${requestId}/reject/`, {
-      method: 'POST'
-    });
-  },
-
-  remove: async (friendId: number): Promise<void> => {
-    await apiCall(`/api/friends/${friendId}/remove/`, {
-      method: 'POST'
-    });
-  }
-};
-
-export const storyAPI = {
-  feed: async (): Promise<StoryFeedItem[]> => {
-    return await apiCall<StoryFeedItem[]>('/api/stories/feed/');
-  },
-
-  create: async (image: File): Promise<StoryFeedItem> => {
-    const formData = new FormData();
-    formData.append('image', image);
-    return await apiCall<StoryFeedItem>('/api/stories/', {
-      method: 'POST',
-      body: formData,
-    });
-  },
-
-  remove: async (id: number): Promise<void> => {
-    await apiCall<void>(`/api/stories/${id}/`, { method: 'DELETE' });
-  },
-};
-
-export interface NotificationItem {
-  id: number;
-  type: 'like' | 'comment' | 'follow' | 'system' | 'mention';
-  content: string;
-  is_read: boolean;
-  created_at: string;
-  sender_avatar?: string;
-  sender_name?: string;
-  link?: string;
-}
-
-export const notificationsAPI = {
-  list: async (): Promise<{ count: number; results: NotificationItem[], unread_count: number }> => {
-    try {
-      return await apiCall<{ count: number; results: NotificationItem[], unread_count: number }>('/api/notifications/');
-    } catch {
-      // Mock data for demo purposes since backend might not have this yet
-      const mockNotifications: NotificationItem[] = [
-        { id: 1, type: 'like', content: 'liked your photo.', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), sender_name: 'alex.anyways18', sender_avatar: 'https://i.pravatar.cc/150?img=33' },
-        { id: 2, type: 'comment', content: 'commented: "This looks amazing!"', is_read: false, created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(), sender_name: 'gwangurl77', sender_avatar: 'https://i.pravatar.cc/150?img=42' },
-        { id: 3, type: 'follow', content: 'started following you.', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), sender_name: 'mishka_songs', sender_avatar: 'https://i.pravatar.cc/150?img=20' },
-        { id: 4, type: 'system', content: 'Welcome to PureTalk! Update your profile to get started.', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), sender_name: 'System' },
-        { id: 5, type: 'mention', content: 'mentioned you in a comment.', is_read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), sender_name: 'chantouflowergirl', sender_avatar: 'https://i.pravatar.cc/150?img=61' }
-      ];
-      return { count: 5, results: mockNotifications, unread_count: 2 };
-    }
-  },
-  markAsRead: async (id: number): Promise<void> => {
-    try {
-      await apiCall(`/api/notifications/${id}/read/`, { method: 'POST' });
-    } catch {
-      console.log('Mock: Marked notification as read');
-    }
-  },
-  markAllAsRead: async (): Promise<void> => {
-    try {
-      await apiCall('/api/notifications/read-all/', { method: 'POST' });
-    } catch {
-      console.log('Mock: Marked all notifications as read');
-    }
-  }
-};
-
 export const isAuthenticated = (): boolean => {
   return !!localStorage.getItem('auth_token');
 };
@@ -623,18 +375,14 @@ export const canManageUsers = (): boolean => {
   return role === 'admin' || role === 'super_admin';
 };
 
-export default {
-  authAPI,
-  userAPI,
-  friendsAPI,
-  postsAPI,
-  storyAPI,
-  isAuthenticated,
-  getCurrentUserData,
+export default { 
+  authAPI, 
+  userAPI, 
+  isAuthenticated, 
+  getCurrentUserData, 
   getUserRole,
-  isAdmin,
+  isAdmin, 
   isModerator,
   canManageUsers,
-  getImageUrl,
-  notificationsAPI,
+  getImageUrl
 };

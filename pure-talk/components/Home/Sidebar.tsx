@@ -16,7 +16,6 @@ import {
   Settings,
   Users
 } from 'lucide-react';
-import { getCurrentUserData, getImageUrl, notificationsAPI } from '@/lib/api';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -29,24 +28,31 @@ const Sidebar = () => {
   // Avoid hydration mismatch for theme
   useEffect(() => {
     setMounted(true);
-    const currentUser = getCurrentUserData();
-    if (currentUser) {
-      setUserAvatar(getImageUrl(currentUser.profile_picture) || 'https://i.pravatar.cc/150?img=11');
+    
+    // Demo user data - using localStorage to persist avatar preference
+    const savedAvatar = localStorage.getItem('demo_user_avatar');
+    if (savedAvatar) {
+      setUserAvatar(savedAvatar);
+    } else {
+      // Set random demo avatar
+      const demoAvatars = [
+        'https://i.pravatar.cc/150?img=1',
+        'https://i.pravatar.cc/150?img=2',
+        'https://i.pravatar.cc/150?img=3',
+        'https://i.pravatar.cc/150?img=4',
+        'https://i.pravatar.cc/150?img=5',
+        'https://i.pravatar.cc/150?img=11',
+        'https://i.pravatar.cc/150?img=12',
+        'https://i.pravatar.cc/150?img=13'
+      ];
+      const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
+      setUserAvatar(randomAvatar);
+      localStorage.setItem('demo_user_avatar', randomAvatar);
     }
 
-    // Fetch unread notifications count
-    const fetchNotifications = async () => {
-      try {
-        const data = await notificationsAPI.list();
-        setUnreadNotifications(data.unread_count || 0);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    
-    if (currentUser) {
-      fetchNotifications();
-    }
+    // Demo notifications count - random between 0-5 for demo
+    const demoUnreadCount = Math.floor(Math.random() * 6);
+    setUnreadNotifications(demoUnreadCount);
   }, []);
 
   return (
@@ -80,11 +86,11 @@ const Sidebar = () => {
         {/* Navigation */}
         <div className="flex w-full flex-col gap-2">
           <NavItem href="/home" icon={<Home className="h-6 w-6" />} label="Home" active={pathname === '/home'} />
-          <NavItem href="/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
-          <NavItem href="/explore" icon={<Compass className="h-6 w-6" />} label="Explore" active={pathname === '/explore'} />
+          <NavItem href="/users/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
+          <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
           <NavItem href="/notifications" icon={<Heart className="h-6 w-6" />} label="Notifications" active={pathname === '/notifications'} badge={unreadNotifications} />
-          <NavItem href="/create" icon={<PlusSquare className="h-6 w-6" />} label="Create" active={pathname === '/create'} />
+          <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
             icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src={userAvatar} alt="profile" className="h-full w-full object-cover" /></div>} 

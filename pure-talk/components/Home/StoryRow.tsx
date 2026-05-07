@@ -2,93 +2,76 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ChevronLeft, Plus, Loader2, X } from 'lucide-react';
-import {
-  storyAPI,
-  friendsAPI,
-  getCurrentUserData,
-  getImageUrl,
-  isAuthenticated,
-  type StoryFeedItem,
-  type FriendListItem,
-} from '@/lib/api';
 
 const PLACEHOLDER_AVATAR = 'https://i.pravatar.cc/150?img=11';
 
-/** Demo strip when not logged in */
+// Demo story data
 const demoStories = [
-  { id: 1, user: 'chchoitoi', image: 'https://i.pravatar.cc/150?img=1' },
-  { id: 2, user: 'gwangurl77', image: 'https://i.pravatar.cc/150?img=2' },
-  { id: 3, user: 'mishka_so...', image: 'https://i.pravatar.cc/150?img=3' },
-  { id: 4, user: 'clubsodab...', image: 'https://i.pravatar.cc/150?img=4' },
+  { id: 1, user: 'chchoitoi', image: 'https://i.pravatar.cc/150?img=1', storyImage: 'https://picsum.photos/id/1015/800/1200' },
+  { id: 2, user: 'gwangurl77', image: 'https://i.pravatar.cc/150?img=2', storyImage: 'https://picsum.photos/id/1018/800/1200' },
+  { id: 3, user: 'mishka_so...', image: 'https://i.pravatar.cc/150?img=3', storyImage: 'https://picsum.photos/id/104/800/1200' },
+  { id: 4, user: 'clubsodab...', image: 'https://i.pravatar.cc/150?img=4', storyImage: 'https://picsum.photos/id/169/800/1200' },
+  { id: 5, user: 'artbydiana', image: 'https://i.pravatar.cc/150?img=5', storyImage: 'https://picsum.photos/id/20/800/1200' },
+  { id: 6, user: 'foodie_adventures', image: 'https://i.pravatar.cc/150?img=6', storyImage: 'https://picsum.photos/id/30/800/1200' },
 ];
 
-function friendLabel(detail: FriendListItem['friend_detail']): string {
-  const name = detail.full_name?.trim();
-  if (name) return name;
-  const dn = (detail as { display_name?: string }).display_name?.trim();
-  if (dn) return dn;
-  return detail.email.split('@')[0];
-}
+// Demo friends data
+const demoFriends = [
+  { id: 101, name: 'Alice Wonderland', avatar: 'https://i.pravatar.cc/150?img=10', hasStory: true, storyImage: 'https://picsum.photos/id/15/800/1200' },
+  { id: 102, name: 'Bob Marlin', avatar: 'https://i.pravatar.cc/150?img=20', hasStory: true, storyImage: 'https://picsum.photos/id/22/800/1200' },
+  { id: 103, name: 'Charlie Brown', avatar: 'https://i.pravatar.cc/150?img=30', hasStory: false },
+  { id: 104, name: 'Diana Prince', avatar: 'https://i.pravatar.cc/150?img=40', hasStory: true, storyImage: 'https://picsum.photos/id/26/800/1200' },
+  { id: 105, name: 'Ethan Hunt', avatar: 'https://i.pravatar.cc/150?img=50', hasStory: false },
+];
+
+// Local type definitions
+type StoryItem = {
+  id: number;
+  user_id?: number;
+  author_name: string;
+  author_avatar?: string;
+  image_url: string;
+  created_at?: string;
+};
 
 const StoryRow = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(true);
-  const [feed, setFeed] = useState<StoryFeedItem[]>([]);
-  const [friends, setFriends] = useState<FriendListItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [myStories, setMyStories] = useState<StoryItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [viewer, setViewer] = useState<StoryFeedItem | null>(null);
+  const [viewer, setViewer] = useState<StoryItem | null>(null);
+  const [auth, setAuth] = useState(true); // Demo mode always authenticated
+  
+  // Demo current user
+  const currentUser = {
+    id: 999,
+    full_name: 'Demo User',
+    profile_picture: 'https://i.pravatar.cc/150?img=11'
+  };
+  
+  const myAvatar = currentUser?.profile_picture ?? PLACEHOLDER_AVATAR;
 
-  const auth = isAuthenticated();
-  const currentUser = getCurrentUserData();
-  const myAvatar =
-    getImageUrl(currentUser?.profile_picture ?? undefined) ?? PLACEHOLDER_AVATAR;
-
-  const loadFeedAndFriends = useCallback(async () => {
-    if (!auth) return;
-    setLoading(true);
-    setMessage(null);
-    try {
-      const [feedData, friendsRes] = await Promise.all([
-        storyAPI.feed(),
-        friendsAPI.list(),
-      ]);
-      setFeed(feedData);
-      setFriends(friendsRes.results ?? []);
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      setMessage(err.message ?? 'Could not load stories or friends.');
-      setFeed([]);
-      setFriends([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [auth]);
-
+  // Load demo stories from localStorage
   useEffect(() => {
-    loadFeedAndFriends();
-  }, [loadFeedAndFriends]);
-
-  const storyByUserId = useMemo(() => {
-    const m = new Map<number, StoryFeedItem>();
-    for (const s of feed) {
-      if (currentUser && s.user_id === currentUser.id) continue;
-      m.set(s.user_id, s);
+    const savedStories = localStorage.getItem('demo_my_stories');
+    if (savedStories) {
+      setMyStories(JSON.parse(savedStories));
+    } else {
+      // Start with empty stories
+      setMyStories([]);
     }
-    return m;
-  }, [feed, currentUser]);
+  }, []);
 
-  /** Friends with a 24h story not already listed as friends (edge cases) */
-  const orphanStories = useMemo(() => {
-    const ids = new Set(friends.map((f) => f.friend));
-    return feed.filter(
-      (s) =>
-        (!currentUser || s.user_id !== currentUser.id) && !ids.has(s.user_id)
-    );
-  }, [feed, friends, currentUser]);
+  // Save stories to localStorage
+  const saveMyStories = (stories: StoryItem[]) => {
+    localStorage.setItem('demo_my_stories', JSON.stringify(stories));
+    setMyStories(stories);
+  };
+
+  const myStory = myStories.length > 0 ? myStories[0] : undefined;
 
   const handleScroll = () => {
     if (scrollRef.current) {
@@ -100,7 +83,7 @@ const StoryRow = () => {
 
   useEffect(() => {
     handleScroll();
-  }, [friends, feed, auth]);
+  }, []);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -110,22 +93,15 @@ const StoryRow = () => {
     }
   };
 
-  const myStory =
-    auth && currentUser ? feed.find((s) => s.user_id === currentUser.id) : undefined;
-
   const openAddStory = () => {
     setMessage(null);
-    if (!auth) {
-      setMessage('Log in to add a story.');
-      return;
-    }
     fileInputRef.current?.click();
   };
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !auth) return;
+    if (!file) return;
 
     if (!file.type.startsWith('image/')) {
       setMessage('Please choose an image file.');
@@ -138,13 +114,29 @@ const StoryRow = () => {
 
     setUploading(true);
     setMessage(null);
+    
     try {
-      await storyAPI.create(file);
-      await loadFeedAndFriends();
-    } catch (err: unknown) {
-      const er = err as { message?: string };
-      setMessage(er.message ?? 'Upload failed.');
-    } finally {
+      // Convert image to base64 for demo storage
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newStory: StoryItem = {
+          id: Date.now(),
+          user_id: currentUser.id,
+          author_name: currentUser.full_name,
+          author_avatar: myAvatar,
+          image_url: reader.result as string,
+          created_at: new Date().toISOString(),
+        };
+        
+        const updatedStories = [newStory, ...myStories];
+        saveMyStories(updatedStories);
+        setUploading(false);
+        setMessage('Story added successfully!');
+        setTimeout(() => setMessage(null), 3000);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setMessage('Upload failed. Please try again.');
       setUploading(false);
     }
   };
@@ -200,7 +192,7 @@ const StoryRow = () => {
                   e.stopPropagation();
                   openAddStory();
                 }}
-                disabled={uploading || !auth}
+                disabled={uploading}
                 className="absolute bottom-0 right-0 z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-[var(--background)] bg-[var(--ig-link)] text-white shadow-sm disabled:opacity-60"
                 aria-label="Add to your story"
               >
@@ -216,122 +208,84 @@ const StoryRow = () => {
             </span>
           </div>
 
-          {!auth &&
-            demoStories.map((story) => (
+          {/* Demo stories for non-auth view - always show */}
+          {demoStories.map((story) => (
+            <button
+              type="button"
+              key={story.id}
+              onClick={() => setViewer({
+                id: story.id,
+                author_name: story.user,
+                image_url: story.storyImage,
+                author_avatar: story.image
+              })}
+              className="flex shrink-0 flex-col items-center gap-1.5 cursor-pointer rounded-lg p-0 text-left opacity-90 transition hover:opacity-100"
+            >
+              <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
+                <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
+                <img
+                  src={story.image}
+                  alt=""
+                  className="relative z-10 h-full w-full rounded-full border-2 border-transparent object-cover p-[1px]"
+                />
+              </span>
+              <span className="w-[76px] truncate text-center text-xs text-[var(--foreground)]">
+                {story.user}
+              </span>
+            </button>
+          ))}
+
+          {/* Demo friends with stories */}
+          {demoFriends.map((friend) => {
+            const storyImage = friend.hasStory ? friend.storyImage : undefined;
+            
+            return (
               <button
                 type="button"
-                key={story.id}
-                className="flex shrink-0 flex-col items-center gap-1.5 cursor-pointer rounded-lg p-0 text-left opacity-90 transition hover:opacity-100"
+                key={friend.id}
+                onClick={() => friend.hasStory && setViewer({
+                  id: friend.id,
+                  author_name: friend.name,
+                  image_url: storyImage!,
+                  author_avatar: friend.avatar
+                })}
+                disabled={!friend.hasStory}
+                title={friend.hasStory ? `View ${friend.name}'s story` : `${friend.name} — no story yet`}
+                className={`flex shrink-0 flex-col items-center gap-1.5 rounded-lg p-0 text-left transition ${
+                  friend.hasStory
+                    ? 'cursor-pointer hover:opacity-90'
+                    : 'cursor-default opacity-90'
+                }`}
               >
-                <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
-                  <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
-                  <img
-                    src={story.image}
-                    alt=""
-                    className="relative z-10 h-full w-full rounded-full border-2 border-transparent object-cover p-[1px]"
-                  />
-                </span>
-                <span className="w-[76px] truncate text-center text-xs text-[var(--foreground)]">
-                  {story.user}
-                </span>
-              </button>
-            ))}
-
-          {auth && loading && (
-            <div className="flex items-center gap-2 py-4 text-sm text-[var(--ig-muted)]">
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-              Loading friends & stories…
-            </div>
-          )}
-
-          {auth &&
-            !loading &&
-            friends.map((row) => {
-              const story = storyByUserId.get(row.friend);
-              const detail = row.friend_detail;
-              const label = friendLabel(detail);
-              const avatar =
-                getImageUrl(detail.profile_picture ?? undefined) ?? PLACEHOLDER_AVATAR;
-
-              return (
-                <button
-                  type="button"
-                  key={row.friend}
-                  onClick={() => story && setViewer(story)}
-                  disabled={!story}
-                  title={story ? `View ${label}'s story` : `${label} — no story yet`}
-                  className={`flex shrink-0 flex-col items-center gap-1.5 rounded-lg p-0 text-left transition ${
-                    story
-                      ? 'cursor-pointer hover:opacity-90'
-                      : 'cursor-default opacity-90'
-                  }`}
-                >
-                  {story ? (
-                    <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
-                      <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
-                      <img
-                        src={story.author_avatar ?? story.image_url}
-                        alt=""
-                        className="relative z-10 h-full w-full rounded-full border-2 border-transparent object-cover p-[1px]"
-                      />
-                    </span>
-                  ) : (
-                    <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full border-2 border-[var(--ig-border)] bg-[var(--background)] p-[2px]">
-                      <img
-                        src={avatar}
-                        alt=""
-                        className="h-[58px] w-[58px] rounded-full object-cover"
-                      />
-                    </span>
-                  )}
-                  <span className="w-[76px] truncate text-center text-xs text-[var(--foreground)]">
-                    {label}
+                {friend.hasStory ? (
+                  <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
+                    <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
+                    <img
+                      src={friend.avatar}
+                      alt=""
+                      className="relative z-10 h-full w-full rounded-full border-2 border-transparent object-cover p-[1px]"
+                    />
                   </span>
-                </button>
-              );
-            })}
-
-          {auth &&
-            !loading &&
-            orphanStories.map((story) => (
-              <button
-                type="button"
-                key={`orphan-${story.user_id}-${story.id}`}
-                onClick={() => setViewer(story)}
-                className="flex shrink-0 flex-col items-center gap-1.5 cursor-pointer rounded-lg p-0 text-left transition hover:opacity-90"
-              >
-                <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
-                  <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
-                  <img
-                    src={story.author_avatar ?? story.image_url}
-                    alt=""
-                    className="relative z-10 h-full w-full rounded-full border-2 border-transparent object-cover p-[1px]"
-                  />
-                </span>
+                ) : (
+                  <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full border-2 border-[var(--ig-border)] bg-[var(--background)] p-[2px]">
+                    <img
+                      src={friend.avatar}
+                      alt=""
+                      className="h-[58px] w-[58px] rounded-full object-cover"
+                    />
+                  </span>
+                )}
                 <span className="w-[76px] truncate text-center text-xs text-[var(--foreground)]">
-                  {story.author_name}
+                  {friend.name.split(' ')[0]}
                 </span>
               </button>
-            ))}
+            );
+          })}
         </div>
-
-        {auth && !loading && friends.length === 0 && (
-          <p className="mt-2 px-1 text-center text-xs text-[var(--ig-muted)]">
-            Add friends to see them here when they share stories.
-          </p>
-        )}
 
         {message && (
           <p className="mt-2 px-1 text-center text-xs text-red-600 dark:text-red-400">
             {message}
-            {!auth && (
-              <>
-                {' '}
-                <Link href="/auth/login" className="font-semibold text-[var(--ig-link)] underline">
-                  Log in
-                </Link>
-              </>
-            )}
           </p>
         )}
 

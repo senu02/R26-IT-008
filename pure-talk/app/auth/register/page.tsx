@@ -341,7 +341,7 @@ const Register: React.FC = () => {
       const response = await authAPI.register(fd);
       
       setSuccessMsg('Profile created! Dropping you into your feed...');
-      setTimeout(() => router.push('/home'), 2000);
+      setTimeout(() => router.push('/'), 2000);
       
     } catch (error: any) {
       console.error('Registration error:', error);

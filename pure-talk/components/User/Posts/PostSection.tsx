@@ -1,11 +1,19 @@
 // components/User/Posts/PostSection.tsx
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { ThemeColors } from '@/context/theme';
 import PostCard from './PostCard';
 import CreatePost from './CreatePost';
 import Comment from './Comment';
 import type { CommentData } from './Comment';
-import { postAPI, PostData, isAuthenticated, getCurrentUserData, getCurrentUserAvatar, getImageUrl } from '@/app/services/posts/actions';
+import { 
+  postAPI, 
+  isAuthenticated, 
+  getCurrentUserData, 
+  getCurrentUserAvatar,
+  type PostData 
+} from '@/app/services/posts/actions';
 import { Lock, SendHorizontal, Loader2, PlusCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PostSectionProps {
@@ -81,53 +89,19 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     }
   };
 
-  // Function to fetch comments for a specific post
   const fetchCommentsForPost = async (postId: string) => {
     if (loadingComments[postId]) return;
     
     setLoadingComments(prev => ({ ...prev, [postId]: true }));
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/comments/?post_id=${postId}`, {
-        headers: {
-          'Authorization': `Token ${localStorage.getItem('auth_token')}`,
-        },
-      });
-      
-      if (response.ok) {
-        const commentsData = await response.json();
-        const items = commentsData.results || commentsData;
-        const mappedComments: CommentData[] = Array.isArray(items) 
-          ? items.map((comment: any) => mapCommentToFrontend(comment))
-          : [];
-        
-        setComments(prev => ({ ...prev, [postId]: mappedComments }));
-      } else {
-        setComments(prev => ({ ...prev, [postId]: [] }));
-      }
+      const commentsData = await postAPI.getComments(postId);
+      setComments(prev => ({ ...prev, [postId]: commentsData }));
     } catch (err) {
       console.error('Error fetching comments:', err);
       setComments(prev => ({ ...prev, [postId]: [] }));
     } finally {
       setLoadingComments(prev => ({ ...prev, [postId]: false }));
     }
-  };
-
-  // Helper to map backend comment to frontend format
-  const mapCommentToFrontend = (comment: any): CommentData => {
-    const authorDetail = comment.author_detail || comment.author;
-    return {
-      id: String(comment.id),
-      content: comment.content,
-      author: {
-        id: authorDetail?.id || 0,
-        name: authorDetail?.full_name || authorDetail?.display_name || 'User',
-        username: authorDetail?.email ? `@${authorDetail.email.split('@')[0]}` : '@user',
-        avatar: authorDetail?.profile_picture ? getImageUrl(authorDetail.profile_picture) : null,
-      },
-      timestamp: comment.created_at || comment.timestamp || new Date().toISOString(),
-      likes: comment.like_count || 0,
-      liked: comment.user_has_liked || false,
-    };
   };
 
   const toggleComments = async (postId: string) => {
@@ -256,36 +230,19 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/comments/${commentId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Token ${localStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: newContent }),
-      });
-
-      if (response.ok) {
-        const updatedComment = await response.json();
-        
-        setComments(prevComments => {
-          const newComments = { ...prevComments };
-          for (const postId in newComments) {
-            const commentIndex = newComments[postId].findIndex(c => c.id === commentId);
-            if (commentIndex !== -1) {
-              newComments[postId][commentIndex] = {
-                ...newComments[postId][commentIndex],
-                content: updatedComment.content,
-              };
-              break;
-            }
+      const updatedComment = await postAPI.updateComment(commentId, newContent);
+      
+      setComments(prevComments => {
+        const newComments = { ...prevComments };
+        for (const postId in newComments) {
+          const commentIndex = newComments[postId].findIndex(c => c.id === commentId);
+          if (commentIndex !== -1) {
+            newComments[postId][commentIndex] = updatedComment;
+            break;
           }
-          return newComments;
-        });
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update comment');
-      }
+        }
+        return newComments;
+      });
     } catch (err: any) {
       console.error('Edit comment failed:', err);
       if (err.message?.includes('flagged')) {
@@ -304,23 +261,13 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/comments/${commentId}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${localStorage.getItem('auth_token')}`,
-        },
-      });
-
-      if (response.ok) {
-        await fetchCommentsForPost(postId);
-        setPosts(posts.map(p => 
-          p.id === postId 
-            ? { ...p, comments: Math.max(0, (p.comments || 0) - 1) }
-            : p
-        ));
-      } else {
-        alert('Failed to delete comment');
-      }
+      await postAPI.deleteComment(commentId);
+      await fetchCommentsForPost(postId);
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, comments: Math.max(0, (p.comments || 0) - 1) }
+          : p
+      ));
     } catch (err) {
       console.error('Delete comment failed:', err);
       alert('Failed to delete comment');
@@ -409,18 +356,22 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex space-x-1 mb-6 bg-white/5 rounded-full p-1">
+      {/* Filter Tabs - Instagram style */}
+      <div className="flex border-b border-white/10 mb-6">
         {filterOptions.map((filter) => (
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}
-            className={`flex-1 py-2 px-4 rounded-full transition-all duration-300 ${
+            className={`flex-1 py-3 text-center font-semibold text-sm transition-all duration-200 relative ${
               activeFilter === filter
-                ? `bg-gradient-to-r ${theme.accent.gradient} text-white`
-                : `${theme.text.secondary} hover:${theme.text.primary}`
+                ? theme.text.primary
+                : theme.text.muted
             }`}
           >
             {filter}
+            {activeFilter === filter && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-full" />
+            )}
           </button>
         ))}
       </div>
@@ -483,7 +434,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                   isCommenting={showCommentsForPost[post.id]}
                 />
                 
-                {/* Comments Section */}
+                {/* Comments Section - Instagram style */}
                 {showCommentsForPost[post.id] && (
                   <div className={`mt-2 ${theme.surface.glass} rounded-xl overflow-hidden transition-all duration-300`}>
                     <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
@@ -510,6 +461,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             comment={comment}
                             theme={theme}
                             isDark={isDark}
+                            onLike={undefined}
                             onDelete={comment.author.id === currentUserId 
                               ? (commentId) => handleDeleteComment(post.id, commentId)
                               : undefined}
