@@ -1,4 +1,4 @@
-// components/Admin/Sidebar.tsx (Updated with Videos Tab + Profile Image)
+// components/Admin/Sidebar.tsx (Updated with Videos Tab + Toxicity Tabs)
 
 'use client';
 
@@ -23,7 +23,9 @@ import {
   Rocket,
   Users,
   Loader2,
-  Video
+  Video,
+  AlertTriangle,
+  Activity
 } from 'lucide-react';
 import { useThemeColors } from '@/context/adminTheme';
 import { authAPI } from '@/lib/api';
@@ -37,6 +39,8 @@ const menuItems = [
   { icon: <LayoutDashboard size={18} />, label: 'Dashboard',           href: '/admin/dashboard',            badge: null  },
   { icon: <Users         size={18} />, label: 'User Management',       href: '/admin/user-management',      badge: null  },
   { icon: <Video         size={18} />, label: 'Videos',                href: '/admin/videos',               badge: null  },
+  { icon: <AlertTriangle size={18} />, label: 'Toxicity Detection',    href: '/admin/toxicity-detection',   badge: 'AI'  },
+  { icon: <Activity      size={18} />, label: 'Toxicity Behaviors',    href: '/admin/toxicity-behaviors',   badge: null  },
   { icon: <ShieldAlert   size={18} />, label: 'Adaptive Shielding',    href: '/admin/adaptive-shielding',   badge: 'AI'  },
   { icon: <BarChart3     size={18} />, label: 'Analytics',             href: '/admin/analytics',            badge: 'New' },
 ];
@@ -184,6 +188,14 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
     return null;
   };
 
+  // Helper to check if a menu item is active (supports sub-routes)
+  const isMenuItemActive = (href: string) => {
+    if (href === '/admin/dashboard') {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
+  };
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -290,11 +302,11 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
           {/* Main Menu */}
           <div className="mb-6">
             <div className="text-xs font-semibold uppercase tracking-wider px-3 mb-2" style={{ color: colors.text.tertiary }}>
-              Main Menu
+              Moderation
             </div>
             <nav className="space-y-1">
               {menuItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = isMenuItemActive(item.href);
                 return (
                   <Link
                     key={item.label}
@@ -364,7 +376,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
             </div>
             <nav className="space-y-1">
               {sidebarBottom.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = isMenuItemActive(item.href);
                 return (
                   <Link
                     key={item.label}
@@ -418,23 +430,23 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
           {/* Quick Stats */}
           <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: colors.background.secondary }}>
             <div className="flex items-center gap-2 mb-2">
-              <Users size={14} style={{ color: colors.primary.main }} />
-              <span className="text-xs font-semibold" style={{ color: colors.text.secondary }}>QUICK STATS</span>
+              <AlertTriangle size={14} style={{ color: colors.status.error || colors.primary.main }} />
+              <span className="text-xs font-semibold" style={{ color: colors.text.secondary }}>TOXICITY SUMMARY</span>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-xs" style={{ color: colors.text.tertiary }}>Total Users</span>
-                <span className="text-sm font-bold" style={{ color: colors.text.primary }}>1,234</span>
+                <span className="text-xs" style={{ color: colors.text.tertiary }}>Flagged Content</span>
+                <span className="text-sm font-bold" style={{ color: colors.status.error || '#ef4444' }}>23</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs" style={{ color: colors.text.tertiary }}>Active Today</span>
-                <span className="text-sm font-bold" style={{ color: colors.status.success }}>89</span>
+                <span className="text-xs" style={{ color: colors.text.tertiary }}>Auto-Modded</span>
+                <span className="text-sm font-bold" style={{ color: colors.status.success || '#10b981' }}>156</span>
               </div>
               <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: colors.border.primary }}>
-                <div className="h-full rounded-full" style={{ width: '65%', backgroundColor: colors.primary.main }} />
+                <div className="h-full rounded-full" style={{ width: '15%', backgroundColor: colors.status.error || '#ef4444' }} />
               </div>
               <Link 
-                href="/admin/user-management"
+                href="/admin/toxicity-detection"
                 onClick={handleNavigation}
                 className="block text-center text-xs py-1 rounded-lg transition-all mt-1"
                 style={{ color: colors.primary.main }}
@@ -445,7 +457,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
-                View All Users →
+                Review Flagged Content →
               </Link>
             </div>
           </div>
@@ -454,7 +466,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
           {theme === 'space' && (
             <div className="mt-4 p-3 rounded-xl text-center" style={{ backgroundColor: colors.background.secondary }}>
               <p className="text-xs italic" style={{ color: colors.text.tertiary }}>
-                "To infinity and beyond"
+                "Safety first, always"
               </p>
               <div className="flex justify-center gap-1 mt-2">
                 <div className="w-1 h-1 bg-purple-400 rounded-full animate-pulse" />
