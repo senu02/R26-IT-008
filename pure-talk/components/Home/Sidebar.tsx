@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { getCurrentUserData, getImageUrl } from '@/lib/api';
 import { 
   Home, 
   Search, 
@@ -28,31 +29,25 @@ const Sidebar = () => {
   // Avoid hydration mismatch for theme
   useEffect(() => {
     setMounted(true);
-    
-    // Demo user data - using localStorage to persist avatar preference
-    const savedAvatar = localStorage.getItem('demo_user_avatar');
-    if (savedAvatar) {
-      setUserAvatar(savedAvatar);
-    } else {
-      // Set random demo avatar
-      const demoAvatars = [
-        'https://i.pravatar.cc/150?img=1',
-        'https://i.pravatar.cc/150?img=2',
-        'https://i.pravatar.cc/150?img=3',
-        'https://i.pravatar.cc/150?img=4',
-        'https://i.pravatar.cc/150?img=5',
-        'https://i.pravatar.cc/150?img=11',
-        'https://i.pravatar.cc/150?img=12',
-        'https://i.pravatar.cc/150?img=13'
-      ];
-      const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
-      setUserAvatar(randomAvatar);
-      localStorage.setItem('demo_user_avatar', randomAvatar);
-    }
+
+    const syncProfileAvatar = () => {
+      const currentUser = getCurrentUserData();
+      const avatarFromProfile = getImageUrl(currentUser?.profile_picture);
+      setUserAvatar(avatarFromProfile || 'https://i.pravatar.cc/150?img=11');
+    };
+
+    syncProfileAvatar();
+    window.addEventListener('storage', syncProfileAvatar);
+    window.addEventListener('focus', syncProfileAvatar);
 
     // Demo notifications count - random between 0-5 for demo
     const demoUnreadCount = Math.floor(Math.random() * 6);
     setUnreadNotifications(demoUnreadCount);
+
+    return () => {
+      window.removeEventListener('storage', syncProfileAvatar);
+      window.removeEventListener('focus', syncProfileAvatar);
+    };
   }, []);
 
   return (
