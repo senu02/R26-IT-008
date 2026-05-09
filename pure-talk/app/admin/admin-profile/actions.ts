@@ -71,13 +71,11 @@ const getFullImageUrl = (imagePath: string | null | undefined): string | null =>
 export const useProfile = () => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<NotificationSettings>(() => {
-    try {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('notification_settings') : null;
-      return saved ? JSON.parse(saved) : { emailAlerts: true, pushNotifications: true, weeklyDigest: false, securityAlerts: true };
-    } catch {
-      return { emailAlerts: true, pushNotifications: true, weeklyDigest: false, securityAlerts: true };
-    }
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    emailAlerts: true,
+    pushNotifications: true,
+    weeklyDigest: false,
+    securityAlerts: true
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -225,12 +223,15 @@ export const useProfile = () => {
     }
   };
 
-  // Update notification settings (stored locally — no backend field for this)
+  // Update notification settings
   const updateNotifications = async (updatedNotifications: NotificationSettings) => {
     try {
-      localStorage.setItem('notification_settings', JSON.stringify(updatedNotifications));
+      const response = await authAPI.updateProfile({
+        notification_settings: updatedNotifications
+      });
+      
       setNotifications(updatedNotifications);
-      return { success: true, data: updatedNotifications };
+      return { success: true, data: response };
     } catch (err: any) {
       console.error('Error updating notifications:', err);
       setError(err.message || 'Failed to update notification settings');
@@ -252,7 +253,7 @@ export const useProfile = () => {
         throw new Error('Invalid user ID');
       }
       
-      const response = await authAPI.changePassword(numericUserId, {
+      const response = await userAPI.changePassword(numericUserId, {
         old_password: oldPassword,
         new_password: newPassword,
         confirm_password: confirmPassword

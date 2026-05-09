@@ -4,17 +4,11 @@ import {
   Search, 
   Moon,
   Sun,
-  Sparkles,
-  Menu
+  Sparkles
 } from 'lucide-react';
 import { useThemeColors, type ThemeMode } from '@/context/adminTheme';
 
-interface NavbarProps {
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
-}
-
-const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
+const Navbar: React.FC = () => {
   const { theme, colors, toggleTheme, setTheme } = useThemeColors();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
@@ -67,16 +61,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
-          {/* Mobile menu button */}
-          <div className="flex items-center lg:hidden">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-md focus:outline-none focus:ring-2"
-              style={{ color: colors.text.secondary }}
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-          </div>
+      
 
           {/* Search Bar - Facebook Style */}
           <div className="hidden md:flex flex-1 max-w-md mx-8">
