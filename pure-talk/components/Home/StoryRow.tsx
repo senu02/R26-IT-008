@@ -2,7 +2,6 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ChevronLeft, Plus, Loader2, X } from 'lucide-react';
-import { getCurrentUserData, getImageUrl } from '@/lib/api';
 
 const PLACEHOLDER_AVATAR = 'https://i.pravatar.cc/150?img=11';
 
@@ -45,23 +44,15 @@ const StoryRow = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [viewer, setViewer] = useState<StoryItem | null>(null);
   const [auth, setAuth] = useState(true); // Demo mode always authenticated
-  const [currentUser, setCurrentUser] = useState(() => getCurrentUserData());
-  const myAvatar = getImageUrl(currentUser?.profile_picture) || PLACEHOLDER_AVATAR;
-
-  useEffect(() => {
-    const syncCurrentUser = () => {
-      setCurrentUser(getCurrentUserData());
-    };
-
-    syncCurrentUser();
-    window.addEventListener('storage', syncCurrentUser);
-    window.addEventListener('focus', syncCurrentUser);
-
-    return () => {
-      window.removeEventListener('storage', syncCurrentUser);
-      window.removeEventListener('focus', syncCurrentUser);
-    };
-  }, []);
+  
+  // Demo current user
+  const currentUser = {
+    id: 999,
+    full_name: 'Demo User',
+    profile_picture: 'https://i.pravatar.cc/150?img=11'
+  };
+  
+  const myAvatar = currentUser?.profile_picture ?? PLACEHOLDER_AVATAR;
 
   // Load demo stories from localStorage
   useEffect(() => {
@@ -130,8 +121,8 @@ const StoryRow = () => {
       reader.onloadend = () => {
         const newStory: StoryItem = {
           id: Date.now(),
-          user_id: currentUser?.id,
-          author_name: currentUser?.full_name || currentUser?.email?.split('@')[0] || 'You',
+          user_id: currentUser.id,
+          author_name: currentUser.full_name,
           author_avatar: myAvatar,
           image_url: reader.result as string,
           created_at: new Date().toISOString(),

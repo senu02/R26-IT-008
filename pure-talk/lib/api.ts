@@ -347,7 +347,7 @@ export const isAuthenticated = (): boolean => {
 };
 
 export const getCurrentUserData = (): User | null => {
-  const userData = localStorage.getItem('user_data') || localStorage.getItem('user');
+  const userData = localStorage.getItem('user_data');
   if (!userData) return null;
   try {
     return JSON.parse(userData) as User;
@@ -531,4 +531,4 @@ export default {
   isModerator,
   canManageUsers,
   getImageUrl
-};
+};
