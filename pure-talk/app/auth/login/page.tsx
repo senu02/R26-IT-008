@@ -46,7 +46,7 @@ export default function LoginPage() {
     // Check if user is already logged in
     const token = localStorage.getItem('auth_token');
     if (token) {
-      router.push('/home');
+      router.push('/');
     }
 
     const savedEmail = localStorage.getItem('rememberedEmail');
