@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'toxicity_detection',
     'toxicity_behavior',
     'adptiveShelding',
+    'toxicity_image',
 ]
 
 CORS_ALLOWED_ORIGINS = [
