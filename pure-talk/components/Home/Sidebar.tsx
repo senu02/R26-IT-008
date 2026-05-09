@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { getCurrentUserData, getImageUrl } from '@/lib/api';
 import { 
   Home, 
   Search, 
@@ -29,12 +28,26 @@ const Sidebar = () => {
   // Avoid hydration mismatch for theme
   useEffect(() => {
     setMounted(true);
-
-    // Use logged-in user's profile picture when available.
-    const currentUser = getCurrentUserData();
-    const avatarFromProfile = getImageUrl(currentUser?.profile_picture);
-    if (avatarFromProfile) {
-      setUserAvatar(avatarFromProfile);
+    
+    // Demo user data - using localStorage to persist avatar preference
+    const savedAvatar = localStorage.getItem('demo_user_avatar');
+    if (savedAvatar) {
+      setUserAvatar(savedAvatar);
+    } else {
+      // Set random demo avatar
+      const demoAvatars = [
+        'https://i.pravatar.cc/150?img=1',
+        'https://i.pravatar.cc/150?img=2',
+        'https://i.pravatar.cc/150?img=3',
+        'https://i.pravatar.cc/150?img=4',
+        'https://i.pravatar.cc/150?img=5',
+        'https://i.pravatar.cc/150?img=11',
+        'https://i.pravatar.cc/150?img=12',
+        'https://i.pravatar.cc/150?img=13'
+      ];
+      const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
+      setUserAvatar(randomAvatar);
+      localStorage.setItem('demo_user_avatar', randomAvatar);
     }
 
     // Demo notifications count - random between 0-5 for demo
