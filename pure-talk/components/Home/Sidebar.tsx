@@ -32,7 +32,12 @@ const Sidebar = () => {
 
     const syncProfileAvatar = () => {
       const currentUser = getCurrentUserData();
-      const avatarFromProfile = getImageUrl(currentUser?.profile_picture);
+      const rawAvatar =
+        currentUser?.profile_picture ||
+        (currentUser as unknown as { profilePicture?: string | null })?.profilePicture ||
+        (currentUser as unknown as { avatar?: string | null })?.avatar ||
+        null;
+      const avatarFromProfile = getImageUrl(rawAvatar);
       setUserAvatar(avatarFromProfile || 'https://i.pravatar.cc/150?img=11');
     };
 
@@ -88,7 +93,16 @@ const Sidebar = () => {
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
-            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src={userAvatar} alt="profile" className="h-full w-full object-cover" /></div>} 
+            icon={
+              <div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden">
+                <img
+                  src={userAvatar}
+                  alt="profile"
+                  className="h-full w-full object-cover"
+                  onError={() => setUserAvatar('https://i.pravatar.cc/150?img=11')}
+                />
+              </div>
+            } 
             label="Profile" 
             active={pathname === '/users/user-profile'}
           />

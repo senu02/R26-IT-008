@@ -621,12 +621,12 @@ export const formatDate = (dateString: string): string => {
 
 export const canModerate = (): boolean => {
   const user = getCurrentUserData();
-  return user && ['moderator', 'admin', 'super_admin'].includes(user.role);
+  return Boolean(user && user.role && ['moderator', 'admin', 'super_admin'].includes(user.role));
 };
 
 export const canAdmin = (): boolean => {
   const user = getCurrentUserData();
-  return user && ['admin', 'super_admin'].includes(user.role);
+  return Boolean(user && user.role && ['admin', 'super_admin'].includes(user.role));
 };
 
 export default { 
