@@ -1,5 +1,6 @@
 // app/services/ToxicityBehavior/actions.ts
 // Matches backend: toxicity_behavior/models.py, serializers.py, views.py
+// Updated with Psychological Metrics
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -37,7 +38,7 @@ async function normalisePaginated<T>(response: any): Promise<PaginatedResponse<T
 }
 
 // ─────────────────────────────────────────────
-// Types
+// Types (Updated with Psychological Metrics)
 // ─────────────────────────────────────────────
 
 export type WarningLevel = 'none' | 'mild' | 'moderate' | 'severe' | 'banned';
@@ -45,8 +46,29 @@ export type EventType    = 'allowed' | 'warned' | 'blocked' | 'suspended';
 export type ContentType  = 'post' | 'comment';
 export type NodeType     = 'normal' | 'at_risk' | 'toxic';
 export type EdgeType     = 'normal' | 'mixed' | 'toxic_reply';
+export type PsychologicalPattern = 'one_off' | 'chronic_low' | 'escalating' | 'malicious' | 'recovering' | 'impulsive';
 
-// UserBehaviorProfileSerializer
+// Psychological Profile Interface
+export interface PsychologicalProfile {
+  risk_score: number;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
+  pattern: string;
+  pattern_description: string;
+  impulsivity_score: number;
+  malice_score: number;
+  escalation_risk: number;
+  recovery_score: number;
+  weighted_toxicity: number;
+  recommendation: {
+    action: string;
+    days: number;
+    reason: string;
+    priority: string;
+  };
+  summary: string;
+}
+
+// UserBehaviorProfileSerializer (Updated)
 export interface UserBehaviorProfile {
   id: string;
   user: string;
@@ -64,9 +86,24 @@ export interface UserBehaviorProfile {
   first_offence_at: string | null;
   last_offence_at: string | null;
   updated_at: string;
+  // NEW Psychological fields
+  psychological_risk_score: number;
+  psychological_pattern: PsychologicalPattern;
+  impulsivity_score: number;
+  malice_score: number;
+  escalation_risk: number;
+  recovery_score: number;
+  weighted_toxicity_score: number;
+  psychological_summary: PsychologicalProfile;
+  psychological_recommendation: {
+    action: string;
+    days: number;
+    reason: string;
+    priority: string;
+  };
 }
 
-// BehaviorEventSerializer
+// BehaviorEventSerializer (Updated)
 export interface BehaviorEvent {
   id: string;
   user: string;
@@ -83,9 +120,13 @@ export interface BehaviorEvent {
   event_type: EventType;
   toxic_count_at_event: number;
   warning_level_at_event: string;
+  // NEW Psychological metrics at event time
+  psych_risk_at_event: number;
+  psych_pattern_at_event: string;
   created_at: string;
 }
 
+// MyBehaviorStatus (Updated)
 export interface MyBehaviorStatus {
   toxic_count: number;
   warning_level: WarningLevel;
@@ -94,8 +135,93 @@ export interface MyBehaviorStatus {
   suspended_until: string | null;
   effective_threshold: number;
   severity_score: number;
+  psychological_risk_score: number;
+  psychological_pattern: string;
+  psychological_summary: {
+    risk_level: string;
+    pattern: string;
+    description: string;
+    message: string;
+  };
 }
 
+// Detailed Psychological Analysis Response
+export interface PsychologicalAnalysisResponse {
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    account_status: string;
+  };
+  psychological_profile: {
+    risk_score: number;
+    risk_level: string;
+    pattern: string;
+    pattern_description: string;
+    impulsivity_score: number;
+    malice_score: number;
+    escalation_risk: number;
+    recovery_score: number;
+    weighted_toxicity: number;
+    severity_weighted_offenses: number;
+  };
+  behavioral_summary: string;
+  recommended_action: {
+    action: string;
+    days: number;
+    reason: string;
+    priority: string;
+  };
+  counters: {
+    toxic_count: number;
+    warning_count: number;
+    blocked_count: number;
+    severity_score: number;
+    warning_level: string;
+  };
+  suspension_status: {
+    is_suspended: boolean;
+    suspended_until: string | null;
+    suspension_reason: string | null;
+  };
+  recent_timeline: Array<{
+    date: string;
+    severity: number;
+    toxicity_score: number;
+    event_type: string;
+    psych_risk: number;
+  }>;
+  research_notes: {
+    analysis_based_on: string;
+    metrics_used: string[];
+    confidence: string;
+  };
+}
+
+// Psychological Statistics Response
+export interface PsychologicalStatsResponse {
+  total_users_analyzed: number;
+  pattern_distribution: Record<string, number>;
+  risk_distribution: {
+    high_risk: number;
+    medium_risk: number;
+    low_risk: number;
+  };
+  pattern_statistics: Record<string, {
+    count: number;
+    avg_risk: number;
+    avg_toxic_count: number;
+    suspended_count: number;
+  }>;
+  average_metrics: {
+    avg_psychological_risk: number;
+    avg_malice_score: number;
+    avg_impulsivity: number;
+    avg_escalation_risk: number;
+  };
+}
+
+// SNA Node (Updated)
 export interface SNANode {
   user_id: number;
   username: string;
@@ -112,6 +238,11 @@ export interface SNANode {
   total_interactions: number;
   toxic_interactions: number;
   toxic_ratio: number;
+  psychological_risk_score: number;
+  psychological_pattern: string;
+  malice_score: number;
+  impulsivity_score: number;
+  escalation_risk: number;
 }
 
 export interface SNAEdge {
@@ -143,14 +274,53 @@ export interface SNASummary {
 
 export interface SNAGraph { nodes: SNANode[]; edges: SNAEdge[]; summary: SNASummary; }
 export interface PaginatedResponse<T> { count: number; next: string | null; previous: string | null; results: T[]; }
-export interface ProfilesParams { warning_level?: WarningLevel; is_suspended?: boolean; page?: number; page_size?: number; }
-export interface EventsParams { user_id?: string; event_type?: EventType; content_type?: ContentType; page?: number; page_size?: number; }
+export interface ProfilesParams { warning_level?: WarningLevel; is_suspended?: boolean; psychological_pattern?: PsychologicalPattern; page?: number; page_size?: number; }
+export interface EventsParams { user_id?: string; event_type?: EventType; content_type?: ContentType; psych_pattern?: string; page?: number; page_size?: number; }
 export interface SuspendRequest { hours?: number; reason?: string; }
 
 // ─────────────────────────────────────────────
-// API methods
-// BehaviorViewSet → /api/behavior/...
-// SNAViewSet     → /api/behavior/sna/...
+// Psychological Pattern Helpers
+// ─────────────────────────────────────────────
+
+export const PSYCHOLOGICAL_PATTERNS: PsychologicalPattern[] = [
+  'one_off', 'chronic_low', 'escalating', 'malicious', 'recovering', 'impulsive'
+];
+
+export function getPsychologicalPatternLabel(pattern: PsychologicalPattern): string {
+  const labels: Record<PsychologicalPattern, string> = {
+    one_off: 'Single Offence',
+    chronic_low: 'Chronic Low',
+    escalating: 'ESCALATING',
+    malicious: 'MALICIOUS',
+    recovering: 'Recovering',
+    impulsive: 'Impulsive'
+  };
+  return labels[pattern] ?? pattern;
+}
+
+export function getPsychologicalPatternColor(pattern: PsychologicalPattern): string {
+  const colors: Record<PsychologicalPattern, string> = {
+    one_off: '#22c55e',
+    chronic_low: '#eab308',
+    escalating: '#ef4444',
+    malicious: '#dc2626',
+    recovering: '#22c55e',
+    impulsive: '#f97316'
+  };
+  return colors[pattern] ?? '#6b7280';
+}
+
+export function getRiskLevelColor(riskLevel: string): string {
+  switch (riskLevel) {
+    case 'HIGH': return '#ef4444';
+    case 'MEDIUM': return '#f97316';
+    case 'LOW': return '#22c55e';
+    default: return '#6b7280';
+  }
+}
+
+// ─────────────────────────────────────────────
+// API methods (Updated)
 // ─────────────────────────────────────────────
 
 export const behaviorAPI = {
@@ -159,11 +329,17 @@ export const behaviorAPI = {
     return apiCall<MyBehaviorStatus>('/behavior/my-status/', { method: 'GET' });
   },
 
+  // GET /api/behavior/my-psychological-profile/
+  async getMyPsychologicalProfile(): Promise<any> {
+    return apiCall('/behavior/my-psychological-profile/', { method: 'GET' });
+  },
+
   // GET /api/behavior/profiles/
   async getProfiles(params: ProfilesParams = {}): Promise<PaginatedResponse<UserBehaviorProfile>> {
     const q = new URLSearchParams();
     if (params.warning_level) q.append('warning_level', params.warning_level);
     if (params.is_suspended !== undefined) q.append('is_suspended', String(params.is_suspended));
+    if (params.psychological_pattern) q.append('psychological_pattern', params.psychological_pattern);
     if (params.page) q.append('page', String(params.page));
     if (params.page_size) q.append('page_size', String(params.page_size));
     const raw = await apiCall<any>(`/behavior/profiles/${q.toString() ? `?${q}` : ''}`, { method: 'GET' });
@@ -173,6 +349,16 @@ export const behaviorAPI = {
   // GET /api/behavior/profiles/{id}/
   async getProfile(profileId: string): Promise<UserBehaviorProfile> {
     return apiCall<UserBehaviorProfile>(`/behavior/profiles/${profileId}/`, { method: 'GET' });
+  },
+
+  // GET /api/behavior/users/{user_id}/psychological-analysis/
+  async getUserPsychologicalAnalysis(userId: string): Promise<PsychologicalAnalysisResponse> {
+    return apiCall<PsychologicalAnalysisResponse>(`/behavior/users/${userId}/psychological-analysis/`, { method: 'GET' });
+  },
+
+  // GET /api/behavior/psychological-stats/
+  async getPsychologicalStats(): Promise<PsychologicalStatsResponse> {
+    return apiCall<PsychologicalStatsResponse>('/behavior/psychological-stats/', { method: 'GET' });
   },
 
   // POST /api/behavior/profiles/{id}/suspend/
@@ -188,16 +374,32 @@ export const behaviorAPI = {
     return apiCall(`/behavior/profiles/${profileId}/lift-suspend/`, { method: 'POST' });
   },
 
+  // POST /api/behavior/profiles/{id}/reset/
+  async resetProfile(profileId: string): Promise<{ message: string }> {
+    return apiCall(`/behavior/profiles/${profileId}/reset/`, { method: 'POST' });
+  },
+
   // GET /api/behavior/events/
   async getEvents(params: EventsParams = {}): Promise<PaginatedResponse<BehaviorEvent>> {
     const q = new URLSearchParams();
     if (params.user_id) q.append('user_id', params.user_id);
     if (params.event_type) q.append('event_type', params.event_type);
     if (params.content_type) q.append('content_type', params.content_type);
+    if (params.psych_pattern) q.append('psych_pattern', params.psych_pattern);
     if (params.page) q.append('page', String(params.page));
     if (params.page_size) q.append('page_size', String(params.page_size));
     const raw = await apiCall<any>(`/behavior/events/${q.toString() ? `?${q}` : ''}`, { method: 'GET' });
     return normalisePaginated<BehaviorEvent>(raw);
+  },
+
+  // GET /api/behavior/analytics/summary/
+  async getAnalyticsSummary(): Promise<any> {
+    return apiCall('/behavior/analytics/summary/', { method: 'GET' });
+  },
+
+  // GET /api/behavior/user/{user_id}/timeline/
+  async getUserTimeline(userId: string): Promise<any> {
+    return apiCall(`/behavior/user/${userId}/timeline/`, { method: 'GET' });
   },
 
   // GET /api/behavior/sna/graph/
@@ -211,9 +413,11 @@ export const behaviorAPI = {
   },
 
   // GET /api/behavior/sna/nodes/
-  async getSNANodes(params?: { node_type?: NodeType; sort?: string }): Promise<SNANode[]> {
+  async getSNANodes(params?: { node_type?: NodeType; psychological_pattern?: string; risk_min?: number; sort?: string }): Promise<SNANode[]> {
     const q = new URLSearchParams();
     if (params?.node_type) q.append('node_type', params.node_type);
+    if (params?.psychological_pattern) q.append('psychological_pattern', params.psychological_pattern);
+    if (params?.risk_min) q.append('risk_min', String(params.risk_min));
     if (params?.sort) q.append('sort', params.sort);
     return apiCall<SNANode[]>(`/behavior/sna/nodes/${q.toString() ? `?${q}` : ''}`, { method: 'GET' });
   },
@@ -229,10 +433,15 @@ export const behaviorAPI = {
   async getSNAUserNode(userId: string): Promise<{ node: SNANode; edges: SNAEdge[] }> {
     return apiCall(`/behavior/sna/user/${userId}/`, { method: 'GET' });
   },
+
+  // GET /api/behavior/sna/clusters/
+  async getSNAClusters(): Promise<any> {
+    return apiCall('/behavior/sna/clusters/', { method: 'GET' });
+  },
 };
 
 // ─────────────────────────────────────────────
-// Transform helpers
+// Transform helpers (Updated)
 // ─────────────────────────────────────────────
 
 export const WARNING_LEVEL_ORDER: WarningLevel[] = ['none', 'mild', 'moderate', 'severe', 'banned'];
@@ -290,6 +499,16 @@ export function transformProfilesToLevelData(profiles: UserBehaviorProfile[]) {
   };
 }
 
+// NEW: Transform psychological pattern distribution
+export function transformProfilesToPsychologicalData(profiles: UserBehaviorProfile[]) {
+  const patternLabels = PSYCHOLOGICAL_PATTERNS.map(getPsychologicalPatternLabel);
+  const counts = PSYCHOLOGICAL_PATTERNS.map((p) => 
+    profiles.filter((profile) => profile.psychological_pattern === p).length
+  );
+  const colors = PSYCHOLOGICAL_PATTERNS.map(getPsychologicalPatternColor);
+  return { labels: patternLabels, data: counts, colors };
+}
+
 export function transformEventsToTypeBreakdown(events: BehaviorEvent[]) {
   const types: EventType[] = ['allowed', 'warned', 'blocked', 'suspended'];
   const counts: Record<EventType, number> = { allowed: 0, warned: 0, blocked: 0, suspended: 0 };
@@ -321,6 +540,10 @@ export function transformToOverviewStats(profiles: UserBehaviorProfile[], events
     totalSuspended:   profiles.filter((p) => p.is_currently_suspended).length,
     atRisk:           profiles.filter((p) => p.warning_level === 'moderate' || p.warning_level === 'severe').length,
     totalProfiles:    profiles.length,
+    highRiskUsers:    profiles.filter((p) => p.psychological_risk_score > 0.6).length,
+    escalatingUsers:  profiles.filter((p) => p.psychological_pattern === 'escalating').length,
+    maliciousUsers:   profiles.filter((p) => p.psychological_pattern === 'malicious').length,
+    recoveringUsers:  profiles.filter((p) => p.psychological_pattern === 'recovering').length,
   };
 }
 
