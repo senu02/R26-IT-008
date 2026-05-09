@@ -3,26 +3,7 @@ import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link';
 import { ChevronRight, ChevronLeft, Plus, Loader2, X } from 'lucide-react';
 
-const PLACEHOLDER_AVATAR = 'https://i.pravatar.cc/150?img=11';
-
-// Demo story data
-const demoStories = [
-  { id: 1, user: 'chchoitoi', image: 'https://i.pravatar.cc/150?img=1', storyImage: 'https://picsum.photos/id/1015/800/1200' },
-  { id: 2, user: 'gwangurl77', image: 'https://i.pravatar.cc/150?img=2', storyImage: 'https://picsum.photos/id/1018/800/1200' },
-  { id: 3, user: 'mishka_so...', image: 'https://i.pravatar.cc/150?img=3', storyImage: 'https://picsum.photos/id/104/800/1200' },
-  { id: 4, user: 'clubsodab...', image: 'https://i.pravatar.cc/150?img=4', storyImage: 'https://picsum.photos/id/169/800/1200' },
-  { id: 5, user: 'artbydiana', image: 'https://i.pravatar.cc/150?img=5', storyImage: 'https://picsum.photos/id/20/800/1200' },
-  { id: 6, user: 'foodie_adventures', image: 'https://i.pravatar.cc/150?img=6', storyImage: 'https://picsum.photos/id/30/800/1200' },
-];
-
-// Demo friends data
-const demoFriends = [
-  { id: 101, name: 'Alice Wonderland', avatar: 'https://i.pravatar.cc/150?img=10', hasStory: true, storyImage: 'https://picsum.photos/id/15/800/1200' },
-  { id: 102, name: 'Bob Marlin', avatar: 'https://i.pravatar.cc/150?img=20', hasStory: true, storyImage: 'https://picsum.photos/id/22/800/1200' },
-  { id: 103, name: 'Charlie Brown', avatar: 'https://i.pravatar.cc/150?img=30', hasStory: false },
-  { id: 104, name: 'Diana Prince', avatar: 'https://i.pravatar.cc/150?img=40', hasStory: true, storyImage: 'https://picsum.photos/id/26/800/1200' },
-  { id: 105, name: 'Ethan Hunt', avatar: 'https://i.pravatar.cc/150?img=50', hasStory: false },
-];
+import { userAPI, getCurrentUserData, getImageUrl, User } from '@/lib/api';
 
 // Local type definitions
 type StoryItem = {
@@ -34,6 +15,8 @@ type StoryItem = {
   created_at?: string;
 };
 
+const PLACEHOLDER_AVATAR = 'https://i.pravatar.cc/150?img=11';
+
 const StoryRow = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,15 +27,25 @@ const StoryRow = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [viewer, setViewer] = useState<StoryItem | null>(null);
   const [auth, setAuth] = useState(true); // Demo mode always authenticated
+  const [users, setUsers] = useState<User[]>([]);
   
-  // Demo current user
-  const currentUser = {
-    id: 999,
-    full_name: 'Demo User',
-    profile_picture: 'https://i.pravatar.cc/150?img=11'
-  };
-  
-  const myAvatar = currentUser?.profile_picture ?? PLACEHOLDER_AVATAR;
+  // Fetch users from API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const fetchedUsers = await userAPI.getAllUsers();
+        // Filter out the current user if needed, or just set all users
+        setUsers(fetchedUsers);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  // Use logged-in user profile for "Your story".
+  const currentUser = getCurrentUserData();
+  const myAvatar = getImageUrl(currentUser?.profile_picture) || PLACEHOLDER_AVATAR;
 
   // Load demo stories from localStorage
   useEffect(() => {
@@ -121,8 +114,8 @@ const StoryRow = () => {
       reader.onloadend = () => {
         const newStory: StoryItem = {
           id: Date.now(),
-          user_id: currentUser.id,
-          author_name: currentUser.full_name,
+          user_id: currentUser?.id,
+          author_name: currentUser?.full_name || currentUser?.email?.split('@')[0] || 'You',
           author_avatar: myAvatar,
           image_url: reader.result as string,
           created_at: new Date().toISOString(),
@@ -208,60 +201,37 @@ const StoryRow = () => {
             </span>
           </div>
 
-          {/* Demo stories for non-auth view - always show */}
-          {demoStories.map((story) => (
-            <button
-              type="button"
-              key={story.id}
-              onClick={() => setViewer({
-                id: story.id,
-                author_name: story.user,
-                image_url: story.storyImage,
-                author_avatar: story.image
-              })}
-              className="flex shrink-0 flex-col items-center gap-1.5 cursor-pointer rounded-lg p-0 text-left opacity-90 transition hover:opacity-100"
-            >
-              <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
-                <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
-                <img
-                  src={story.image}
-                  alt=""
-                  className="relative z-10 h-full w-full rounded-full border-2 border-transparent object-cover p-[1px]"
-                />
-              </span>
-              <span className="w-[76px] truncate text-center text-xs text-[var(--foreground)]">
-                {story.user}
-              </span>
-            </button>
-          ))}
+          {/* Auto imported user profiles */}
+          {users.map((user, index) => {
+            // Pseudo-randomly assign a story image for demo purposes
+            const hasStory = index % 2 === 0;
+            const storyImage = hasStory ? `https://picsum.photos/id/${10 + index}/800/1200` : undefined;
+            const avatarUrl = getImageUrl(user.profile_picture) || `https://i.pravatar.cc/150?img=${(index % 70) + 1}`;
+            const userName = user.full_name || user.email.split('@')[0];
 
-          {/* Demo friends with stories */}
-          {demoFriends.map((friend) => {
-            const storyImage = friend.hasStory ? friend.storyImage : undefined;
-            
             return (
               <button
                 type="button"
-                key={friend.id}
-                onClick={() => friend.hasStory && setViewer({
-                  id: friend.id,
-                  author_name: friend.name,
+                key={user.id}
+                onClick={() => hasStory && setViewer({
+                  id: user.id,
+                  author_name: userName,
                   image_url: storyImage!,
-                  author_avatar: friend.avatar
+                  author_avatar: avatarUrl
                 })}
-                disabled={!friend.hasStory}
-                title={friend.hasStory ? `View ${friend.name}'s story` : `${friend.name} — no story yet`}
+                disabled={!hasStory}
+                title={hasStory ? `View ${userName}'s story` : `${userName} — no story yet`}
                 className={`flex shrink-0 flex-col items-center gap-1.5 rounded-lg p-0 text-left transition ${
-                  friend.hasStory
+                  hasStory
                     ? 'cursor-pointer hover:opacity-90'
                     : 'cursor-default opacity-90'
                 }`}
               >
-                {friend.hasStory ? (
+                {hasStory ? (
                   <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
                     <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
                     <img
-                      src={friend.avatar}
+                      src={avatarUrl}
                       alt=""
                       className="relative z-10 h-full w-full rounded-full border-2 border-transparent object-cover p-[1px]"
                     />
@@ -269,18 +239,20 @@ const StoryRow = () => {
                 ) : (
                   <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full border-2 border-[var(--ig-border)] bg-[var(--background)] p-[2px]">
                     <img
-                      src={friend.avatar}
+                      src={avatarUrl}
                       alt=""
                       className="h-[58px] w-[58px] rounded-full object-cover"
                     />
                   </span>
                 )}
                 <span className="w-[76px] truncate text-center text-xs text-[var(--foreground)]">
-                  {friend.name.split(' ')[0]}
+                  {userName.split(' ')[0]}
                 </span>
               </button>
             );
           })}
+
+
         </div>
 
         {message && (
