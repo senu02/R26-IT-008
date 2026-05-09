@@ -23,6 +23,11 @@ import {
   Network,
   ListFilter,
   CalendarClock,
+  Brain,
+  TrendingUp as TrendUp,
+  TrendingDown as TrendDown,
+  Flame,
+  GraduationCap,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -46,12 +51,18 @@ import behaviorAPI, {
   WarningLevel,
   EventType,
   SuspendRequest,
+  PsychologicalPattern,
+  PSYCHOLOGICAL_PATTERNS,
   getWarningLevelLabel,
   getWarningLevelColor,
   getEventTypeColor,
   getNodeTypeColor,
+  getPsychologicalPatternLabel,
+  getPsychologicalPatternColor,
+  getRiskLevelColor,
   transformEventsToDailyData,
   transformProfilesToLevelData,
+  transformProfilesToPsychologicalData,
   transformEventsToTypeBreakdown,
   transformEventsToCategoryAverages,
   transformToOverviewStats,
@@ -83,6 +94,43 @@ const WarningBadge = ({ level }: { level: WarningLevel }) => {
     >
       {label}
     </span>
+  );
+};
+
+const PsychologicalBadge = ({ pattern, riskScore }: { pattern: string; riskScore: number }) => {
+  const color = getPsychologicalPatternColor(pattern as PsychologicalPattern);
+  const label = getPsychologicalPatternLabel(pattern as PsychologicalPattern);
+  const riskLevel = riskScore > 0.6 ? 'HIGH' : riskScore > 0.3 ? 'MEDIUM' : 'LOW';
+  const riskColor = getRiskLevelColor(riskLevel);
+  
+  // Icon based on pattern
+  const getIcon = () => {
+    switch (pattern) {
+      case 'escalating': return <TrendUp size={10} />;
+      case 'malicious': return <Flame size={10} />;
+      case 'recovering': return <TrendDown size={10} />;
+      case 'impulsive': return <Zap size={10} />;
+      case 'chronic_low': return <GraduationCap size={10} />;
+      default: return null;
+    }
+  };
+  
+  return (
+    <div className="flex items-center gap-1.5">
+      <span
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+        style={{ backgroundColor: `${color}20`, color, border: `0.5px solid ${color}40` }}
+      >
+        {getIcon()}
+        {label}
+      </span>
+      <span
+        className="px-1.5 py-0.5 rounded-full text-xs font-mono"
+        style={{ backgroundColor: `${riskColor}20`, color: riskColor }}
+      >
+        {(riskScore * 100).toFixed(0)}%
+      </span>
+    </div>
   );
 };
 
@@ -146,6 +194,88 @@ const StatCard = ({
   );
 };
 
+// Psychological Stats Card Component
+const PsychologicalStatsCard = ({ profiles }: { profiles: UserBehaviorProfile[] }) => {
+  const { colors } = useThemeColors();
+  const highRisk = profiles.filter(p => p.psychological_risk_score > 0.6).length;
+  const mediumRisk = profiles.filter(p => p.psychological_risk_score > 0.3 && p.psychological_risk_score <= 0.6).length;
+  const lowRisk = profiles.filter(p => p.psychological_risk_score <= 0.3).length;
+  const escalating = profiles.filter(p => p.psychological_pattern === 'escalating').length;
+  const malicious = profiles.filter(p => p.psychological_pattern === 'malicious').length;
+  const recovering = profiles.filter(p => p.psychological_pattern === 'recovering').length;
+  const impulsive = profiles.filter(p => p.psychological_pattern === 'impulsive').length;
+  
+  const patternData = transformProfilesToPsychologicalData(profiles);
+  
+  return (
+    <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: colors.text.primary }}>
+            <Brain size={16} style={{ color: colors.primary.main }} />
+            Psychological Risk Analysis
+          </h3>
+          <p className="text-xs" style={{ color: colors.text.tertiary }}>
+            AI-powered behavior pattern detection
+          </p>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="text-center p-2 rounded-lg" style={{ backgroundColor: colors.background.secondary }}>
+          <div className="text-lg font-bold text-red-500">{highRisk}</div>
+          <div className="text-xs" style={{ color: colors.text.tertiary }}>High Risk</div>
+        </div>
+        <div className="text-center p-2 rounded-lg" style={{ backgroundColor: colors.background.secondary }}>
+          <div className="text-lg font-bold text-orange-500">{mediumRisk}</div>
+          <div className="text-xs" style={{ color: colors.text.tertiary }}>Medium Risk</div>
+        </div>
+        <div className="text-center p-2 rounded-lg" style={{ backgroundColor: colors.background.secondary }}>
+          <div className="text-lg font-bold text-green-500">{lowRisk}</div>
+          <div className="text-xs" style={{ color: colors.text.tertiary }}>Low Risk</div>
+        </div>
+      </div>
+      
+      <div className="flex flex-wrap gap-3 text-xs mb-4">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"/> Escalating: {escalating}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-700"/> Malicious: {malicious}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"/> Recovering: {recovering}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500"/> Impulsive: {impulsive}</span>
+      </div>
+      
+      {/* Pattern Distribution Mini Chart */}
+      <div className="pt-3 border-t" style={{ borderColor: colors.border.primary }}>
+        <div className="flex justify-between text-xs mb-2" style={{ color: colors.text.tertiary }}>
+          <span>Pattern Distribution</span>
+        </div>
+        <div className="flex h-2 rounded-full overflow-hidden">
+          {patternData.data.map((count, i) => {
+            if (count === 0) return null;
+            const percentage = (count / profiles.length) * 100;
+            return (
+              <div
+                key={i}
+                style={{ width: `${percentage}%`, backgroundColor: patternData.colors[i] }}
+                className="h-full"
+                title={`${patternData.labels[i]}: ${count}`}
+              />
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {patternData.labels.map((label, i) => (
+            patternData.data[i] > 0 && (
+              <span key={label} className="text-xs" style={{ color: colors.text.tertiary }}>
+                {label}: {patternData.data[i]}
+              </span>
+            )
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─────────────────────────────────────────────
 // Suspend Modal
 // ─────────────────────────────────────────────
@@ -163,7 +293,6 @@ const SuspendModal = ({
   const [hours, setHours] = useState(24);
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
-
   const [confirmError, setConfirmError] = useState('');
 
   const handleConfirm = async () => {
@@ -171,7 +300,6 @@ const SuspendModal = ({
     setConfirmError('');
     try {
       await onConfirm({ hours, reason: reason || 'Manual suspension by admin.' });
-      // onConfirm (handleSuspend) closes modal by clearing suspendingProfile
       onClose();
     } catch (err: any) {
       setConfirmError(err?.message || 'Failed to suspend user. Please try again.');
@@ -200,8 +328,8 @@ const SuspendModal = ({
           >
             Suspending <strong style={{ color: colors.text.primary }}>
               {profile.user_email}
-            </strong> — currently {profile.toxic_count} violation(s), warning level:{' '}
-            <strong>{getWarningLevelLabel(profile.warning_level)}</strong>
+            </strong> — Pattern: <strong>{getPsychologicalPatternLabel(profile.psychological_pattern)}</strong>, 
+            Risk: {(profile.psychological_risk_score * 100).toFixed(0)}%
           </div>
 
           <div>
@@ -318,7 +446,7 @@ const Pagination = ({
 };
 
 // ─────────────────────────────────────────────
-// Profile detail drawer
+// Profile detail drawer (Updated with Psychological)
 // ─────────────────────────────────────────────
 
 const ProfileDrawer = ({
@@ -350,7 +478,6 @@ const ProfileDrawer = ({
         className="w-full max-w-lg h-full overflow-y-auto border-l shadow-2xl"
         style={{ backgroundColor: colors.background.primary, borderColor: colors.border.primary }}
       >
-        {/* Header */}
         <div
           className="sticky top-0 z-10 flex items-center justify-between p-5 border-b"
           style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}
@@ -365,15 +492,44 @@ const ProfileDrawer = ({
         </div>
 
         <div className="p-5 space-y-5">
-          {/* Warning + threshold */}
-          <div className="flex items-center gap-3">
+          {/* Warning + Psychological badges */}
+          <div className="flex items-center gap-3 flex-wrap">
             <WarningBadge level={profile.warning_level} />
+            <PsychologicalBadge pattern={profile.psychological_pattern} riskScore={profile.psychological_risk_score} />
             {profile.is_currently_suspended && (
               <span className="px-2 py-0.5 rounded-full text-xs font-medium border bg-red-500/15 text-red-400 border-red-500/30">
                 Suspended
               </span>
             )}
           </div>
+
+          {/* Psychological Analysis Section */}
+          {profile.psychological_summary && (
+            <div
+              className="p-4 rounded-lg"
+              style={{ backgroundColor: colors.background.secondary, border: `0.5px solid ${colors.border.primary}` }}
+            >
+              <h3 className="text-xs font-semibold mb-2 flex items-center gap-2" style={{ color: colors.text.secondary }}>
+                <Brain size={12} /> Psychological Analysis
+              </h3>
+              <p className="text-sm mb-3" style={{ color: colors.text.primary }}>
+                {profile.psychological_summary.summary}
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><span style={{ color: colors.text.tertiary }}>Impulsivity:</span> {(profile.impulsivity_score * 100).toFixed(0)}%</div>
+                <div><span style={{ color: colors.text.tertiary }}>Malice:</span> {(profile.malice_score * 100).toFixed(0)}%</div>
+                <div><span style={{ color: colors.text.tertiary }}>Escalation Risk:</span> {(profile.escalation_risk * 100).toFixed(0)}%</div>
+                <div><span style={{ color: colors.text.tertiary }}>Recovery:</span> {(profile.recovery_score * 100).toFixed(0)}%</div>
+              </div>
+              {profile.psychological_recommendation && (
+                <div className="mt-3 pt-3 border-t" style={{ borderColor: colors.border.primary }}>
+                  <p className="text-xs" style={{ color: colors.text.secondary }}>
+                    <strong>Recommendation:</strong> {profile.psychological_recommendation.reason}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Key stats */}
           <div className="grid grid-cols-2 gap-3">
@@ -394,7 +550,7 @@ const ProfileDrawer = ({
             ))}
           </div>
 
-          {/* Effective threshold — mirrors backend model logic */}
+          {/* Effective threshold */}
           <div
             className="p-4 rounded-lg"
             style={{ backgroundColor: colors.surface.primary, border: `0.5px solid ${colors.border.primary}` }}
@@ -412,7 +568,7 @@ const ProfileDrawer = ({
               />
             </div>
             <p className="text-xs mt-2" style={{ color: colors.text.tertiary }}>
-              Lower threshold = more sensitive. Escalates with each violation.
+              Lower threshold = more sensitive. Adjusted based on psychological pattern.
             </p>
           </div>
 
@@ -458,7 +614,7 @@ const ProfileDrawer = ({
                         {e.analysed_text}
                       </p>
                       <p className="text-xs mt-1" style={{ color: colors.text.tertiary }}>
-                        Score: {Math.round(e.toxicity_score * 100)}% · Threshold: {Math.round(e.threshold_used * 100)}%
+                        Score: {Math.round(e.toxicity_score * 100)}% · Psych Risk: {(e.psych_risk_at_event * 100).toFixed(0)}%
                       </p>
                     </div>
                     <span className="text-xs flex-shrink-0" style={{ color: colors.text.tertiary }}>
@@ -489,7 +645,7 @@ const ProfileDrawer = ({
                 style={{ backgroundColor: '#ef4444', color: 'white' }}
               >
                 <Ban size={13} />
-                Suspend user
+                Suspend user (Psychological based)
               </button>
             )}
           </div>
@@ -500,7 +656,7 @@ const ProfileDrawer = ({
 };
 
 // ─────────────────────────────────────────────
-// SNA Summary card
+// SNA Summary card (Updated with Psychological)
 // ─────────────────────────────────────────────
 
 const SNACard = ({ summary }: { summary: SNASummary | null }) => {
@@ -522,7 +678,7 @@ const SNACard = ({ summary }: { summary: SNASummary | null }) => {
             Social Network Analysis
           </h3>
           <p className="text-xs" style={{ color: colors.text.tertiary }}>
-            Interaction graph summary
+            Interaction graph with psychological metrics
           </p>
         </div>
         <Network size={16} style={{ color: colors.text.tertiary }} />
@@ -594,7 +750,7 @@ const SNACard = ({ summary }: { summary: SNASummary | null }) => {
 function ToxicityBehaviorContent() {
   const { colors } = useThemeColors();
 
-  // ── Data state ──
+  // Data state
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -604,9 +760,10 @@ function ToxicityBehaviorContent() {
   const [events, setEvents] = useState<BehaviorEvent[]>([]);
   const [snaSummary, setSnaSummary] = useState<SNASummary | null>(null);
 
-  // ── UI state ──
+  // UI state
   const [activeTab, setActiveTab] = useState<'profiles' | 'events' | 'sna'>('profiles');
   const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [psychPatternFilter, setPsychPatternFilter] = useState<string>('all');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [profilesPage, setProfilesPage] = useState(1);
@@ -615,7 +772,7 @@ function ToxicityBehaviorContent() {
   const [selectedProfile, setSelectedProfile] = useState<UserBehaviorProfile | null>(null);
   const [suspendingProfile, setSuspendingProfile] = useState<UserBehaviorProfile | null>(null);
 
-  // ── Fetch ──
+  // Fetch data
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
@@ -633,12 +790,11 @@ function ToxicityBehaviorContent() {
       setProfiles(profilesRes.results);
       setEvents(eventsRes.results);
 
-      // SNA summary — non-critical, don't fail the whole load
       try {
         const sna = await behaviorAPI.getSNASummary();
         setSnaSummary(sna);
       } catch {
-        // SNA might not have data yet — silently skip
+        // SNA might not have data yet
       }
     } catch (err: any) {
       setError(err.message ?? 'Failed to load behavior data.');
@@ -653,13 +809,12 @@ function ToxicityBehaviorContent() {
     fetchData();
   }, [fetchData]);
 
-  // ── Actions ──
+  // Actions
   const handleSuspend = useCallback(async (profileId: string, data: SuspendRequest) => {
     await behaviorAPI.suspendUser(profileId, data);
     const res = await behaviorAPI.getProfiles({ page_size: 200 });
     setProfiles(res.results);
     setSuspendingProfile(null);
-    // Update drawer if it was open for this profile
     setSelectedProfile((prev) =>
       prev?.id === profileId ? (res.results.find((p) => p.id === profileId) ?? null) : prev
     );
@@ -669,37 +824,38 @@ function ToxicityBehaviorContent() {
     await behaviorAPI.liftSuspension(profileId);
     const res = await behaviorAPI.getProfiles({ page_size: 200 });
     setProfiles(res.results);
-    // Update drawer if it was open for this profile
     setSelectedProfile((prev) =>
       prev?.id === profileId ? (res.results.find((p) => p.id === profileId) ?? null) : prev
     );
   }, []);
 
-  // ── Derived data ──
+  // Derived data
   const overviewStats = useMemo(() => transformToOverviewStats(profiles, events), [profiles, events]);
   const levelData    = useMemo(() => transformProfilesToLevelData(profiles), [profiles]);
+  const psychPatternData = useMemo(() => transformProfilesToPsychologicalData(profiles), [profiles]);
   const eventBreak   = useMemo(() => transformEventsToTypeBreakdown(events), [events]);
   const dailyData    = useMemo(() => transformEventsToDailyData(events), [events]);
   const catAverages  = useMemo(() => transformEventsToCategoryAverages(events), [events]);
 
-  // ── Filtered profiles ──
+  // Filtered profiles
   const filteredProfiles = useMemo(() => profiles.filter((p) => {
     if (levelFilter !== 'all' && p.warning_level !== levelFilter) return false;
+    if (psychPatternFilter !== 'all' && p.psychological_pattern !== psychPatternFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!p.user_email.toLowerCase().includes(q)) return false;
     }
     return true;
-  }), [profiles, levelFilter, searchQuery]);
+  }), [profiles, levelFilter, psychPatternFilter, searchQuery]);
 
   const paginatedProfiles = useMemo(
     () => filteredProfiles.slice((profilesPage - 1) * PAGE_SIZE, profilesPage * PAGE_SIZE),
     [filteredProfiles, profilesPage]
   );
 
-  useEffect(() => setProfilesPage(1), [levelFilter, searchQuery]);
+  useEffect(() => setProfilesPage(1), [levelFilter, psychPatternFilter, searchQuery]);
 
-  // ── Filtered events ──
+  // Filtered events
   const filteredEvents = useMemo(() => events.filter((e) => {
     if (eventTypeFilter !== 'all' && e.event_type !== eventTypeFilter) return false;
     if (searchQuery) {
@@ -717,7 +873,7 @@ function ToxicityBehaviorContent() {
 
   useEffect(() => setEventsPage(1), [eventTypeFilter, searchQuery]);
 
-  // ── Chart objects ──
+  // Chart objects
   const sharedOpts = {
     responsive: true,
     maintainAspectRatio: false,
@@ -738,6 +894,16 @@ function ToxicityBehaviorContent() {
     datasets: [{
       data: levelData.data,
       backgroundColor: levelData.colors.map((c) => `${c}cc`),
+      borderWidth: 0,
+      hoverOffset: 6,
+    }],
+  };
+
+  const psychChartData = {
+    labels: psychPatternData.labels,
+    datasets: [{
+      data: psychPatternData.data,
+      backgroundColor: psychPatternData.colors.map((c) => `${c}cc`),
       borderWidth: 0,
       hoverOffset: 6,
     }],
@@ -774,7 +940,7 @@ function ToxicityBehaviorContent() {
     }],
   };
 
-  // ── Loading/Error ──
+  // Loading/Error
   if (!mounted || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: colors.background.primary }}>
@@ -803,7 +969,7 @@ function ToxicityBehaviorContent() {
     );
   }
 
-  // ── Dashboard ──
+  // Dashboard
   return (
     <div className="space-y-6 pb-10" style={{ backgroundColor: colors.background.primary }}>
 
@@ -832,7 +998,7 @@ function ToxicityBehaviorContent() {
             Behavior Enforcement
           </h1>
           <p className="mt-0.5 text-sm" style={{ color: colors.text.secondary }}>
-            Track user warning levels, enforcement events, and network analysis.
+            Track user warning levels, psychological patterns, and network analysis.
           </p>
         </div>
         <button
@@ -846,23 +1012,23 @@ function ToxicityBehaviorContent() {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard title="Total profiles" value={overviewStats.totalProfiles} icon={Users} color="#8b5cf6" />
         <StatCard title="Total violations" value={overviewStats.totalViolations} icon={AlertTriangle} color="#ef4444" trend="up" />
         <StatCard title="Events blocked" value={overviewStats.totalBlocked} icon={Ban} color="#ef4444" trend="up" />
         <StatCard title="Currently suspended" value={overviewStats.totalSuspended} icon={CalendarClock} color="#7c3aed" trend="up" />
-        <StatCard title="At risk users" value={overviewStats.atRisk} icon={Zap} color="#f97316" sub="moderate + severe" />
+        <StatCard title="High Risk" value={overviewStats.highRiskUsers} icon={Brain} color="#ef4444" sub="Psych risk >60%" />
+        <StatCard title="Escalating" value={overviewStats.escalatingUsers} icon={TrendUp} color="#ef4444" sub="Getting worse" />
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-
+      {/* Charts row - Now with 3 charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Warning level doughnut */}
         <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>Warning levels</h3>
           <p className="text-xs mb-3" style={{ color: colors.text.tertiary }}>User distribution</p>
-          <div style={{ height: 180 }}>
+          <div style={{ height: 160 }}>
             <Doughnut data={levelChartData} options={{ ...sharedOpts, cutout: '65%' }} />
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
@@ -875,11 +1041,32 @@ function ToxicityBehaviorContent() {
           </div>
         </div>
 
+        {/* Psychological Pattern doughnut (NEW) */}
+        <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
+          <h3 className="font-semibold text-sm mb-1 flex items-center gap-2" style={{ color: colors.text.primary }}>
+            <Brain size={14} /> Psychological Patterns
+          </h3>
+          <p className="text-xs mb-3" style={{ color: colors.text.tertiary }}>AI-detected behavior patterns</p>
+          <div style={{ height: 160 }}>
+            <Doughnut data={psychChartData} options={{ ...sharedOpts, cutout: '65%' }} />
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
+            {psychPatternData.labels.map((label, i) => (
+              psychPatternData.data[i] > 0 && (
+                <span key={label} className="flex items-center gap-1 text-xs" style={{ color: colors.text.secondary }}>
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: psychPatternData.colors[i] }} />
+                  {label} ({psychPatternData.data[i]})
+                </span>
+              )
+            ))}
+          </div>
+        </div>
+
         {/* Event type doughnut */}
         <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>Event outcomes</h3>
           <p className="text-xs mb-3" style={{ color: colors.text.tertiary }}>All enforcement decisions</p>
-          <div style={{ height: 180 }}>
+          <div style={{ height: 160 }}>
             <Doughnut data={eventBreakData} options={{ ...sharedOpts, cutout: '65%' }} />
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
@@ -891,9 +1078,11 @@ function ToxicityBehaviorContent() {
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Daily stacked bar */}
-        <div className="lg:col-span-2 rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
+      {/* Daily stacked bar + Category Averages */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>Daily enforcement</h3>
           <p className="text-xs mb-3" style={{ color: colors.text.tertiary }}>Blocked / warned / suspended by day</p>
           <div className="flex gap-4 mb-3">
@@ -920,11 +1109,8 @@ function ToxicityBehaviorContent() {
             />
           </div>
         </div>
-      </div>
 
-      {/* Category averages + SNA */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Category scores bar */}
+        {/* Category averages bar */}
         <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>
             Avg category scores (blocked events)
@@ -946,8 +1132,11 @@ function ToxicityBehaviorContent() {
             />
           </div>
         </div>
+      </div>
 
-        {/* SNA summary */}
+      {/* Psychological Stats Card + SNA Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <PsychologicalStatsCard profiles={profiles} />
         <SNACard summary={snaSummary} />
       </div>
 
@@ -980,7 +1169,7 @@ function ToxicityBehaviorContent() {
           ))}
         </div>
 
-        {/* Filter bar — shared */}
+        {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="relative flex-1 min-w-48">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: colors.text.tertiary }} />
@@ -1002,20 +1191,30 @@ function ToxicityBehaviorContent() {
           {activeTab === 'profiles' && (
             <>
               <Filter size={13} style={{ color: colors.text.tertiary }} />
-              {(['all', ...WARNING_LEVEL_ORDER] as string[]).map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setLevelFilter(level)}
-                  className="px-2.5 py-1 rounded-full text-xs border transition-all"
-                  style={{
-                    backgroundColor: levelFilter === level ? colors.primary.main : 'transparent',
-                    color: levelFilter === level ? colors.primary.contrast : colors.text.secondary,
-                    borderColor: levelFilter === level ? colors.primary.main : colors.border.primary,
-                  }}
-                >
-                  {level === 'all' ? 'All levels' : getWarningLevelLabel(level as WarningLevel)}
-                </button>
-              ))}
+              {/* Warning Level Filter */}
+              <select
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value)}
+                className="px-2.5 py-1 rounded-full text-xs border"
+                style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary, color: colors.text.secondary }}
+              >
+                <option value="all">All levels</option>
+                {WARNING_LEVEL_ORDER.map(l => (
+                  <option key={l} value={l}>{getWarningLevelLabel(l)}</option>
+                ))}
+              </select>
+              {/* Psychological Pattern Filter (NEW) */}
+              <select
+                value={psychPatternFilter}
+                onChange={(e) => setPsychPatternFilter(e.target.value)}
+                className="px-2.5 py-1 rounded-full text-xs border"
+                style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary, color: colors.text.secondary }}
+              >
+                <option value="all">All patterns</option>
+                {PSYCHOLOGICAL_PATTERNS.map(p => (
+                  <option key={p} value={p}>{getPsychologicalPatternLabel(p)}</option>
+                ))}
+              </select>
             </>
           )}
 
@@ -1040,7 +1239,7 @@ function ToxicityBehaviorContent() {
           )}
         </div>
 
-        {/* ── Profiles tab ── */}
+        {/* Profiles Tab */}
         {activeTab === 'profiles' && (
           <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: colors.border.primary }}>
@@ -1057,7 +1256,7 @@ function ToxicityBehaviorContent() {
                 <table className="w-full text-sm">
                   <thead style={{ backgroundColor: colors.background.secondary }}>
                     <tr>
-                      {['User', 'Warning level', 'Violations', 'Blocked', 'Severity', 'Threshold', 'Status', ''].map((h) => (
+                      {['User', 'Warning', 'Psychological', 'Risk', 'Violations', 'Blocked', 'Severity', 'Threshold', 'Status', ''].map((h) => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: colors.text.tertiary }}>
                           {h}
                         </th>
@@ -1082,6 +1281,18 @@ function ToxicityBehaviorContent() {
                           </div>
                         </td>
                         <td className="px-4 py-3"><WarningBadge level={p.warning_level} /></td>
+                        <td className="px-4 py-3"><PsychologicalBadge pattern={p.psychological_pattern} riskScore={p.psychological_risk_score} /></td>
+                        <td className="px-4 py-3">
+                          <span 
+                            className="px-1.5 py-0.5 rounded-full text-xs font-mono"
+                            style={{
+                              backgroundColor: p.psychological_risk_score > 0.6 ? '#ef444420' : p.psychological_risk_score > 0.3 ? '#f9731620' : '#22c55e20',
+                              color: p.psychological_risk_score > 0.6 ? '#ef4444' : p.psychological_risk_score > 0.3 ? '#f97316' : '#22c55e',
+                            }}
+                          >
+                            {(p.psychological_risk_score * 100).toFixed(0)}%
+                          </span>
+                        </td>
                         <td className="px-4 py-3"><span style={{ color: colors.text.primary }}>{p.toxic_count}</span></td>
                         <td className="px-4 py-3"><span style={{ color: colors.text.primary }}>{p.blocked_count}</span></td>
                         <td className="px-4 py-3 min-w-28"><ScoreBar score={p.severity_score} /></td>
@@ -1135,7 +1346,7 @@ function ToxicityBehaviorContent() {
           </div>
         )}
 
-        {/* ── Events tab ── */}
+        {/* Events Tab - Updated with Psych Risk Column */}
         {activeTab === 'events' && (
           <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: colors.border.primary }}>
@@ -1152,7 +1363,7 @@ function ToxicityBehaviorContent() {
                 <table className="w-full text-sm">
                   <thead style={{ backgroundColor: colors.background.secondary }}>
                     <tr>
-                      {['User', 'Content', 'Outcome', 'Score', 'Threshold', 'Violations at event', 'Type', 'Time'].map((h) => (
+                      {['User', 'Content', 'Outcome', 'Psych Risk', 'Score', 'Threshold', 'Violations', 'Type', 'Time'].map((h) => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: colors.text.tertiary }}>
                           {h}
                         </th>
@@ -1179,6 +1390,17 @@ function ToxicityBehaviorContent() {
                           </p>
                         </td>
                         <td className="px-4 py-3"><EventBadge type={e.event_type} /></td>
+                        <td className="px-4 py-3">
+                          <span 
+                            className="px-1.5 py-0.5 rounded-full text-xs font-mono"
+                            style={{
+                              backgroundColor: e.psych_risk_at_event > 0.6 ? '#ef444420' : e.psych_risk_at_event > 0.3 ? '#f9731620' : '#22c55e20',
+                              color: e.psych_risk_at_event > 0.6 ? '#ef4444' : e.psych_risk_at_event > 0.3 ? '#f97316' : '#22c55e',
+                            }}
+                          >
+                            {(e.psych_risk_at_event * 100).toFixed(0)}%
+                          </span>
+                        </td>
                         <td className="px-4 py-3 min-w-24"><ScoreBar score={e.toxicity_score} /></td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-mono" style={{ color: colors.text.secondary }}>
@@ -1208,13 +1430,13 @@ function ToxicityBehaviorContent() {
           </div>
         )}
 
-        {/* ── SNA nodes tab ── */}
+        {/* SNA nodes tab - Updated with Psychological */}
         {activeTab === 'sna' && (
           <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
             <div className="px-4 py-3 border-b" style={{ borderColor: colors.border.primary }}>
               <h3 className="font-semibold text-sm" style={{ color: colors.text.primary }}>Network nodes</h3>
               <p className="text-xs mt-0.5" style={{ color: colors.text.tertiary }}>
-                Social network analysis — node centrality and influence metrics
+                Social network analysis — node centrality and psychological risk metrics
               </p>
             </div>
             {!snaSummary ? (
