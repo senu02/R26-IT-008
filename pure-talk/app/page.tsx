@@ -1,41 +1,67 @@
-'use client';
+// app/page.tsx
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+"use client";
 
-const socialServices = [
-  {
-    id: '01',
-    title: 'Brand Identity',
-    description:
-      'Profile systems, visual language, and creator identity tools that make users memorable.'
-  },
-  {
-    id: '02',
-    title: 'Web & Digital',
-    description:
-      'High-performance feed surfaces and interaction patterns that convert visitors to active members.'
-  },
-  {
-    id: '03',
-    title: 'Campaign Design',
-    description:
-      'Launch mechanics, social motion, and growth loops built for community impact.'
-  }
-];
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  ShieldCheck,
+  MessageCircleMore,
+  Globe2,
+  Sparkles,
+  BellRing,
+  Users,
+  Menu,
+  X,
+} from "lucide-react";
+import "./custom.css";
 
 const heroImages = [
-  'https://images.unsplash.com/photo-1523464862212-d6631d073194?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1546961329-78bef0414d7c?auto=format&fit=crop&w=1400&q=80'
+  "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1400&q=80",
+  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=80",
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1400&q=80",
+];
+
+const features = [
+  {
+    icon: <MessageCircleMore className="w-7 h-7" />,
+    title: "Real-Time Conversations",
+    description:
+      "Fast and seamless communication experience built for modern communities.",
+  },
+  {
+    icon: <ShieldCheck className="w-7 h-7" />,
+    title: "Secure & Private",
+    description:
+      "End-to-end protection and smart moderation for a safe digital environment.",
+  },
+  {
+    icon: <Globe2 className="w-7 h-7" />,
+    title: "Global Community",
+    description:
+      "Connect with creators, teams, and communities from anywhere in the world.",
+  },
+];
+
+const stats = [
+  {
+    title: "120K+",
+    label: "Active Users",
+  },
+  {
+    title: "4.9/5",
+    label: "User Experience",
+  },
+  {
+    title: "99.9%",
+    label: "Platform Uptime",
+  },
 ];
 
 export default function Home() {
   const [activeHeroImage, setActiveHeroImage] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -46,160 +72,246 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#050507] text-white overflow-x-hidden">
-      <div className="pointer-events-none fixed inset-0 opacity-45 bg-[radial-gradient(circle_at_22%_8%,#6e41ff55,transparent_35%),radial-gradient(circle_at_62%_55%,#4020b833,transparent_35%),radial-gradient(circle_at_85%_10%,#ffffff14,transparent_28%)]" />
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/45 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <p className="text-xl leading-tight font-semibold tracking-[0.18em]">
-            PURE<br />TALK
-          </p>
-          <nav className="hidden md:flex items-center gap-10 text-xs tracking-[0.24em] text-white/70 uppercase">
-            <a href="/home" className="hover:text-white transition-colors">Feed</a>
-            <a href="/users/friends" className="hover:text-white transition-colors">Friends</a>
-            <a href="/users/posts" className="hover:text-white transition-colors">Posts</a>
-            <a href="/users/notifications" className="hover:text-white transition-colors">Notifications</a>
-          </nav>
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center rounded-md border border-white/30 px-5 py-2 text-sm tracking-[0.12em] uppercase hover:bg-white/10 transition-colors"
-          >
-            Sign In
+    <div className="min-h-screen bg-dark-main text-gray-200 overflow-hidden">
+      {/* Background effects */}
+      <div className="hero-bg" />
+      <div className="hero-glow-one" />
+      <div className="hero-glow-two" />
+
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-white/5 backdrop-blur-xl bg-gray-900/70">
+        <div className="container--90 py--20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-[42px] h-[42px] rounded-full bg-dark-blue-gradient flex items-center justify-center text-white font-semibold text--18">
+              P
+            </div>
+            <div>
+              <h1 className="text--24 font-semibold tracking-wide text-white">
+                PureTalk
+              </h1>
+              <p className="text--12 text-gray-400">Communication Platform</p>
+            </div>
           </Link>
+
+          {/* Desktop Nav */}
+          <nav className="hidden lg:flex items-center space--40">
+            <Link href="/" className="nav-link-dark">
+              Home
+            </Link>
+            <Link href="/features" className="nav-link-dark">
+              Features
+            </Link>
+            <Link href="/about" className="nav-link-dark">
+              About
+            </Link>
+            <Link href="/contact" className="nav-link-dark">
+              Contact
+            </Link>
+          </nav>
+
+          {/* Actions */}
+          <div className="hidden lg:flex items-center space--20">
+            <Link href="/auth/login" className="secondary-btn-dark">
+              Login
+            </Link>
+            <Link href="/auth/register" className="primary-btn-dark">
+              Sign Up
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="lg:hidden w-11 h-11 rounded-full border border-white/10 flex items-center justify-center text-white"
+          >
+            {menuOpen ? <X /> : <Menu />}
+          </button>
         </div>
+
+        {/* Mobile Navigation */}
+        {menuOpen && (
+          <div className="lg:hidden border-t border-white/5 bg-gray-900/90 backdrop-blur-md">
+            <div className="container--90 py--30 flex flex-col space--20">
+              <Link href="/" className="mobile-link-dark">
+                Home
+              </Link>
+              <Link href="/features" className="mobile-link-dark">
+                Features
+              </Link>
+              <Link href="/about" className="mobile-link-dark">
+                About
+              </Link>
+              <Link href="/contact" className="mobile-link-dark">
+                Contact
+              </Link>
+              <div className="flex flex-col space--15 pt--10">
+                <Link
+                  href="/auth/login"
+                  className="secondary-btn-dark text-center"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/auth/register"
+                  className="primary-btn-dark text-center"
+                >
+                  Create Account
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="relative z-10">
-        <section className="max-w-7xl mx-auto px-6 pt-16 md:pt-24 pb-14 border-b border-white/10">
-          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-stretch">
+        {/* Hero Section */}
+        <section className="container--90 pt--100 pb--100">
+          <div className="grid lg:grid-cols-2 items-center space--80">
+            {/* Left Column */}
             <div>
-              <p className="text-xs tracking-[0.35em] text-white/60 uppercase">
-                Making communities unforgettable
-              </p>
-              <h1 className="mt-5 text-[clamp(72px,15vw,170px)] font-semibold leading-[0.86] tracking-tight uppercase">
-                Pure
-                <br />
-                Talk
-              </h1>
-              <div className="mt-7 grid md:grid-cols-2 gap-8 items-end">
-                <p className="text-sm tracking-[0.24em] uppercase text-white/70 leading-relaxed">
-                  Social media design and growth studio
-                  <br />
-                  est. 2026 - Global
-                </p>
-                <p className="hidden md:block text-right text-6xl font-light italic text-white/15">Pure Talk</p>
-              </div>
-            </div>
-
-            <div className="relative min-h-[380px] overflow-hidden bg-transparent">
-              {heroImages.map((image, index) => (
-                <img
-                  key={image}
-                  src={image}
-                  alt="People connecting on social platform"
-                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 scale-[1.06] animate-hero-pan ${
-                    activeHeroImage === index ? 'opacity-100' : 'opacity-0'
-                  }`}
-                />
-              ))}
-              <div className="absolute inset-0 bg-linear-to-t from-[#050507] via-[#050507]/45 to-transparent" />
-              <div className="absolute inset-0 bg-linear-to-r from-[#6e41ff2a] to-transparent" />
-              <div className="absolute top-4 left-4">
-                <span className="inline-flex items-center rounded-full border border-white/25 bg-black/35 px-3 py-1 text-[11px] tracking-[0.2em] uppercase text-white/80 backdrop-blur-md">
-                  Trending Now
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan/30 bg-gray-800/50 px--20 py--10 shadow-sm backdrop-blur-sm">
+                <Sparkles className="w-4 h-4 text-cyan" />
+                <span className="text--14 font-medium text-cyan">
+                  The Future of Digital Communication
                 </span>
               </div>
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <p className="text-xs tracking-[0.28em] uppercase text-white/60">Live Community</p>
-                <p className="mt-2 text-2xl font-semibold text-white">Real people. Real conversations.</p>
+              <h1 className="hero-title-dark mt--30">
+                Connect.
+                <br />
+                Communicate.
+                <br />
+                Build Communities.
+              </h1>
+              <p className="text--20 text-gray-300 max-w-[650px] mt--30 leading-relaxed">
+                PureTalk is a modern communication platform designed for
+                authentic conversations, private communities, and seamless
+                collaboration experiences.
+              </p>
+              <div className="flex flex-wrap items-center gap-4 mt--50">
+                <Link href="/auth/register" className="primary-btn-large-dark">
+                  Get Started
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+                <Link href="/auth/login" className="secondary-btn-large-dark">
+                  Login
+                </Link>
               </div>
-              <div className="absolute bottom-5 right-6 flex gap-2">
-                {heroImages.map((_, index) => (
-                  <span
-                    key={`dot-${index}`}
-                    className={`h-1.5 rounded-full transition-all ${
-                      activeHeroImage === index ? 'w-7 bg-white' : 'w-3 bg-white/40'
-                    }`}
-                  />
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-3 gap-5 mt--50">
+                {stats.map((item) => (
+                  <div
+                    key={item.title}
+                    className="rounded-3xl border border-white/10 bg-gray-800/50 backdrop-blur-sm px--25 py--25 shadow-md"
+                  >
+                    <h3 className="text--40 font-semibold text-white">
+                      {item.title}
+                    </h3>
+                    <p className="text--15 text-gray-400 mt-1">{item.label}</p>
+                  </div>
                 ))}
               </div>
             </div>
+
+            {/* Right Column (Hero Image Carousel) */}
+            <div className="relative">
+              <div className="hero-image-wrapper-dark">
+                {heroImages.map((image, index) => (
+                  <img
+                    key={image}
+                    src={image}
+                    alt="PureTalk Community"
+                    className={`hero-image ${
+                      activeHeroImage === index ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                ))}
+                <div className="hero-overlay-dark" />
+
+                {/* Floating Cards */}
+                <div className="floating-card-dark top-card">
+                  <BellRing className="w-5 h-5 text-cyan" />
+                  <div>
+                    <h4 className="text--16 font-semibold text-white">
+                      Smart Notifications
+                    </h4>
+                    <p className="text--13 text-gray-300">
+                      Stay connected in real-time
+                    </p>
+                  </div>
+                </div>
+                <div className="floating-card-dark bottom-card">
+                  <Users className="w-5 h-5 text-cyan" />
+                  <div>
+                    <h4 className="text--16 font-semibold text-white">
+                      Community Driven
+                    </h4>
+                    <p className="text--13 text-gray-300">
+                      Build meaningful engagement
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="border-b border-white/10 py-4 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-6 text-xs tracking-[0.3em] uppercase text-white/45 whitespace-nowrap marquee-track">
-            Brand Identity · Web Design · Motion · Social Strategy · Creator Growth ·
+        {/* Features Section */}
+        <section className="container--90 pb--100">
+          <div className="text-center mb--50">
+            <p className="text--15 uppercase tracking-[0.3em] text-cyan font-semibold">
+              Platform Features
+            </p>
+            <h2 className="text--56 font-semibold text-white mt--20">
+              Everything You Need
+            </h2>
           </div>
-        </section>
-
-        <section id="services" className="max-w-7xl mx-auto px-6 py-14 md:py-20 border-b border-white/10">
-          <p className="text-xs tracking-[0.35em] uppercase text-white/50 mb-8">What We Do</p>
-          <div className="grid md:grid-cols-3">
-            {socialServices.map((service) => (
-              <article key={service.id} className="py-10 md:py-8 pr-8 border-r border-white/10 last:border-r-0">
-                <p className="text-xs tracking-[0.3em] text-white/45 mb-5">{service.id}</p>
-                <h3 className="text-4xl leading-[1.02] font-medium">{service.title}</h3>
-                <p className="text-white/60 mt-5 max-w-sm">{service.description}</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 space--30">
+            {features.map((feature) => (
+              <div key={feature.title} className="feature-card-dark">
+                <div className="feature-icon-dark">{feature.icon}</div>
+                <h3 className="text--28 font-semibold text-white mt--20">
+                  {feature.title}
+                </h3>
+                <p className="text--17 text-gray-300 mt--15 leading-relaxed">
+                  {feature.description}
+                </p>
                 <Link
-                  href="/home"
-                  className="mt-7 inline-flex items-center gap-2 text-sm tracking-[0.2em] uppercase text-violet-300 hover:text-violet-200"
+                  href="/features"
+                  className="inline-flex items-center gap-2 text-cyan mt--20 text--15 font-semibold hover:underline"
                 >
-                  Explore <ArrowRight className="w-4 h-4" />
+                  Learn More
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
-              </article>
+              </div>
             ))}
           </div>
         </section>
 
-        <section className="max-w-7xl mx-auto px-6 py-14 md:py-20">
-          <div className="rounded-2xl border border-white/12 bg-white/3 px-7 py-10 md:px-10 md:py-12 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-            <h2 className="text-5xl md:text-6xl font-semibold leading-[0.95]">
-              Ready to be
-              <br />
-              <span className="italic text-white/75">Unforgettable?</span>
-            </h2>
-            <p className="text-white/60 max-w-xl">
-              Pure Talk is a social media platform focused on authentic conversations, creator growth, and safe communities.
-            </p>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-2 rounded-md border border-white/30 px-6 py-3 text-sm tracking-[0.18em] uppercase hover:bg-white/10 transition-colors"
-            >
-              Sign In <ArrowRight className="w-4 h-4" />
-            </Link>
+        {/* CTA Section */}
+        <section className="container--90 pb--100">
+          <div className="cta-section-dark">
+            <div>
+              <p className="text--15 uppercase tracking-[0.3em] text-cyan/80">
+                Join PureTalk Today
+              </p>
+              <h2 className="text--56 font-semibold text-white mt--20">
+                Start Your
+                <br />
+                Communication Journey
+              </h2>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <Link href="/auth/register" className="cta-btn-dark-primary">
+                Create Account
+              </Link>
+              <Link href="/auth/login" className="cta-btn-dark-secondary">
+                Login
+              </Link>
+            </div>
           </div>
         </section>
       </main>
-
-      <style jsx global>{`
-        @keyframes hero-pan {
-          0% {
-            transform: scale(1.06) translate3d(0, 0, 0);
-          }
-          50% {
-            transform: scale(1.12) translate3d(-1.5%, -1%, 0);
-          }
-          100% {
-            transform: scale(1.08) translate3d(1%, 0.8%, 0);
-          }
-        }
-        .animate-hero-pan {
-          animation: hero-pan 8s ease-in-out infinite alternate;
-        }
-        @keyframes marquee {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-50%);
-          }
-        }
-        .marquee-track {
-          width: max-content;
-          display: inline-block;
-          animation: marquee 18s linear infinite;
-        }
-      `}</style>
     </div>
   );
 }
