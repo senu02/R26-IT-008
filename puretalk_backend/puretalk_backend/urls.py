@@ -14,6 +14,11 @@ urlpatterns = [
     path('api/', include('friends.urls')), 
     path('api/videos/', include('videos.urls')),
     path('api/', include('posts.urls')),  # Posts URLs
+    path('api/', include('stories.urls')),
+    path('api/', include('toxicity_detection.urls')),
+    path('api/', include('toxicity_behavior.urls')), 
+    path('api/shield/', include('adptiveShelding.urls')),
+    path('api/toxicity_image/', include('toxicity_image.urls')),
 ]
 
 if settings.DEBUG:

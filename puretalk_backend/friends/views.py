@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from .models import FriendRequest, Friendship, FriendBlock
 from .serializers import (
     FriendRequestSerializer, SendFriendRequestSerializer,
-    FriendRequestActionSerializer, FriendListSerializer,
+    FriendRequestActionSerializer,
     PendingRequestSerializer, SentRequestSerializer,
     BlockUserSerializer, UnblockUserSerializer, FriendSuggestionSerializer
 )
@@ -112,16 +112,32 @@ class FriendViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'], url_path='list')
     def friends_list(self, request):
-        """Get all friends of the current user"""
-        friendships = Friendship.objects.filter(
-            user=request.user
-        ).select_related('friend')
-        
-        serializer = FriendListSerializer(friendships, many=True)
-        return Response({
-            'count': friendships.count(),
-            'results': serializer.data
-        })
+        """Get all friends of the current user (both directions of friendship rows)."""
+        as_owner = Friendship.objects.filter(user=request.user).select_related('friend')
+        as_friend = Friendship.objects.filter(friend=request.user).select_related('user')
+
+        other_by_id = {}
+        for row in as_owner:
+            other_by_id[row.friend_id] = row.friend
+        for row in as_friend:
+            other_by_id[row.user_id] = row.user
+
+        results = []
+        for friend_user in sorted(
+            other_by_id.values(),
+            key=lambda u: (u.get_full_name_display() or u.email or '').lower(),
+        ):
+            results.append(
+                {
+                    'id': friend_user.id,
+                    'friend': friend_user.id,
+                    'friend_detail': UserProfileSerializer(
+                        friend_user, context={'request': request}
+                    ).data,
+                }
+            )
+
+        return Response({'count': len(results), 'results': results})
     
     @action(detail=False, methods=['get'], url_path='suggestions')
     def suggestions(self, request):
@@ -172,6 +188,67 @@ class FriendViewSet(viewsets.ViewSet):
         serializer = FriendSuggestionSerializer(results, many=True)
         return Response({
             'count': len(results),
+            'results': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'], url_path='discover')
+    def discover_users(self, request):
+        """Get all users that the current user can add as friends"""
+        current_user = request.user
+        
+        # Get IDs of existing friends
+        friend_ids_from_user = Friendship.objects.filter(user=current_user).values_list('friend_id', flat=True)
+        friend_ids_to_user = Friendship.objects.filter(friend=current_user).values_list('user_id', flat=True)
+        friend_ids = set(list(friend_ids_from_user) + list(friend_ids_to_user))
+        
+        # Get IDs of users who have pending requests (sent or received)
+        sent_pending_ids = FriendRequest.objects.filter(
+            from_user=current_user,
+            status='pending'
+        ).values_list('to_user_id', flat=True)
+        
+        received_pending_ids = FriendRequest.objects.filter(
+            to_user=current_user,
+            status='pending'
+        ).values_list('from_user_id', flat=True)
+        
+        pending_ids = set(list(sent_pending_ids) + list(received_pending_ids))
+        
+        # Get IDs of blocked users
+        blocked_by_me = FriendBlock.objects.filter(blocker=current_user).values_list('blocked_id', flat=True)
+        blocked_me = FriendBlock.objects.filter(blocked=current_user).values_list('blocker_id', flat=True)
+        blocked_ids = set(list(blocked_by_me) + list(blocked_me))
+        
+        # Exclude all these users plus self
+        exclude_ids = {current_user.id} | friend_ids | pending_ids | blocked_ids
+        
+        # Get other active users
+        users = User.objects.filter(
+            is_active=True,
+            account_status='active'
+        ).exclude(
+            id__in=exclude_ids
+        )
+        
+        # Role-based filtering
+        if current_user.role == 'user':
+            users = users.filter(role='user')
+        elif current_user.role == 'moderator':
+            # Moderators can see everyone except super admins
+            users = users.exclude(role='super_admin')
+        elif current_user.role == 'admin':
+            # Admins can see everyone except super admins
+            users = users.exclude(role='super_admin')
+        
+        # Order by newest first
+        users = users.order_by('-date_joined')
+        
+        # Limit to 50 users for performance
+        users = users[:50]
+        
+        serializer = UserProfileSerializer(users, many=True, context={'request': request})
+        return Response({
+            'count': len(users),
             'results': serializer.data
         })
     

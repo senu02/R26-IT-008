@@ -375,14 +375,160 @@ export const canManageUsers = (): boolean => {
   return role === 'admin' || role === 'super_admin';
 };
 
-export default { 
-  authAPI, 
-  userAPI, 
-  isAuthenticated, 
-  getCurrentUserData, 
+// ─────────────────────────────────────────────────────────────────────────────
+// Adaptive Shielding (AESM) Types & API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface AnalyzeResult {
+  strategy: 'Safe' | 'Warning' | 'Blurring' | 'Filtering' | 'Rewriting';
+  output: string;
+  toxicity: number;
+  behavior: number;
+  final_score: number;
+  support?: string;
+  new_toxicity?: number;
+}
+
+export interface ToxicityRecord {
+  id: number;
+  message: string;
+  strategy: string;
+  toxicity_score: number;
+  behavior_score: number;
+  final_score: number;
+  processed_output: string;
+  created_at: string;
+}
+
+export interface ShieldAdminRecord {
+  id: number;
+  user: string;
+  user_full_name: string;
+  message: string;
+  strategy: string;
+  toxicity_score: number;
+  behavior_score: number;
+  final_score: number;
+  processed_output: string;
+  created_at: string;
+}
+
+export const adaptiveShieldingAPI = {
+  /**
+   * POST /api/shield/analyze/
+   * Analyze a message for toxicity and get AESM strategy result.
+   */
+  analyzeMessage: async (text: string): Promise<AnalyzeResult> => {
+    return await apiCall<AnalyzeResult>('/api/shield/analyze/', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  },
+
+  /**
+   * GET /api/shield/history/
+   * Fetch the current user's toxicity record history.
+   */
+  getHistory: async (): Promise<ToxicityRecord[]> => {
+    return await apiCall<ToxicityRecord[]>('/api/shield/history/');
+  },
+
+  /**
+   * GET /api/shield/behavior-score/
+   * Fetch the current user's averaged behavior score.
+   */
+  getBehaviorScore: async (): Promise<{ behavior_score: number; based_on_messages: number }> => {
+    return await apiCall<{ behavior_score: number; based_on_messages: number }>(
+      '/api/shield/behavior-score/'
+    );
+  },
+
+  /**
+   * GET /api/shield/admin-records/
+   * Fetch all toxicity records (admin/moderator only).
+   */
+  getAdminRecords: async (): Promise<{ count: number; records: ShieldAdminRecord[] }> => {
+    return await apiCall<{ count: number; records: ShieldAdminRecord[] }>(
+      '/api/shield/admin-records/'
+    );
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Posts API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface FeedPost {
+  id: number;
+  user: number;
+  user_full_name?: string;
+  user_profile_picture?: string | null;
+  content: string;
+  image?: string | null;
+  created_at: string;
+  likes_count?: number;
+  comments_count?: number;
+  is_liked?: boolean;
+}
+
+export interface Comment {
+  id: number;
+  user: number;
+  user_full_name?: string;
+  user_profile_picture?: string | null;
+  post: number;
+  content: string;
+  created_at: string;
+}
+
+export const postsAPI = {
+  getFeed: async (): Promise<FeedPost[]> => {
+    const response = await apiCall<{ results?: FeedPost[] } | FeedPost[]>('/api/posts/feed/');
+    if (Array.isArray(response)) return response;
+    return (response as { results?: FeedPost[] }).results || [];
+  },
+
+  createPost: async (formData: FormData): Promise<FeedPost> => {
+    return await apiCall<FeedPost>('/api/posts/', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  likePost: async (postId: number): Promise<{ liked: boolean; likes_count: number }> => {
+    return await apiCall<{ liked: boolean; likes_count: number }>(`/api/posts/${postId}/like/`, {
+      method: 'POST',
+    });
+  },
+
+  getComments: async (postId: number): Promise<Comment[]> => {
+    const response = await apiCall<{ results?: Comment[] } | Comment[]>(`/api/posts/${postId}/comments/`);
+    if (Array.isArray(response)) return response;
+    return (response as { results?: Comment[] }).results || [];
+  },
+
+  createComment: async (postId: number, content: string): Promise<Comment> => {
+    return await apiCall<Comment>(`/api/posts/${postId}/comments/`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  },
+
+  deletePost: async (postId: number): Promise<void> => {
+    await apiCall<void>(`/api/posts/${postId}/`, { method: 'DELETE' });
+  },
+};
+
+export default {
+  authAPI,
+  userAPI,
+  postsAPI,
+  adaptiveShieldingAPI,
+  isAuthenticated,
+  getCurrentUserData,
   getUserRole,
-  isAdmin, 
+  isAdmin,
   isModerator,
   canManageUsers,
   getImageUrl
-};
+};

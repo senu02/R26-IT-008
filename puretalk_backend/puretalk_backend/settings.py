@@ -44,7 +44,12 @@ INSTALLED_APPS = [
     'users',
     'friends',
     'videos',
-    'posts'
+    'posts',
+    'stories',
+    'toxicity_detection',
+    'toxicity_behavior',
+    'adptiveShelding',
+    'toxicity_image',
 ]
 
 CORS_ALLOWED_ORIGINS = [

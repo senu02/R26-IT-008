@@ -13,7 +13,8 @@ import {
   Menu,
   Moon,
   Sun,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -21,16 +22,43 @@ const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
     setMounted(true);
+    
+    // Demo user data - using localStorage to persist avatar preference
+    const savedAvatar = localStorage.getItem('demo_user_avatar');
+    if (savedAvatar) {
+      setUserAvatar(savedAvatar);
+    } else {
+      // Set random demo avatar
+      const demoAvatars = [
+        'https://i.pravatar.cc/150?img=1',
+        'https://i.pravatar.cc/150?img=2',
+        'https://i.pravatar.cc/150?img=3',
+        'https://i.pravatar.cc/150?img=4',
+        'https://i.pravatar.cc/150?img=5',
+        'https://i.pravatar.cc/150?img=11',
+        'https://i.pravatar.cc/150?img=12',
+        'https://i.pravatar.cc/150?img=13'
+      ];
+      const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
+      setUserAvatar(randomAvatar);
+      localStorage.setItem('demo_user_avatar', randomAvatar);
+    }
+
+    // Demo notifications count - random between 0-5 for demo
+    const demoUnreadCount = Math.floor(Math.random() * 6);
+    setUnreadNotifications(demoUnreadCount);
   }, []);
 
   return (
     <>
-      <div 
-        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col overflow-y-auto border-r border-[#fd297b]/20 bg-white text-black dark:bg-gradient-to-b dark:from-[#fd297b] dark:to-[#ff655b] dark:text-white dark:border-white/20 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300"
+      <div
+        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col overflow-y-auto border-r border-[var(--ig-border)] bg-[var(--background)] text-[var(--foreground)] lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-200"
         style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
       >
         
@@ -38,28 +66,19 @@ const Sidebar = () => {
         <div className="mb-10 mt-2 flex w-full items-center justify-center lg:justify-start lg:pl-3">
           
           {/* Desktop Logo */}
-          <Link href="/home" className="hidden lg:flex items-center gap-2 group cursor-pointer relative">
-            {/* Custom Glowing App Icon */}
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-[0.8rem] bg-gradient-to-br from-[#fd297b] to-[#ff655b] text-white shadow-lg shadow-[#fd297b]/40 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110">
-               <span className="font-bold text-sm tracking-tighter">PT</span>
+          <Link href="/home" className="hidden lg:flex items-center gap-3 group cursor-pointer relative py-1">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--ig-border)] bg-[var(--background)] text-[var(--foreground)] transition-opacity group-hover:opacity-70">
+              <span className="font-bold text-sm tracking-tight">PT</span>
             </div>
-            
-            {/* Gradient Typography */}
-            <h1 className="text-[1.65rem] font-extrabold tracking-tight flex items-center">
-              <span className="bg-gradient-to-r from-[#fd297b] to-[#ff655b] bg-clip-text text-transparent transition-opacity duration-300 group-hover:opacity-80">Pure</span>
-              <span className="text-neutral-900 dark:text-white transition-colors duration-300">Talk</span>
+            <h1 className="font-semibold tracking-tight text-[1.35rem] text-[var(--foreground)]">
+              PureTalk
             </h1>
-            
-            {/* Ambient Background Glow Effect */}
-            <div className="absolute -inset-4 rounded-full bg-[#fd297b]/15 blur-xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none" />
           </Link>
 
           {/* Mobile Logo Collapse */}
           <Link href="/home" className="block lg:hidden group relative">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] bg-gradient-to-tr from-[#fd297b] via-[#ff655b] to-[#f09433] p-[2px] shadow-lg shadow-[#fd297b]/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
-               <div className="flex h-full w-full items-center justify-center rounded-[1.10rem] bg-white dark:bg-black/20 backdrop-blur-md">
-                  <span className="font-extrabold text-sm bg-gradient-to-br from-[#fd297b] to-[#f09433] bg-clip-text text-transparent">PT</span>
-               </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--ig-border)] bg-[var(--background)] transition-opacity group-hover:opacity-70">
+              <span className="font-bold text-xs tracking-tight text-[var(--foreground)]">PT</span>
             </div>
           </Link>
         </div>
@@ -67,14 +86,14 @@ const Sidebar = () => {
         {/* Navigation */}
         <div className="flex w-full flex-col gap-2">
           <NavItem href="/home" icon={<Home className="h-6 w-6" />} label="Home" active={pathname === '/home'} />
-          <NavItem href="#" icon={<Search className="h-6 w-6" />} label="Search" />
+          <NavItem href="/users/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
           <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
-          <NavItem href="#" icon={<Heart className="h-6 w-6" />} label="Notifications" />
+          <NavItem href="/notifications" icon={<Heart className="h-6 w-6" />} label="Notifications" active={pathname === '/notifications'} badge={unreadNotifications} />
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
-            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src="https://i.pravatar.cc/150?img=11" alt="profile" className="h-full w-full object-cover" /></div>} 
+            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src={userAvatar} alt="profile" className="h-full w-full object-cover" /></div>} 
             label="Profile" 
             active={pathname === '/users/user-profile'}
           />
@@ -85,15 +104,19 @@ const Sidebar = () => {
           
           {/* Pop-up More Menu */}
           {showMoreMenu && (
-            <div className="absolute bottom-14 left-0 flex w-[220px] flex-col rounded-xl bg-white dark:bg-gradient-to-b dark:from-[#fd297b] dark:to-[#ff655b] p-2 shadow-xl border border-neutral-100 dark:border-white/20">
-              <Link href="/users/user-settings" className="flex items-center gap-3 rounded-lg p-3 hover:bg-black hover:text-white text-sm">
+            <div className="absolute bottom-14 left-0 flex w-[220px] flex-col rounded-lg bg-[var(--background)] p-1 shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-[var(--ig-border)] dark:shadow-[0_4px_12px_rgba(255,255,255,0.08)]">
+              <Link
+                href="/users/user-settings"
+                className="flex items-center gap-3 rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+              >
                 <Settings className="h-5 w-5" />
                 Settings
               </Link>
-              
-              <button 
+
+              <button
+                type="button"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="flex items-center justify-between w-full rounded-lg p-3 hover:bg-black hover:text-white text-sm"
+                className="flex w-full items-center justify-between rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10"
               >
                 <div className="flex items-center gap-3">
                   {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -103,9 +126,10 @@ const Sidebar = () => {
             </div>
           )}
 
-          <button 
+          <button
+            type="button"
             onClick={() => setShowMoreMenu(!showMoreMenu)}
-            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black hover:text-white lg:justify-start ${showMoreMenu ? 'font-bold text-[#fd297b]' : 'font-normal hover:text-white dark:hover:text-white'}`}
+            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${showMoreMenu ? 'font-bold' : 'font-normal'}`}
           >
             <div className={`transition-transform group-hover:scale-105 ${showMoreMenu ? '*:stroke-[3px]' : ''}`}>
               <Menu className="h-6 w-6" />
@@ -119,14 +143,19 @@ const Sidebar = () => {
   );
 };
 
-const NavItem = ({ href, icon, label, active = false }: { href: string, icon: React.ReactNode, label: string, active?: boolean }) => {
+const NavItem = ({ href, icon, label, active = false, badge }: { href: string, icon: React.ReactNode, label: string, active?: boolean, badge?: number }) => {
   return (
-    <Link 
-      href={href} 
-      className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black hover:text-white lg:justify-start ${active ? 'font-bold text-[#fd297b]' : 'font-normal hover:text-white dark:hover:text-white'}`}
+    <Link
+      href={href}
+      className={`group relative flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${active ? 'font-bold' : 'font-normal'}`}
     >
-      <div className={`transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px]' : ''}`}>
+      <div className={`relative transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px]' : ''}`}>
         {icon}
+        {badge !== undefined && badge > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)]">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
       </div>
       <span className="hidden lg:block text-[15px]">{label}</span>
     </Link>

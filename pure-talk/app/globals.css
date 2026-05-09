@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafa;
+  --foreground: #262626;
+  --ig-border: #dbdbdb;
+  --ig-link: #0095f6;
+  --ig-muted: #8e8e8e;
 }
 
 @theme inline {
@@ -12,11 +15,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Aligns with next-themes `attribute="class"` on <html> */
+html.dark {
+  --background: #000000;
+  --foreground: #f5f5f5;
+  --ig-border: #262626;
+  --ig-muted: #a8a8a8;
 }
 
 body {
