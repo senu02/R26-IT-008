@@ -48,19 +48,20 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#050507] text-white overflow-x-hidden">
       <div className="pointer-events-none fixed inset-0 opacity-45 bg-[radial-gradient(circle_at_22%_8%,#6e41ff55,transparent_35%),radial-gradient(circle_at_62%_55%,#4020b833,transparent_35%),radial-gradient(circle_at_85%_10%,#ffffff14,transparent_28%)]" />
+      
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/45 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <p className="text-xl leading-tight font-semibold tracking-[0.18em]">
+          <Link href="/" className="text-xl leading-tight font-semibold tracking-[0.18em] hover:opacity-80 transition-opacity">
             PURE<br />TALK
-          </p>
+          </Link>
           <nav className="hidden md:flex items-center gap-10 text-xs tracking-[0.24em] text-white/70 uppercase">
-            <a href="/home" className="hover:text-white transition-colors">Feed</a>
-            <a href="/users/friends" className="hover:text-white transition-colors">Friends</a>
-            <a href="/users/posts" className="hover:text-white transition-colors">Posts</a>
-            <a href="/users/notifications" className="hover:text-white transition-colors">Notifications</a>
+            <Link href="/home" className="hover:text-white transition-colors">Feed</Link>
+            <Link href="/users/friends" className="hover:text-white transition-colors">Friends</Link>
+            <Link href="/users/posts" className="hover:text-white transition-colors">Posts</Link>
+            <Link href="/users/notifications" className="hover:text-white transition-colors">Notifications</Link>
           </nav>
           <Link
-            href="/auth/login"
+            href="http://localhost:3000/auth/login"
             className="inline-flex items-center rounded-md border border-white/30 px-5 py-2 text-sm tracking-[0.12em] uppercase hover:bg-white/10 transition-colors"
           >
             Sign In
@@ -162,7 +163,7 @@ export default function Home() {
               Pure Talk is a social media platform focused on authentic conversations, creator growth, and safe communities.
             </p>
             <Link
-              href="/auth/login"
+              href="http://localhost:3000/auth/login"
               className="inline-flex items-center gap-2 rounded-md border border-white/30 px-6 py-3 text-sm tracking-[0.18em] uppercase hover:bg-white/10 transition-colors"
             >
               Sign In <ArrowRight className="w-4 h-4" />
