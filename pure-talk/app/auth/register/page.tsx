@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaEye, FaEyeSlash, FaCheck, FaCamera, FaImage } from 'react-icons/fa';
-import { Loader2, Mail, X, Heart, Sun, Moon } from 'lucide-react';
+import { Loader2, Mail, X, Heart } from 'lucide-react';
 import { authAPI } from '@/lib/api';
-import { getTheme, getWaveColors, type ThemeColors, darkTheme, lightTheme } from '@/context/theme';
 
 interface FormData {
   first_name: string;
@@ -38,8 +37,6 @@ const Register: React.FC = () => {
   const router = useRouter();
 
   // Wave canvas state
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [theme, setTheme] = useState<ThemeColors>(darkTheme);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringForm, setIsHoveringForm] = useState(false);
@@ -65,29 +62,6 @@ const Register: React.FC = () => {
   const [isModalOpen,    setIsModalOpen]    = useState(false);
   const [fieldErrors,    setFieldErrors]    = useState<Record<string, string>>({});
 
-  // Theme effect
-  useEffect(() => {
-    setTheme(getTheme(isDarkMode));
-  }, [isDarkMode]);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDarkMode(false);
-    } else if (savedTheme === 'dark') {
-      setIsDarkMode(true);
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(prefersDark);
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
-
   // Wave canvas animation
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -110,21 +84,19 @@ const Register: React.FC = () => {
     let ripples: { x: number; y: number; radius: number; alpha: number }[] = [];
 
     const drawBackground = () => {
-      const themeColors = getTheme(isDarkMode);
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      themeColors.background.gradient.forEach((color, index) => {
-        const stop = index / (themeColors.background.gradient.length - 1);
-        gradient.addColorStop(stop, color);
-      });
+      gradient.addColorStop(0, '#050507');
+      gradient.addColorStop(0.5, '#0a0a0f');
+      gradient.addColorStop(1, '#0f0f15');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
-      ctx.fillStyle = themeColors.background.particles;
-      for (let i = 0; i < (isDarkMode ? 100 : 80); i++) {
+      ctx.fillStyle = '#6e41ff22';
+      for (let i = 0; i < 100; i++) {
         const starX = (i * 173) % width;
         const starY = (i * 257) % (height * 0.4);
         ctx.beginPath();
-        ctx.arc(starX, starY, isDarkMode ? Math.random() * 1.2 + 0.3 : Math.random() * 1.5 + 0.5, 0, Math.PI * 2);
+        ctx.arc(starX, starY, Math.random() * 1.2 + 0.3, 0, Math.PI * 2);
         ctx.fill();
       }
     };
@@ -175,13 +147,13 @@ const Register: React.FC = () => {
       ripples.forEach(ripple => {
         ctx.beginPath();
         ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(253, 41, 123, ${ripple.alpha * 0.6})`;
+        ctx.strokeStyle = `rgba(110, 65, 255, ${ripple.alpha * 0.6})`;
         ctx.lineWidth = 2.5;
         ctx.stroke();
 
         ctx.beginPath();
         ctx.arc(ripple.x, ripple.y, ripple.radius * 0.5, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 101, 91, ${ripple.alpha * 0.4})`;
+        ctx.strokeStyle = `rgba(110, 65, 255, ${ripple.alpha * 0.4})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
@@ -192,7 +164,7 @@ const Register: React.FC = () => {
 
     const addRipple = (x: number, y: number) => {
       if (y > height * 0.5) {
-        ripples.push({ x, y, radius: 10, alpha: isDarkMode ? 0.9 : 0.7 });
+        ripples.push({ x, y, radius: 10, alpha: 0.9 });
       }
     };
 
@@ -211,8 +183,13 @@ const Register: React.FC = () => {
         if (Math.random() < 0.12) addRipple(canvasX, canvasY);
       }
 
-      const waveColors = getWaveColors(isDarkMode);
-      waveColors.forEach(wave => {
+      const waves = [
+        { amplitude: 18, frequency: 0.008, speed: 1.2, color: '#6e41ff22', phase: 0 },
+        { amplitude: 12, frequency: 0.012, speed: 1.5, color: '#6e41ff33', phase: 2 },
+        { amplitude: 8, frequency: 0.018, speed: 1.8, color: '#6e41ff44', phase: 4 },
+      ];
+
+      waves.forEach(wave => {
         drawWave(wave.amplitude, wave.frequency, wave.speed, wave.color, wave.phase, time, mouseInfluence);
       });
 
@@ -235,7 +212,7 @@ const Register: React.FC = () => {
       canvas.removeEventListener('mousemove', handleCanvasMouseMove);
       cancelAnimationFrame(animationId);
     };
-  }, [isHoveringForm, mousePosition, isDarkMode]);
+  }, [isHoveringForm, mousePosition]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -341,7 +318,7 @@ const Register: React.FC = () => {
       const response = await authAPI.register(fd);
       
       setSuccessMsg('Profile created! Dropping you into your feed...');
-      setTimeout(() => router.push('/'), 2000);
+      setTimeout(() => router.push('/home'), 2000);
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -388,16 +365,7 @@ const Register: React.FC = () => {
 
   const curStep = STEP_LABELS[step - 1];
 
-  // Dynamic input classes based on theme
-  const getInputClasses = (hasError?: boolean) => {
-    return `w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#fd297b]/40 focus:border-transparent ${
-      isDarkMode 
-        ? 'bg-white/5 border-white/10 text-white placeholder-white/30' 
-        : 'bg-white/60 border-slate-200 text-slate-800 placeholder-slate-400'
-    } ${hasError ? 'border-red-500/50' : ''}`;
-  };
-
-  // FIXED: Custom select component with portal-like rendering using fixed positioning
+  // Custom select component with portal-like rendering using fixed positioning
   const [isGenderOpen, setIsGenderOpen] = useState(false);
   const genderRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -434,42 +402,36 @@ const Register: React.FC = () => {
   }, []);
 
   return (
-    <div className={`relative min-h-screen w-full overflow-x-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'dark' : 'light'}`}>
+    <div className="relative min-h-screen w-full overflow-x-hidden font-sans bg-[#050507]">
       {/* Wave Canvas Background */}
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full block" />
 
-      {/* Theme Toggle */}
-      <button
-        onClick={toggleTheme}
-        className="fixed top-5 right-5 z-20 p-2.5 rounded-full backdrop-blur-md transition-all duration-300 hover:scale-110"
-        style={{
-          backgroundColor: isDarkMode ? 'rgba(253,41,123,0.12)' : 'rgba(253,41,123,0.08)',
-          border: isDarkMode ? '1px solid rgba(253,41,123,0.3)' : '1px solid rgba(253,41,123,0.2)',
-        }}
-      >
-        {isDarkMode
-          ? <Sun size={22} className="text-[#ff655b]" />
-          : <Moon size={22} className="text-[#fd297b]" />
-        }
-      </button>
+      {/* Gradient overlay matching home page */}
+      <div className="pointer-events-none fixed inset-0 opacity-45 bg-[radial-gradient(circle_at_22%_8%,#6e41ff55,transparent_35%),radial-gradient(circle_at_62%_55%,#4020b833,transparent_35%),radial-gradient(circle_at_85%_10%,#ffffff14,transparent_28%)]" />
 
-      <div className={`absolute inset-0 pointer-events-none ${theme.background.overlay}`} />
-
-      {/* Nav */}
-      <nav className="absolute top-0 left-0 right-0 z-40 px-6 py-5">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#fd297b]/50 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Heart className="w-7 h-7 text-[#fd297b] relative z-10" fill="currentColor" />
-            </div>
-            <span className={`text-lg font-bold tracking-[0.15em] ${theme.text.primary}`}>PURETALK</span>
+      {/* Header matching home page */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/45 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="text-xl leading-tight font-semibold tracking-[0.18em] hover:opacity-80 transition-opacity">
+            PURE<br />TALK
+          </Link>
+          <nav className="hidden md:flex items-center gap-10 text-xs tracking-[0.24em] text-white/70 uppercase">
+            <Link href="/home" className="hover:text-white transition-colors">Feed</Link>
+            <Link href="/users/friends" className="hover:text-white transition-colors">Friends</Link>
+            <Link href="/users/posts" className="hover:text-white transition-colors">Posts</Link>
+            <Link href="/users/notifications" className="hover:text-white transition-colors">Notifications</Link>
+          </nav>
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center rounded-md border border-white/30 px-5 py-2 text-sm tracking-[0.12em] uppercase hover:bg-white/10 transition-colors"
+          >
+            Sign In
           </Link>
         </div>
-      </nav>
+      </header>
 
       {/* Split layout */}
-      <div className="relative z-10 flex flex-col lg:flex-row min-h-screen pt-20 lg:pt-0">
+      <div className="relative z-10 flex flex-col lg:flex-row min-h-[calc(100vh-73px)]">
 
         {/* LEFT — Branding */}
         <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-8 lg:p-14 order-2 lg:order-1">
@@ -480,11 +442,13 @@ const Register: React.FC = () => {
             className="max-w-md w-full"
           >
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] mb-5">
-              <span className={`block ${isDarkMode ? 'text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400' : 'text-slate-800'}`}>Your story</span>
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#fd297b] via-[#ff655b] to-[#ff5864] pb-1">starts here.</span>
+              <span className="block text-white">Your story</span>
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#6e41ff] via-[#8b5cf6] to-[#a78bfa]">
+                starts here.
+              </span>
             </h1>
 
-            <p className={`text-base leading-relaxed font-light mb-8 max-w-sm ${theme.text.secondary}`}>
+            <p className="text-base leading-relaxed font-light mb-8 max-w-sm text-white/60">
               Share moments, spark conversations, and build your tribe — a community where every voice is heard and every story matters.
             </p>
 
@@ -494,23 +458,23 @@ const Register: React.FC = () => {
                 { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>, title: 'Post, share & react', sub: 'Stories, threads, photos & more' },
                 { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, title: 'Safe & authentic', sub: 'AI keeps your feed toxicity-free' },
               ].map(({ icon, title, sub }) => (
-                <div key={title} className={`flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-sm ${isDarkMode ? 'bg-white/4 border border-white/5' : 'bg-white/60 border border-slate-200 shadow-sm'}`}>
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `#fd297b22` }}>
-                    <span className="text-[#fd297b]">{icon}</span>
+                <div key={title} className="flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-sm bg-white/4 border border-white/5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `#6e41ff22` }}>
+                    <span className="text-[#6e41ff]">{icon}</span>
                   </div>
                   <div>
-                    <p className={`text-sm font-semibold ${theme.text.primary}`}>{title}</p>
-                    <p className={`text-xs ${theme.text.muted}`}>{sub}</p>
+                    <p className="text-sm font-semibold text-white">{title}</p>
+                    <p className="text-xs text-white/50">{sub}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className={`mt-8 pt-5 border-t flex gap-7 ${isDarkMode ? 'border-white/8' : 'border-slate-200'}`}>
+            <div className="mt-8 pt-5 border-t border-white/8 flex gap-7">
               {[['2M+','Members'],['180+','Countries'],['4.9★','Rated']].map(([v, l]) => (
                 <div key={l}>
-                  <p className="text-xl font-bold bg-gradient-to-r from-[#fd297b] to-[#ff655b] bg-clip-text text-transparent">{v}</p>
-                  <p className={`text-xs mt-0.5 ${theme.text.muted}`}>{l}</p>
+                  <p className="text-xl font-bold bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] bg-clip-text text-transparent">{v}</p>
+                  <p className="text-xs mt-0.5 text-white/40">{l}</p>
                 </div>
               ))}
             </div>
@@ -530,33 +494,30 @@ const Register: React.FC = () => {
             className="w-full max-w-[680px]"
           >
             <div
-              className={`backdrop-blur-2xl rounded-3xl relative overflow-visible ${theme.surface.glass} ${theme.surface.border}`}
-              style={{ boxShadow: isDarkMode 
-                ? '0 20px 60px rgba(253,41,123,0.14), 0 0 0 0.5px rgba(255,255,255,0.06)'
-                : '0 20px 60px rgba(253,41,123,0.08), 0 0 0 0.5px rgba(253,41,123,0.1)'
-              }}
+              className="backdrop-blur-2xl rounded-3xl relative overflow-visible border border-white/15 bg-black/30"
+              style={{ boxShadow: '0 20px 60px rgba(110, 65, 255, 0.14), 0 0 0 0.5px rgba(255,255,255,0.06)' }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#fd297b] via-[#ff655b] to-[#ff5864]" />
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#6e41ff] via-[#8b5cf6] to-[#a78bfa]" />
 
               <div className="px-7 pt-7 pb-6">
 
                 {/* Progress - 5 steps */}
-                <div className={`flex justify-between items-center mb-6 pb-5 border-b ${isDarkMode ? 'border-white/8' : 'border-slate-200'}`}>
+                <div className="flex justify-between items-center mb-6 pb-5 border-b border-white/8">
                   {[1,2,3,4,5].map((n) => (
                     <React.Fragment key={n}>
                       <div
                         className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
                           step >= n
-                            ? 'bg-gradient-to-tr from-[#fd297b] to-[#ff655b] text-white'
-                            : isDarkMode ? 'bg-white/5 text-gray-500 border border-white/10' : 'bg-slate-100 text-slate-400 border border-slate-200'
+                            ? 'bg-gradient-to-tr from-[#6e41ff] to-[#8b5cf6] text-white'
+                            : 'bg-white/5 text-gray-500 border border-white/10'
                         }`}
-                        style={step >= n ? { boxShadow: '0 0 14px rgba(253,41,123,0.40)' } : {}}
+                        style={step >= n ? { boxShadow: '0 0 14px rgba(110, 65, 255, 0.40)' } : {}}
                       >
                         {step > n ? <FaCheck size={11} /> : n}
                       </div>
                       {n < 5 && (
                         <div className="flex-1 mx-1.5">
-                          <div className={`h-0.5 rounded-full transition-all duration-500 ${step > n ? 'bg-gradient-to-r from-[#fd297b] to-[#ff655b]' : isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`} />
+                          <div className={`h-0.5 rounded-full transition-all duration-500 ${step > n ? 'bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6]' : 'bg-white/10'}`} />
                         </div>
                       )}
                     </React.Fragment>
@@ -565,8 +526,8 @@ const Register: React.FC = () => {
 
                 {/* Step heading */}
                 <div className="mb-5">
-                  <h2 className={`text-2xl font-bold tracking-tight ${theme.text.primary}`}>{curStep.title}</h2>
-                  <p className={`text-sm mt-0.5 ${theme.text.muted}`}>{curStep.sub}</p>
+                  <h2 className="text-2xl font-bold tracking-tight text-white">{curStep.title}</h2>
+                  <p className="text-sm mt-0.5 text-white/50">{curStep.sub}</p>
                 </div>
 
                 {/* Alerts */}
@@ -576,10 +537,10 @@ const Register: React.FC = () => {
                       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                       animate={{ opacity: 1, height: 'auto', marginBottom: 14 }}
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                      className={`p-3 rounded-xl text-xs flex items-start gap-2 ${theme.status.error.bg} ${theme.status.error.border}`}
+                      className="p-3 rounded-xl text-xs flex items-start gap-2 bg-red-500/10 border border-red-500/30"
                     >
-                      <X size={14} className="shrink-0 mt-0.5 cursor-pointer" onClick={() => setApiError('')} />
-                      <p className={`flex-1 break-words ${theme.status.error.text}`}>{apiError}</p>
+                      <X size={14} className="shrink-0 mt-0.5 cursor-pointer text-red-400" onClick={() => setApiError('')} />
+                      <p className="flex-1 break-words text-red-400">{apiError}</p>
                     </motion.div>
                   )}
                   {successMsg && (
@@ -587,7 +548,7 @@ const Register: React.FC = () => {
                       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                       animate={{ opacity: 1, height: 'auto', marginBottom: 14 }}
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                      className="p-3 rounded-xl text-xs bg-[#fd297b]/10 border border-[#fd297b]/25 text-pink-300 flex items-start gap-2"
+                      className="p-3 rounded-xl text-xs bg-[#6e41ff]/10 border border-[#6e41ff]/25 text-[#8b5cf6] flex items-start gap-2"
                     >
                       <FaCheck size={12} className="shrink-0 mt-0.5" />
                       <p>{successMsg}</p>
@@ -602,14 +563,14 @@ const Register: React.FC = () => {
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>First name *</label>
+                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">First name *</label>
                           <input 
                             type="text" 
                             name="first_name" 
                             value={formData.first_name} 
                             onChange={handleChange} 
                             required 
-                            className={getInputClasses(!!fieldErrors.first_name)} 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
                             placeholder="Jane" 
                           />
                           {fieldErrors.first_name && (
@@ -617,14 +578,14 @@ const Register: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Last name *</label>
+                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Last name *</label>
                           <input 
                             type="text" 
                             name="last_name" 
                             value={formData.last_name} 
                             onChange={handleChange} 
                             required 
-                            className={getInputClasses(!!fieldErrors.last_name)} 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
                             placeholder="Doe" 
                           />
                           {fieldErrors.last_name && (
@@ -634,51 +595,47 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Email address *</label>
+                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Email address *</label>
                         <input 
                           type="email" 
                           name="email" 
                           value={formData.email} 
                           onChange={handleChange} 
                           required 
-                          className={getInputClasses(!!fieldErrors.email)} 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
                           placeholder="jane@example.com" 
                         />
                         {fieldErrors.email ? (
                           <p className="text-red-400 text-[10px] mt-1">{fieldErrors.email}</p>
                         ) : (
-                          <p className={`text-[11px] mt-1 ${theme.text.muted}`}>We&apos;ll never share your email.</p>
+                          <p className="text-[11px] mt-1 text-white/40">We&apos;ll never share your email.</p>
                         )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Birthday</label>
+                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Birthday</label>
                           <input 
                             type="date" 
                             name="birthday" 
                             value={formData.birthday} 
                             onChange={handleChange} 
-                            className={`${getInputClasses(!!fieldErrors.birthday)} ${isDarkMode ? '[color-scheme:dark]' : '[color-scheme:light]'}`} 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent [color-scheme:dark]" 
                           />
                           {fieldErrors.birthday && (
                             <p className="text-red-400 text-[10px] mt-1">{fieldErrors.birthday}</p>
                           )}
                         </div>
                         <div className="relative" ref={genderRef}>
-                          <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Gender</label>
+                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Gender</label>
                           <div 
                             onClick={openGenderDropdown}
-                            className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#fd297b]/40 focus:border-transparent cursor-pointer flex justify-between items-center ${
-                              isDarkMode 
-                                ? 'bg-white/5 border-white/10 text-white' 
-                                : 'bg-white/60 border-slate-200 text-slate-800'
-                            } ${fieldErrors.gender ? 'border-red-500/50' : ''}`}
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent cursor-pointer flex justify-between items-center"
                           >
-                            <span className={!formData.gender ? (isDarkMode ? 'text-white/30' : 'text-slate-400') : ''}>
+                            <span className={!formData.gender ? 'text-white/30' : ''}>
                               {formData.gender ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1).replace(/_/g, ' ') : 'Select'}
                             </span>
-                            <svg className={`fill-current h-3.5 w-3.5 transition-transform duration-200 ${isGenderOpen ? 'rotate-180' : ''} ${isDarkMode ? 'text-white/50' : 'text-slate-400'}`} viewBox="0 0 20 20">
+                            <svg className={`fill-current h-3.5 w-3.5 transition-transform duration-200 ${isGenderOpen ? 'rotate-180' : ''} text-white/50`} viewBox="0 0 20 20">
                               <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
                             </svg>
                           </div>
@@ -694,7 +651,7 @@ const Register: React.FC = () => {
                   {step === 2 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Password *</label>
+                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Password *</label>
                         <div className="relative">
                           <input 
                             type={showPw ? 'text' : 'password'} 
@@ -703,10 +660,10 @@ const Register: React.FC = () => {
                             onChange={handleChange} 
                             required 
                             minLength={6} 
-                            className={`${getInputClasses(!!fieldErrors.password)} pr-11`} 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent pr-11" 
                             placeholder="Min 6 characters" 
                           />
-                          <button type="button" onClick={() => setShowPw(!showPw)} className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-white/50 hover:text-[#fd297b]' : 'text-slate-400 hover:text-[#fd297b]'}`}>
+                          <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-[#6e41ff]">
                             {showPw ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                           </button>
                         </div>
@@ -718,7 +675,7 @@ const Register: React.FC = () => {
                             {[1,2,3,4].map(i => (
                               <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                                 formData.password.length >= i * 3
-                                  ? i <= 1 ? 'bg-red-500' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-[#fd297b]'
+                                  ? i <= 1 ? 'bg-red-500' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-[#6e41ff]'
                                   : 'bg-white/10'
                               }`} />
                             ))}
@@ -727,7 +684,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Confirm password *</label>
+                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Confirm password *</label>
                         <div className="relative">
                           <input 
                             type={showCPw ? 'text' : 'password'} 
@@ -735,10 +692,10 @@ const Register: React.FC = () => {
                             value={formData.confirmPassword} 
                             onChange={handleChange} 
                             required 
-                            className={`${getInputClasses(!!fieldErrors.confirmPassword)} pr-11`} 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent pr-11" 
                             placeholder="Repeat password" 
                           />
-                          <button type="button" onClick={() => setShowCPw(!showCPw)} className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors ${isDarkMode ? 'text-white/50 hover:text-[#fd297b]' : 'text-slate-400 hover:text-[#fd297b]'}`}>
+                          <button type="button" onClick={() => setShowCPw(!showCPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-[#6e41ff]">
                             {showCPw ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                           </button>
                         </div>
@@ -753,12 +710,12 @@ const Register: React.FC = () => {
                         )}
                       </div>
 
-                      <div className={`p-4 rounded-2xl flex gap-3 items-start ${isDarkMode ? 'bg-[#fd297b]/5 border border-[#fd297b]/15' : 'bg-pink-50 border border-pink-200'}`}>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-[#fd297b]/15' : 'bg-pink-100'}`}>
-                          <Heart className="w-3.5 h-3.5 text-[#fd297b]" fill="currentColor" />
+                      <div className="p-4 rounded-2xl flex gap-3 items-start bg-[#6e41ff]/5 border border-[#6e41ff]/15">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-[#6e41ff]/15">
+                          <Heart className="w-3.5 h-3.5 text-[#6e41ff]" fill="currentColor" />
                         </div>
-                        <div className={`text-xs ${isDarkMode ? 'text-pink-200/75' : 'text-pink-700'}`}>
-                          <p className={`font-semibold mb-0.5 ${isDarkMode ? 'text-pink-200' : 'text-pink-800'}`}>Protect your account</p>
+                        <div className="text-xs text-[#8b5cf6]/75">
+                          <p className="font-semibold mb-0.5 text-[#8b5cf6]">Protect your account</p>
                           <p>Mix letters, numbers, and symbols. Never share your password with anyone.</p>
                         </div>
                       </div>
@@ -769,13 +726,13 @@ const Register: React.FC = () => {
                   {step === 3 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Mobile Number (optional)</label>
+                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Mobile Number (optional)</label>
                         <input 
                           type="tel" 
                           name="mobile_number" 
                           value={formData.mobile_number} 
                           onChange={handleChange} 
-                          className={getInputClasses(!!fieldErrors.mobile_number)} 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
                           placeholder="+1 234 567 8900" 
                         />
                         {fieldErrors.mobile_number && (
@@ -784,13 +741,13 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>Country (optional)</label>
+                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Country (optional)</label>
                         <input 
                           type="text" 
                           name="country" 
                           value={formData.country} 
                           onChange={handleChange} 
-                          className={getInputClasses(!!fieldErrors.country)} 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
                           placeholder="United States" 
                         />
                         {fieldErrors.country && (
@@ -799,13 +756,13 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>City (optional)</label>
+                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">City (optional)</label>
                         <input 
                           type="text" 
                           name="city" 
                           value={formData.city} 
                           onChange={handleChange} 
-                          className={getInputClasses(!!fieldErrors.city)} 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
                           placeholder="New York" 
                         />
                         {fieldErrors.city && (
@@ -813,15 +770,15 @@ const Register: React.FC = () => {
                         )}
                       </div>
 
-                      <div className={`p-4 rounded-2xl flex gap-3 items-start ${isDarkMode ? 'bg-white/4 border border-white/8' : 'bg-slate-50 border border-slate-200'}`}>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}>
+                      <div className="p-4 rounded-2xl flex gap-3 items-start bg-white/4 border border-white/8">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-white/10">
                           <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                         </div>
-                        <div className={`text-xs ${theme.text.muted}`}>
-                          <p className={`font-semibold mb-0.5 ${theme.text.secondary}`}>Location helps personalize your experience</p>
+                        <div className="text-xs text-white/50">
+                          <p className="font-semibold mb-0.5 text-white/60">Location helps personalize your experience</p>
                           <p>Your location is never shared publicly without your permission.</p>
                         </div>
                       </div>
@@ -832,23 +789,23 @@ const Register: React.FC = () => {
                   {step === 4 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-2 uppercase tracking-wider ${theme.text.muted}`}>Profile photo</label>
+                        <label className="block text-[11px] font-semibold mb-2 uppercase tracking-wider text-white/50">Profile photo</label>
                         <div className="flex items-center gap-4">
                           <div className="relative group flex-shrink-0">
                             {profilePreview ? (
-                              <img src={profilePreview} alt="Profile" className="w-[72px] h-[72px] rounded-full object-cover border-2 border-[#fd297b] group-hover:scale-105 transition-transform"
-                                style={{ boxShadow: '0 0 14px rgba(253,41,123,0.35)' }} />
+                              <img src={profilePreview} alt="Profile" className="w-[72px] h-[72px] rounded-full object-cover border-2 border-[#6e41ff] group-hover:scale-105 transition-transform"
+                                style={{ boxShadow: '0 0 14px rgba(110, 65, 255, 0.35)' }} />
                             ) : (
-                              <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center group-hover:scale-105 transition-transform ${isDarkMode ? 'bg-white/5 border border-white/20' : 'bg-slate-100 border border-slate-200'}`}>
-                                <FaCamera className={`${isDarkMode ? 'text-white/35' : 'text-slate-400'}`} size={22} />
+                              <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center group-hover:scale-105 transition-transform bg-white/5 border border-white/20">
+                                <FaCamera className="text-white/35" size={22} />
                               </div>
                             )}
                           </div>
                           <div className="flex-1">
-                            <p className={`text-xs mb-2 ${theme.text.muted}`}>Your profile photo appears on your posts, comments, and profile page.</p>
+                            <p className="text-xs mb-2 text-white/50">Your profile photo appears on your posts, comments, and profile page.</p>
                             <label className="cursor-pointer inline-block">
                               <input type="file" name="profile_image" accept="image/*" onChange={handleChange} className="hidden" />
-                              <span className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${isDarkMode ? 'bg-white/8 hover:bg-[#fd297b]/20 hover:border-[#fd297b]/40 text-white border border-white/10' : 'bg-slate-100 hover:bg-pink-100 text-slate-700 border border-slate-200 hover:border-pink-300'}`}>
+                              <span className="px-4 py-2 rounded-full text-xs font-bold transition-all bg-white/8 hover:bg-[#6e41ff]/20 hover:border-[#6e41ff]/40 text-white border border-white/10">
                                 {profilePreview ? 'Change photo' : 'Upload photo'}
                               </span>
                             </label>
@@ -860,23 +817,23 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-2 uppercase tracking-wider ${theme.text.muted}`}>Cover photo</label>
+                        <label className="block text-[11px] font-semibold mb-2 uppercase tracking-wider text-white/50">Cover photo</label>
                         {coverPreview ? (
-                          <div className="relative group overflow-hidden rounded-2xl border border-[#fd297b]/25 h-24 mb-2">
+                          <div className="relative group overflow-hidden rounded-2xl border border-[#6e41ff]/25 h-24 mb-2">
                             <img src={coverPreview} alt="Cover" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                           </div>
                         ) : (
                           <div
-                            className={`h-20 w-full rounded-2xl flex flex-col items-center justify-center border border-dashed transition-colors cursor-pointer mb-2 ${isDarkMode ? 'bg-white/4 border-white/15 hover:bg-[#fd297b]/5 hover:border-[#fd297b]/30' : 'bg-slate-50 border-slate-300 hover:bg-pink-50 hover:border-pink-300'}`}
+                            className="h-20 w-full rounded-2xl flex flex-col items-center justify-center border border-dashed transition-colors cursor-pointer mb-2 bg-white/4 border-white/15 hover:bg-[#6e41ff]/5 hover:border-[#6e41ff]/30"
                             onClick={() => document.getElementById('cover-input')?.click()}
                           >
-                            <FaImage className={`${isDarkMode ? 'text-white/25' : 'text-slate-400'}`} size={22} />
-                            <span className={`text-xs mt-1.5 ${theme.text.muted}`}>Add a cover photo for your profile</span>
+                            <FaImage className="text-white/25" size={22} />
+                            <span className="text-xs mt-1.5 text-white/40">Add a cover photo for your profile</span>
                           </div>
                         )}
                         <label className="cursor-pointer block w-full">
                           <input id="cover-input" type="file" name="cover_image" accept="image/*" onChange={handleChange} className="hidden" />
-                          <span className={`block w-full text-center px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-white/5 hover:bg-[#fd297b]/10 text-white border border-white/8 hover:border-[#fd297b]/25' : 'bg-slate-100 hover:bg-pink-100 text-slate-700 border border-slate-200 hover:border-pink-300'}`}>
+                          <span className="block w-full text-center px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 hover:bg-[#6e41ff]/10 text-white border border-white/8 hover:border-[#6e41ff]/25">
                             {coverPreview ? 'Change cover' : 'Upload cover'}
                           </span>
                         </label>
@@ -886,7 +843,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className={`block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${theme.text.muted}`}>
+                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">
                           Bio <span className="normal-case font-normal">(optional)</span>
                         </label>
                         <textarea
@@ -895,13 +852,13 @@ const Register: React.FC = () => {
                           onChange={handleChange}
                           maxLength={150}
                           rows={2}
-                          className={`${getInputClasses(!!fieldErrors.bio)} resize-none`}
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent resize-none"
                           placeholder="Tell your community a little about yourself…"
                         />
                         {fieldErrors.bio && (
                           <p className="text-red-400 text-[10px] mt-1">{fieldErrors.bio}</p>
                         )}
-                        <p className={`text-[11px] mt-1 text-right ${theme.text.muted}`}>{formData.bio.length}/150</p>
+                        <p className="text-[11px] mt-1 text-right text-white/40">{formData.bio.length}/150</p>
                       </div>
                     </motion.div>
                   )}
@@ -909,21 +866,21 @@ const Register: React.FC = () => {
                   {/* STEP 5 — Review */}
                   {step === 5 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                      <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/4 border border-white/8' : 'bg-slate-50 border border-slate-200'}`}>
+                      <div className="p-4 rounded-2xl bg-white/4 border border-white/8">
                         <div className="flex items-center gap-3 mb-3">
                           {profilePreview
-                            ? <img src={profilePreview} alt="" className="w-11 h-11 rounded-full object-cover border border-[#fd297b]/50" />
-                            : <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b] flex items-center justify-center text-white font-bold text-base">
+                            ? <img src={profilePreview} alt="" className="w-11 h-11 rounded-full object-cover border border-[#6e41ff]/50" />
+                            : <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#6e41ff] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-base">
                                 {formData.first_name[0]?.toUpperCase()}
                               </div>
                           }
                           <div className="min-w-0">
-                            <p className={`font-semibold text-sm truncate ${theme.text.primary}`}>{formData.first_name} {formData.last_name}</p>
-                            <p className="text-xs text-[#fd297b]">{formData.email}</p>
-                            {formData.bio && <p className={`text-xs mt-0.5 line-clamp-1 ${theme.text.muted}`}>{formData.bio}</p>}
+                            <p className="font-semibold text-sm truncate text-white">{formData.first_name} {formData.last_name}</p>
+                            <p className="text-xs text-[#6e41ff]">{formData.email}</p>
+                            {formData.bio && <p className="text-xs mt-0.5 line-clamp-1 text-white/50">{formData.bio}</p>}
                           </div>
                         </div>
-                        <div className={`space-y-1.5 text-xs border-t pt-3 ${isDarkMode ? 'border-white/6' : 'border-slate-200'}`}>
+                        <div className="space-y-1.5 text-xs border-t pt-3 border-white/6">
                           {[
                             ['Email', formData.email],
                             ...(formData.mobile_number ? [['Mobile', formData.mobile_number]] : []),
@@ -935,36 +892,36 @@ const Register: React.FC = () => {
                             ...(coverPreview ? [['Cover Photo', 'Uploaded']] : []),
                           ].map(([k, v]) => (
                             <div key={k} className="flex justify-between gap-4">
-                              <span className={`flex-shrink-0 ${theme.text.muted}`}>{k}</span>
-                              <span className={`font-medium capitalize truncate ${theme.text.primary}`}>{v}</span>
+                              <span className="flex-shrink-0 text-white/50">{k}</span>
+                              <span className="font-medium capitalize truncate text-white">{v}</span>
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      <div className={`p-4 rounded-2xl bg-gradient-to-r from-[#fd297b]/8 to-[#ff655b]/8 border border-[#fd297b]/18`}>
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#6e41ff]/8 to-[#8b5cf6]/8 border border-[#6e41ff]/18">
                         <label className="flex items-start gap-3 cursor-pointer group">
                           <div className="relative flex items-center justify-center shrink-0 mt-0.5">
                             <input
                               type="checkbox"
                               checked={agreed}
                               onChange={(e) => setAgreed(e.target.checked)}
-                              className="w-4 h-4 appearance-none rounded border-2 border-[#fd297b]/50 checked:bg-[#fd297b] checked:border-[#fd297b] outline-none transition-all cursor-pointer peer"
+                              className="w-4 h-4 appearance-none rounded border-2 border-[#6e41ff]/50 checked:bg-[#6e41ff] checked:border-[#6e41ff] outline-none transition-all cursor-pointer peer"
                             />
                             <FaCheck className="absolute text-white opacity-0 peer-checked:opacity-100 w-2.5 h-2.5 pointer-events-none transition-opacity" />
                           </div>
-                          <span className={`text-xs leading-relaxed group-hover:text-white transition-colors ${theme.text.tertiary}`}>
+                          <span className="text-xs leading-relaxed group-hover:text-white transition-colors text-white/60">
                             I agree to PureTalk&apos;s{' '}
-                            <Link href="/terms" className="font-bold text-[#fd297b] hover:text-[#ff655b] transition-colors">Terms of Service</Link>
+                            <Link href="/terms" className="font-bold text-[#6e41ff] hover:text-[#8b5cf6] transition-colors">Terms of Service</Link>
                             {' '}and{' '}
-                            <Link href="/privacy" className="font-bold text-[#fd297b] hover:text-[#ff655b] transition-colors">Privacy Policy</Link>.
+                            <Link href="/privacy" className="font-bold text-[#6e41ff] hover:text-[#8b5cf6] transition-colors">Privacy Policy</Link>.
                             I&apos;ll keep my conversations real and respectful.
                           </span>
                         </label>
                       </div>
 
-                      <p className={`text-xs flex items-center gap-2 px-1 ${theme.text.muted}`}>
-                        <Heart className="w-3 h-3 text-[#fd297b] flex-shrink-0" fill="currentColor" />
+                      <p className="text-xs flex items-center gap-2 px-1 text-white/50">
+                        <Heart className="w-3 h-3 text-[#6e41ff] flex-shrink-0" fill="currentColor" />
                         After joining you can customise your feed, follow people, and post your first story.
                       </p>
                     </motion.div>
@@ -974,7 +931,7 @@ const Register: React.FC = () => {
                   <div className="flex gap-3 pt-2">
                     {step > 1 && (
                       <button type="button" onClick={prevStep} disabled={isLoading}
-                        className={`py-3 px-5 rounded-full text-sm font-bold transition-all disabled:opacity-50 hidden sm:block active:scale-95 ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white border border-white/10' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'}`}
+                        className="py-3 px-5 rounded-full text-sm font-bold transition-all disabled:opacity-50 hidden sm:block active:scale-95 bg-white/5 hover:bg-white/10 text-white border border-white/10"
                       >
                         Back
                       </button>
@@ -982,8 +939,8 @@ const Register: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 py-3.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-[#fd297b] to-[#ff655b] hover:from-[#ff655b] hover:to-[#fd297b] text-white hover:scale-[1.02] active:scale-95"
-                      style={{ boxShadow: '0 6px 20px rgba(253,41,123,0.38)' }}
+                      className="flex-1 py-3.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] hover:from-[#8b5cf6] hover:to-[#6e41ff] text-white hover:scale-[1.02] active:scale-95"
+                      style={{ boxShadow: '0 6px 20px rgba(110, 65, 255, 0.38)' }}
                     >
                       {isLoading
                         ? <><Loader2 className="animate-spin" size={17} />{step === 5 ? 'Creating profile…' : 'Saving…'}</>
@@ -998,10 +955,10 @@ const Register: React.FC = () => {
                   <>
                     <div className="relative my-5">
                       <div className="absolute inset-0 flex items-center">
-                        <div className={`w-full border-t ${isDarkMode ? 'border-white/8' : 'border-slate-200'}`} />
+                        <div className="w-full border-t border-white/8" />
                       </div>
                       <div className="relative flex justify-center text-[11px] uppercase font-bold tracking-widest">
-                        <span className={`px-4 ${isDarkMode ? 'bg-[#0a0a0a]/60 text-gray-500' : 'bg-white/60 text-slate-400'}`}>or join with</span>
+                        <span className="px-4 bg-[#0a0a0a]/60 text-gray-500">or join with</span>
                       </div>
                     </div>
 
@@ -1027,11 +984,11 @@ const Register: React.FC = () => {
                       <button
                         onClick={() => { setIsAppleLoad(true); setTimeout(() => { alert('Apple OAuth integration coming soon'); setIsAppleLoad(false); }, 1500); }}
                         disabled={isAppleLoad || isLoading}
-                        className={`py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm font-semibold disabled:opacity-50 hover:scale-[1.02] active:scale-95 ${isDarkMode ? 'bg-white/8 hover:bg-white/15 border border-white/10 text-white' : 'bg-white hover:bg-gray-50 border border-slate-200 text-slate-700 shadow-sm'}`}
+                        className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm font-semibold disabled:opacity-50 hover:scale-[1.02] active:scale-95 bg-white/8 hover:bg-white/15 border border-white/10 text-white"
                       >
                         {isAppleLoad ? <Loader2 className="animate-spin" size={17} /> : (
                           <>
-                            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill={isDarkMode ? '#FFFFFF' : '#000000'}>
+                            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="#FFFFFF">
                               <path d="M16.365 11.773c0-2.118 1.724-3.139 1.804-3.19-.982-1.438-2.54-1.635-3.091-1.657-1.316-.133-2.568.775-3.236.775-.668 0-1.702-.756-2.796-.736-1.44.02-2.767.837-3.509 2.127-1.498 2.597-.383 6.445 1.075 8.55.714 1.032 1.565 2.19 2.683 2.148 1.076-.042 1.484-.697 2.786-.697 1.302 0 1.674.697 2.808.674 1.159-.02 1.893-1.051 2.598-2.087.82-1.205 1.157-2.372 1.178-2.434-.025-.012-2.26-.868-2.282-3.443zM14.239 5.734c.591-.718.99-1.717.881-2.71-.853.034-1.887.569-2.5 1.286-.55.637-1.031 1.656-.902 2.633.955.074 1.93-.483 2.521-1.209z"/>
                             </svg>
                             <span>Apple</span>
@@ -1042,12 +999,12 @@ const Register: React.FC = () => {
                   </>
                 )}
 
-                {/* Sign in link - FIXED to go to login page */}
-                <p className={`text-center text-sm mt-6 ${theme.text.muted}`}>
+                {/* Sign in link */}
+                <p className="text-center text-sm mt-6 text-white/50">
                   Already have an account?{' '}
                   <Link
                     href="/auth/login"
-                    className="font-semibold text-[#fd297b] hover:text-[#ff655b] transition-colors"
+                    className="font-semibold text-[#6e41ff] hover:text-[#8b5cf6] transition-colors"
                   >
                     Sign in instead
                   </Link>
@@ -1058,7 +1015,7 @@ const Register: React.FC = () => {
         </div>
       </div>
 
-      {/* FIXED: Gender Dropdown - Rendered at body level using portal positioning */}
+      {/* Gender Dropdown */}
       <AnimatePresence>
         {isGenderOpen && (
           <motion.div
@@ -1073,7 +1030,7 @@ const Register: React.FC = () => {
               width: dropdownPosition.width,
               zIndex: 9999,
             }}
-            className={`rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl border ${isDarkMode ? 'bg-[#1a1a1a]/95 border-white/15' : 'bg-white border-slate-200'}`}
+            className="rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl border border-white/15 bg-[#1a1a1a]/95"
           >
             <div className="py-1">
               {['male', 'female', 'custom', 'prefer_not_to_say'].map((option) => (
@@ -1083,10 +1040,8 @@ const Register: React.FC = () => {
                   onClick={() => selectGender(option)}
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                     formData.gender === option
-                      ? 'bg-[#fd297b]/10 text-[#fd297b]'
-                      : isDarkMode
-                        ? 'text-white/80 hover:bg-white/10'
-                        : 'text-slate-700 hover:bg-slate-100'
+                      ? 'bg-[#6e41ff]/10 text-[#6e41ff]'
+                      : 'text-white/80 hover:bg-white/10'
                   }`}
                 >
                   {option.charAt(0).toUpperCase() + option.slice(1).replace(/_/g, ' ')}
@@ -1102,26 +1057,26 @@ const Register: React.FC = () => {
         {isModalOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)} className={`fixed inset-0 backdrop-blur-sm z-50 ${isDarkMode ? 'bg-black/60' : 'bg-black/30'}`} />
+              onClick={() => setIsModalOpen(false)} className="fixed inset-0 backdrop-blur-sm z-50 bg-black/60" />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-md rounded-2xl shadow-2xl overflow-hidden ${isDarkMode ? 'bg-[#0f0508]/95 backdrop-blur-xl border border-white/15' : 'bg-white border border-slate-200'}`}
-              style={{ boxShadow: '0 25px 50px rgba(253,41,123,0.20)' }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-md rounded-2xl shadow-2xl overflow-hidden bg-[#0f0508]/95 backdrop-blur-xl border border-white/15"
+              style={{ boxShadow: '0 25px 50px rgba(110, 65, 255, 0.20)' }}
             >
-              <div className={`flex justify-between items-center p-5 border-b ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
-                <h3 className={`text-base font-bold flex items-center gap-2 ${theme.text.primary}`}>
-                  <Mail className="text-[#fd297b] w-4 h-4" /> Need Help?
+              <div className="flex justify-between items-center p-5 border-b border-white/10">
+                <h3 className="text-base font-bold flex items-center gap-2 text-white">
+                  <Mail className="text-[#6e41ff] w-4 h-4" /> Need Help?
                 </h3>
-                <button onClick={() => setIsModalOpen(false)} className={`transition ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                <button onClick={() => setIsModalOpen(false)} className="transition text-gray-400 hover:text-white">
                   <X size={16} />
                 </button>
               </div>
               <div className="p-6">
-                <p className={`text-center mb-4 text-sm ${theme.text.secondary}`}>Trouble signing up? Our team is here for you.</p>
+                <p className="text-center mb-4 text-sm text-white/60">Trouble signing up? Our team is here for you.</p>
                 <button onClick={() => (window.location.href = 'mailto:support@puretalk.com')}
-                  className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-gradient-to-r from-[#fd297b] to-[#ff655b] hover:from-[#ff655b] hover:to-[#fd297b] text-white text-sm font-bold transition-all active:scale-95"
-                  style={{ boxShadow: '0 5px 15px rgba(253,41,123,0.35)' }}
+                  className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] hover:from-[#8b5cf6] hover:to-[#6e41ff] text-white text-sm font-bold transition-all active:scale-95"
+                  style={{ boxShadow: '0 5px 15px rgba(110, 65, 255, 0.35)' }}
                 >
                   Email Support Team
                 </button>
