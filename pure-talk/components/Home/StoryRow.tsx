@@ -2,7 +2,6 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ChevronLeft, Plus, Loader2, X } from 'lucide-react';
-import { getCurrentUserData, getImageUrl } from '@/lib/api';
 
 const PLACEHOLDER_AVATAR = 'https://i.pravatar.cc/150?img=11';
 
@@ -46,16 +45,14 @@ const StoryRow = () => {
   const [viewer, setViewer] = useState<StoryItem | null>(null);
   const [auth, setAuth] = useState(true); // Demo mode always authenticated
   
-  const [currentUser, setCurrentUser] = useState<{ id: number; full_name: string; profile_picture: string | null } | null>(null);
-
-  useEffect(() => {
-    const userData = getCurrentUserData();
-    if (userData) {
-      setCurrentUser(userData);
-    }
-  }, []);
-
-  const myAvatar = currentUser?.profile_picture ? getImageUrl(currentUser.profile_picture) : PLACEHOLDER_AVATAR;
+  // Demo current user
+  const currentUser = {
+    id: 999,
+    full_name: 'Demo User',
+    profile_picture: 'https://i.pravatar.cc/150?img=11'
+  };
+  
+  const myAvatar = currentUser?.profile_picture ?? PLACEHOLDER_AVATAR;
 
   // Load demo stories from localStorage
   useEffect(() => {
@@ -124,8 +121,8 @@ const StoryRow = () => {
       reader.onloadend = () => {
         const newStory: StoryItem = {
           id: Date.now(),
-          user_id: currentUser?.id,
-          author_name: currentUser?.full_name || 'User',
+          user_id: currentUser.id,
+          author_name: currentUser.full_name,
           author_avatar: myAvatar,
           image_url: reader.result as string,
           created_at: new Date().toISOString(),
@@ -176,7 +173,7 @@ const StoryRow = () => {
                 disabled={uploading}
                 className={`flex h-[66px] w-[66px] cursor-pointer items-center justify-center rounded-full bg-[var(--background)] transition disabled:opacity-60 ${
                   myStory
-                    ? 'bg-gradient-to-br from-blue-500 to-indigo-500 p-[2px]'
+                    ? 'bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px]'
                     : 'border-2 border-dashed border-[var(--ig-border)] hover:border-[var(--ig-muted)]'
                 }`}
                 aria-label={myStory ? 'View your story' : 'Add to your story'}
@@ -224,7 +221,7 @@ const StoryRow = () => {
               })}
               className="flex shrink-0 flex-col items-center gap-1.5 cursor-pointer rounded-lg p-0 text-left opacity-90 transition hover:opacity-100"
             >
-              <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 p-[2px] transition-transform hover:scale-[1.02]">
+              <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
                 <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
                 <img
                   src={story.image}
@@ -261,7 +258,7 @@ const StoryRow = () => {
                 }`}
               >
                 {friend.hasStory ? (
-                  <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 p-[2px] transition-transform hover:scale-[1.02]">
+                  <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#e6683c] to-[#bc1888] p-[2px] transition-transform hover:scale-[1.02]">
                     <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
                     <img
                       src={friend.avatar}

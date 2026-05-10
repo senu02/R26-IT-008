@@ -16,7 +16,6 @@ import {
   Settings,
   Users
 } from 'lucide-react';
-import { getCurrentUserData, getImageUrl } from '@/lib/api';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -30,12 +29,25 @@ const Sidebar = () => {
   useEffect(() => {
     setMounted(true);
     
-    // Load actual user data
-    const currentUser = getCurrentUserData();
-    if (currentUser) {
-      setUserAvatar(getImageUrl(currentUser.profile_picture) || 'https://i.pravatar.cc/150?img=11');
+    // Demo user data - using localStorage to persist avatar preference
+    const savedAvatar = localStorage.getItem('demo_user_avatar');
+    if (savedAvatar) {
+      setUserAvatar(savedAvatar);
     } else {
-      setUserAvatar('https://i.pravatar.cc/150?img=11');
+      // Set random demo avatar
+      const demoAvatars = [
+        'https://i.pravatar.cc/150?img=1',
+        'https://i.pravatar.cc/150?img=2',
+        'https://i.pravatar.cc/150?img=3',
+        'https://i.pravatar.cc/150?img=4',
+        'https://i.pravatar.cc/150?img=5',
+        'https://i.pravatar.cc/150?img=11',
+        'https://i.pravatar.cc/150?img=12',
+        'https://i.pravatar.cc/150?img=13'
+      ];
+      const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
+      setUserAvatar(randomAvatar);
+      localStorage.setItem('demo_user_avatar', randomAvatar);
     }
 
     // Demo notifications count - random between 0-5 for demo
@@ -55,18 +67,18 @@ const Sidebar = () => {
           
           {/* Desktop Logo */}
           <Link href="/home" className="hidden lg:flex items-center gap-3 group cursor-pointer relative py-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105">
-              <span className="text-sm font-bold text-white">P</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--ig-border)] bg-[var(--background)] text-[var(--foreground)] transition-opacity group-hover:opacity-70">
+              <span className="font-bold text-sm tracking-tight">PT</span>
             </div>
-            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">
-              PURE-TALK
+            <h1 className="font-semibold tracking-tight text-[1.35rem] text-[var(--foreground)]">
+              PureTalk
             </h1>
           </Link>
 
           {/* Mobile Logo Collapse */}
           <Link href="/home" className="block lg:hidden group relative">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105">
-              <span className="font-bold text-sm text-white">P</span>
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--ig-border)] bg-[var(--background)] transition-opacity group-hover:opacity-70">
+              <span className="font-bold text-xs tracking-tight text-[var(--foreground)]">PT</span>
             </div>
           </Link>
         </div>
@@ -137,15 +149,15 @@ const NavItem = ({ href, icon, label, active = false, badge }: { href: string, i
       href={href}
       className={`group relative flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${active ? 'font-bold' : 'font-normal'}`}
     >
-      <div className={`relative transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px] text-blue-500' : ''}`}>
+      <div className={`relative transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px]' : ''}`}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white border-2 border-[var(--background)]">
+          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)]">
             {badge > 99 ? '99+' : badge}
           </span>
         )}
       </div>
-      <span className={`hidden lg:block text-[15px] ${active ? 'text-blue-500' : ''}`}>{label}</span>
+      <span className="hidden lg:block text-[15px]">{label}</span>
     </Link>
   );
 };

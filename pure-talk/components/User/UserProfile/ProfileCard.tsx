@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { Activity, CheckSquare, HardDrive, MapPin, Briefcase, Mail, Calendar } from 'lucide-react';
 import { getTheme } from '@/context/theme';
-import { getCurrentUserData, getImageUrl } from '@/lib/api';
 
 const tabs = [
   { name: 'Activity', key: 'activity', icon: Activity },
@@ -17,7 +16,6 @@ const tags = ['Business', 'Management', 'UI/UX', 'Development', 'Marketing'];
 export function ProfileCard() {
   const [isDark, setIsDark] = useState(false);
   const [activeTab, setActiveTab] = useState('assigned');
-  const [userData, setUserData] = useState<{ full_name?: string; email?: string; profile_picture?: string | null } | null>(null);
 
   useEffect(() => {
     const checkTheme = () => {
@@ -26,12 +24,6 @@ export function ProfileCard() {
     checkTheme();
     const observer = new MutationObserver(checkTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    
-    const currentUser = getCurrentUserData();
-    if (currentUser) {
-      setUserData(currentUser);
-    }
-    
     return () => observer.disconnect();
   }, []);
 
@@ -48,8 +40,8 @@ export function ProfileCard() {
           <div className="h-28 w-28 overflow-hidden rounded-full md:h-32 md:w-32">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={userData?.profile_picture ? getImageUrl(userData.profile_picture) : `https://ui-avatars.com/api/?background=3b82f6&color=fff&size=128&name=${userData?.full_name || userData?.email || 'User'}`}
-              alt={userData?.full_name || 'User Profile'}
+              src="https://ui-avatars.com/api/?background=3b82f6&color=fff&size=128&name=Nathan+Garcia"
+              alt="Nathan Garcia"
               className="h-full w-full object-cover"
             />
           </div>
@@ -59,26 +51,26 @@ export function ProfileCard() {
       {/* User Info */}
       <div className="px-6 mt-4">
         <div>
-          <h1 className={`text-2xl font-bold ${theme.text.primary}`}>{userData?.full_name || userData?.email?.split('@')[0] || 'User Profile'}</h1>
-          <p className={`text-sm ${theme.text.secondary} mt-1`}>Member</p>
+          <h1 className={`text-2xl font-bold ${theme.text.primary}`}>Nathan Garcia</h1>
+          <p className={`text-sm ${theme.text.secondary} mt-1`}>UI/UX Designer</p>
           
           {/* User details */}
           <div className="flex flex-wrap gap-4 mt-3">
             <div className="flex items-center gap-1">
               <MapPin className={`h-3.5 w-3.5 ${theme.text.muted}`} />
-              <span className={`text-xs ${theme.text.secondary}`}>Global</span>
+              <span className={`text-xs ${theme.text.secondary}`}>San Francisco, CA</span>
             </div>
             <div className="flex items-center gap-1">
               <Briefcase className={`h-3.5 w-3.5 ${theme.text.muted}`} />
-              <span className={`text-xs ${theme.text.secondary}`}>Community</span>
+              <span className={`text-xs ${theme.text.secondary}`}>Design Studio</span>
             </div>
             <div className="flex items-center gap-1">
               <Mail className={`h-3.5 w-3.5 ${theme.text.muted}`} />
-              <span className={`text-xs ${theme.text.secondary}`}>{userData?.email || 'No email provided'}</span>
+              <span className={`text-xs ${theme.text.secondary}`}>nathan@iotask.com</span>
             </div>
             <div className="flex items-center gap-1">
               <Calendar className={`h-3.5 w-3.5 ${theme.text.muted}`} />
-              <span className={`text-xs ${theme.text.secondary}`}>Active Member</span>
+              <span className={`text-xs ${theme.text.secondary}`}>Joined Jan 2024</span>
             </div>
           </div>
         </div>
