@@ -108,7 +108,7 @@ export function ActivityCard() {
               {/* Progress Bar */}
               <div className="mt-2 h-1.5 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden">
                 <div 
-                  className="h-full rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b]" 
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500" 
                   style={{ width: `${(parseInt(task.progress.split('/')[0]) / parseInt(task.progress.split('/')[1])) * 100}%` }}
                 ></div>
               </div>

@@ -149,10 +149,10 @@ export function Sidebar() {
               onClick={() => handleNavigation('/')}
               className="flex items-center gap-2.5 cursor-pointer group"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#fd297b] to-[#ff655b] shadow-lg transition-transform group-hover:scale-105">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105">
                 <span className="text-sm font-bold text-white">P</span>
               </div>
-              <span className={`text-xl font-bold tracking-tight bg-gradient-to-r from-[#fd297b] to-[#ff655b] bg-clip-text text-transparent`}>PURE-TALK</span>
+              <span className={`text-xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent`}>PURE-TALK</span>
             </div>
             <button 
               onClick={closeMobileSidebar} 
@@ -173,16 +173,16 @@ export function Sidebar() {
                   className={`
                     w-full group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
                     ${isActive 
-                      ? `${isDark ? 'bg-white/15 backdrop-blur-sm' : 'bg-white/60 backdrop-blur-sm'} text-[#fd297b] shadow-sm`
+                      ? `${isDark ? 'bg-white/15 backdrop-blur-sm' : 'bg-white/60 backdrop-blur-sm'} text-blue-500 shadow-sm`
                       : theme.text.secondary
                     }
                     hover:${isDark ? 'bg-white/8' : 'bg-white/30'} hover:scale-[1.02]
                   `}
                 >
-                  <item.icon className={`h-5 w-5 transition-all ${isActive ? 'text-[#fd297b] scale-110' : isDark ? 'text-white/40 group-hover:text-white/60' : 'text-slate-500/70 group-hover:text-slate-700'}`} />
+                  <item.icon className={`h-5 w-5 transition-all ${isActive ? 'text-blue-500 scale-110' : isDark ? 'text-white/40 group-hover:text-white/60' : 'text-slate-500/70 group-hover:text-slate-700'}`} />
                   <span>{item.name}</span>
                   {isActive && (
-                    <div className="ml-auto w-1.5 h-8 rounded-full bg-gradient-to-b from-[#fd297b] to-[#ff655b]" />
+                    <div className="ml-auto w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-500 to-indigo-500" />
                   )}
                 </button>
               );
@@ -205,11 +205,11 @@ export function Sidebar() {
                 <button
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                   className={`w-full flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                    isSettingsActive() ? 'bg-gradient-to-r from-[#fd297b]/20 to-[#ff655b]/20 text-[#fd297b]' : theme.text.secondary
+                    isSettingsActive() ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-500' : theme.text.secondary
                   } hover:${isDark ? 'bg-white/8' : 'bg-white/30'} hover:scale-[1.02]`}
                 >
                   <div className="flex items-center gap-3">
-                    <Settings className={`h-5 w-5 transition-all ${isSettingsActive() ? 'text-[#fd297b]' : theme.text.muted}`} />
+                    <Settings className={`h-5 w-5 transition-all ${isSettingsActive() ? 'text-blue-500' : theme.text.muted}`} />
                     <span>Settings</span>
                   </div>
                   <ChevronDown className={`h-4 w-4 transition-all duration-300 ${isSettingsOpen ? 'rotate-180' : ''}`} />
@@ -227,17 +227,17 @@ export function Sidebar() {
                           onClick={() => handleSettingsNavigation(option.href)}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group ${
                             pathname === option.href.split('?')[0] && getCurrentSection() === option.href.split('section=')[1]
-                              ? `${isDark ? 'bg-white/15' : 'bg-white/60'} text-[#fd297b]`
+                              ? `${isDark ? 'bg-white/15' : 'bg-white/60'} text-blue-500`
                               : theme.text.secondary
                           } hover:${isDark ? 'bg-white/10' : 'bg-white/40'} hover:translate-x-1`}
                         >
-                          <option.icon className={`h-4 w-4 transition-all group-hover:scale-110 ${pathname === option.href.split('?')[0] && getCurrentSection() === option.href.split('section=')[1] ? 'text-[#fd297b]' : ''}`} />
+                          <option.icon className={`h-4 w-4 transition-all group-hover:scale-110 ${pathname === option.href.split('?')[0] && getCurrentSection() === option.href.split('section=')[1] ? 'text-blue-500' : ''}`} />
                           <div className="flex-1 text-left">
                             <div className="font-medium">{option.name}</div>
                             <div className={`text-xs ${isDark ? 'text-white/40' : 'text-slate-500'}`}>{option.description}</div>
                           </div>
                           {pathname === option.href.split('?')[0] && getCurrentSection() === option.href.split('section=')[1] && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b]" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500" />
                           )}
                         </button>
                       ))}
@@ -260,9 +260,9 @@ export function Sidebar() {
 
               {/* Premium Badge */}
               <div className={`mt-4 pt-4 border-t ${isDark ? 'border-white/10' : 'border-white/30'}`}>
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-[#fd297b]/20 to-[#ff655b]/20`}>
-                  <Crown className="h-4 w-4 text-[#fd297b]" />
-                  <span className="text-xs font-medium text-[#fd297b]">Premium Member</span>
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500/20 to-indigo-500/20`}>
+                  <Crown className="h-4 w-4 text-blue-500" />
+                  <span className="text-xs font-medium text-blue-500">Premium Member</span>
                 </div>
               </div>
             </div>
