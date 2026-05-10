@@ -15,7 +15,7 @@ export default function AdvancedFooter() {
           {/* Brand Column */}
           <div className="flex flex-col gap-6">
             <Link href="/" className="flex items-center gap-3 group w-max">
-              <div className="p-2.5 bg-gradient-to-br from-[#fd297b] to-[#ff655b] rounded-xl group-hover:scale-105 transition-transform shadow-lg shadow-pink-500/30">
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl group-hover:scale-105 transition-transform shadow-lg shadow-blue-500/30">
                 <MessageCircleHeart className="w-6 h-6 text-white" />
               </div>
               <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">PureTalk</span>
@@ -62,9 +62,9 @@ export default function AdvancedFooter() {
               <input 
                 type="email" 
                 placeholder="Enter your email" 
-                className="w-full bg-white/5 border border-white/10 py-3 pl-4 pr-12 rounded-xl text-sm focus:outline-none focus:border-[#fd297b]/50 text-white placeholder:text-white/30 transition-colors"
+                className="w-full bg-white/5 border border-white/10 py-3 pl-4 pr-12 rounded-xl text-sm focus:outline-none focus:border-blue-500/50 text-white placeholder:text-white/30 transition-colors"
               />
-              <button className="absolute right-2 p-2 bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-lg hover:shadow-lg hover:shadow-pink-500/20 active:scale-95 transition-all group">
+              <button className="absolute right-2 p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg hover:shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all group">
                 <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>

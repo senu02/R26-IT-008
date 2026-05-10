@@ -262,7 +262,7 @@ const PostCard: React.FC<PostCardProps> = ({
             onClick={handleLike}
             disabled={isLiking}
             className={`flex items-center justify-center space-x-2 flex-1 py-2 rounded-lg transition-all duration-200 ${
-              liked ? 'text-pink-500' : theme.text.muted
+              liked ? 'text-blue-500' : theme.text.muted
             } hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <svg className="w-5 h-5" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
@@ -274,7 +274,7 @@ const PostCard: React.FC<PostCardProps> = ({
           <button
             onClick={() => onComment(post.id)}
             className={`flex items-center justify-center space-x-2 flex-1 py-2 rounded-lg transition-all duration-200 ${
-              isCommenting ? 'text-pink-500' : theme.text.muted
+              isCommenting ? 'text-blue-500' : theme.text.muted
             } hover:bg-white/5`}
           >
             <svg className="w-5 h-5" fill={isCommenting ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">

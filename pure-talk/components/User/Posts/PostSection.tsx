@@ -374,14 +374,14 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className={`${theme.surface.glass} ${theme.surface.border} rounded-2xl p-8 text-center`}>
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b] flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
             <Lock className="w-10 h-10 text-white" />
           </div>
           <h3 className={`${theme.text.primary} text-xl font-semibold mb-2`}>Login Required</h3>
           <p className={`${theme.text.muted} mb-6`}>Please login to view and interact with posts</p>
           <button
             onClick={() => window.location.href = '/login'}
-            className="px-6 py-2 rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white font-medium transition-all duration-300 hover:scale-105"
+            className="px-6 py-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium transition-all duration-300 hover:scale-105"
           >
             Go to Login
           </button>
@@ -406,7 +406,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
           >
             {filter}
             {activeFilter === filter && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-full" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" />
             )}
           </button>
         ))}
@@ -416,7 +416,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
       {loading && (
         <div className="text-center py-8">
-          <Loader2 className="inline-block w-8 h-8 text-pink-500 animate-spin" />
+          <Loader2 className="inline-block w-8 h-8 text-blue-500 animate-spin" />
           <p className={`${theme.text.muted} mt-2`}>Loading posts...</p>
         </div>
       )}
@@ -429,7 +429,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
               if (isLoggedIn) loadPosts();
               else window.location.href = '/login';
             }}
-            className="mt-3 px-4 py-2 rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white text-sm"
+            className="mt-3 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm"
           >
             {isLoggedIn ? 'Retry' : 'Go to Login'}
           </button>
@@ -441,8 +441,8 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
           {posts.length === 0 ? (
             <div className={`${theme.surface.glass} ${theme.surface.border} rounded-2xl p-6 text-center`}>
               <div className="flex flex-col items-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b]/20 flex items-center justify-center">
-                  <PlusCircle className="w-8 h-8 text-[#fd297b]" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500/20 flex items-center justify-center">
+                  <PlusCircle className="w-8 h-8 text-blue-500" />
                 </div>
                 <div>
                   <p className={`${theme.text.primary} font-medium mb-1`}>No posts yet</p>
@@ -488,7 +488,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                     <div className="p-4 max-h-96 overflow-y-auto">
                       {loadingComments[post.id] ? (
                         <div className="text-center py-4">
-                          <Loader2 className="inline-block w-5 h-5 text-pink-500 animate-spin" />
+                          <Loader2 className="inline-block w-5 h-5 text-blue-500 animate-spin" />
                         </div>
                       ) : comments[post.id] && comments[post.id].length > 0 ? (
                         comments[post.id].map((comment) => (
@@ -530,7 +530,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                               }}
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b] flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                               <span className="text-white font-bold text-sm">
                                 {getCurrentUserData()?.full_name?.charAt(0) || 'U'}
                               </span>
@@ -563,7 +563,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             <button
                               onClick={() => handleComment(post.id)}
                               disabled={!commentText[post.id]?.trim() || submittingComment[post.id]}
-                              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white font-medium text-sm transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium text-sm transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                             >
                               {submittingComment[post.id] ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

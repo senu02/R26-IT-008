@@ -276,7 +276,7 @@ export default function FriendsPage() {
             <p className="text-red-500 mb-4">Please login to access friends page</p>
             <button 
               onClick={() => window.location.href = '/login'}
-              className="px-4 py-2 bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white rounded-lg"
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg"
             >
               Go to Login
             </button>
@@ -528,7 +528,7 @@ function TabButton({ active, onClick, icon, label, badge }: {
       {active && (
         <motion.div 
           layoutId="activeTabIndicator" 
-          className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-t-full"
+          className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-full"
         />
       )}
     </button>
@@ -573,7 +573,7 @@ function ActionButton({ icon, label, onClick, loading, variant }: {
   let variantClasses = "";
   
   if (variant === 'primary') {
-    variantClasses = "bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white shadow-md hover:shadow-lg hover:shadow-pink-500/20";
+    variantClasses = "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-blue-500/20";
   } else if (variant === 'secondary') {
     variantClasses = "bg-black/5 dark:bg-white/10 text-[var(--foreground)] hover:bg-black/10 dark:hover:bg-white/20";
   } else if (variant === 'danger') {
