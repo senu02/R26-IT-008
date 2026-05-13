@@ -280,7 +280,7 @@ Uses speech-to-text and deep learning techniques to detect:
 ## Clone Repository
 
 ```bash
-git clone https://github.com/your-username/personalized-emotional-shielding-system.git
+https://github.com/senu02/R26-IT-008/tree/main
 ```
 
 ---
