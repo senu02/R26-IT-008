@@ -6,7 +6,6 @@ import { adaptiveShieldingAPI, type ShieldAdminRecord } from '@/lib/api';
 
 const STRATEGY_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   Safe:      { label: 'Safe',      color: 'bg-green-500/15 text-green-400 border-green-500/30',  icon: <ShieldCheck  className="w-3.5 h-3.5" /> },
-  Warning:   { label: 'Warning',   color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30', icon: <AlertTriangle className="w-3.5 h-3.5" /> },
   Blurring:  { label: 'Blurring',  color: 'bg-purple-500/15 text-purple-400 border-purple-500/30', icon: <EyeOff       className="w-3.5 h-3.5" /> },
   Rewriting: { label: 'Rewriting', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30',    icon: <Eye          className="w-3.5 h-3.5" /> },
   Filtering: { label: 'Filtered',  color: 'bg-red-500/15 text-red-400 border-red-500/30',       icon: <ShieldOff    className="w-3.5 h-3.5" /> },
@@ -38,7 +37,6 @@ export default function AdaptiveShieldingAdminPage() {
   const stats = {
     total:     records.length,
     safe:      records.filter(r => r.strategy === 'Safe').length,
-    warned:    records.filter(r => r.strategy === 'Warning').length,
     blurred:   records.filter(r => r.strategy === 'Blurring').length,
     rewritten: records.filter(r => r.strategy === 'Rewriting').length,
     filtered:  records.filter(r => r.strategy === 'Filtering').length,
@@ -81,11 +79,10 @@ export default function AdaptiveShieldingAdminPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { label: 'Total',     value: stats.total,     color: 'from-white/10 to-white/5',              text: 'text-white'       },
           { label: 'Safe',      value: stats.safe,      color: 'from-green-500/20 to-green-500/5',     text: 'text-green-400'   },
-          { label: 'Warned',    value: stats.warned,    color: 'from-yellow-500/20 to-yellow-500/5',   text: 'text-yellow-400'  },
           { label: 'Blurred',   value: stats.blurred,   color: 'from-purple-500/20 to-purple-500/5',   text: 'text-purple-400'  },
           { label: 'Rewritten', value: stats.rewritten, color: 'from-blue-500/20 to-blue-500/5',       text: 'text-blue-400'    },
           { label: 'Filtered',  value: stats.filtered,  color: 'from-red-500/20 to-red-500/5',         text: 'text-red-400'     },
@@ -100,7 +97,7 @@ export default function AdaptiveShieldingAdminPage() {
       {/* Filters + Search */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="flex gap-2 flex-wrap">
-          {['All', 'Safe', 'Warning', 'Blurring', 'Rewriting', 'Filtering'].map(f => (
+          {['All', 'Safe', 'Blurring', 'Rewriting', 'Filtering'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
