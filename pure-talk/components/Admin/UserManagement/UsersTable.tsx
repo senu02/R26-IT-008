@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useThemeColors } from '@/context/adminTheme';
-import { Phone, Calendar, MoreVertical, Edit, Trash2, Lock, Unlock, CheckCircle, XCircle, AlertCircle, Shield, UserCheck, User } from 'lucide-react';
+import { Phone, Calendar, Edit, Trash2, Lock, Unlock, CheckCircle, XCircle, AlertCircle, Shield, UserCheck, User } from 'lucide-react';
 import { useToast } from '@/context/toast';
+import { getImageUrl } from '@/lib/api'; // Import the helper function
 
 export type UserStatus = 'active' | 'inactive' | 'suspended';
 export type UserRole = 'admin' | 'moderator' | 'user';
@@ -18,6 +19,7 @@ export interface User {
   phone: string;
   createdAt: string;
   lastLogin: string;
+  profile_picture?: string | null; // Added profile picture field
 }
 
 // Status Badge Component
@@ -85,7 +87,7 @@ const ConfirmationModal = ({
   const { colors } = useThemeColors();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
@@ -178,11 +180,9 @@ const ConfirmationModal = ({
   );
 };
 
-// Action Menu Component
-const ActionMenu = ({ user, onEdit, onDelete, onToggleStatus }: any) => {
+// Action Buttons Component (without dropdown)
+const ActionButtons = ({ user, onEdit, onDelete, onToggleStatus }: any) => {
   const { colors } = useThemeColors();
-  const [isOpen, setIsOpen] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     type: 'danger' | 'warning';
@@ -199,40 +199,7 @@ const ActionMenu = ({ user, onEdit, onDelete, onToggleStatus }: any) => {
     action: async () => {},
   });
   
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const [mounted, setMounted] = useState(false);
   const toast = useToast();
-
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
-
-  const updatePosition = () => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX - 140,
-      });
-    }
-  };
-
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    if (!isOpen) {
-      updatePosition();
-      setTimeout(() => setIsOpen(true), 0);
-    } else {
-      setIsOpen(false);
-    }
-  };
-
-  const handleClose = () => {
-    setIsOpen(false);
-  };
 
   const showConfirmation = (
     type: 'danger' | 'warning',
@@ -249,7 +216,6 @@ const ActionMenu = ({ user, onEdit, onDelete, onToggleStatus }: any) => {
       confirmText,
       action,
     });
-    setIsOpen(false);
   };
 
   const handleConfirmAction = async () => {
@@ -290,92 +256,48 @@ const ActionMenu = ({ user, onEdit, onDelete, onToggleStatus }: any) => {
     );
   };
 
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleUpdate = () => {
-      updatePosition();
-    };
-    
-    window.addEventListener('scroll', handleUpdate, true);
-    window.addEventListener('resize', handleUpdate);
-    
-    return () => {
-      window.removeEventListener('scroll', handleUpdate, true);
-      window.removeEventListener('resize', handleUpdate);
-    };
-  }, [isOpen]);
-
   return (
     <>
-      <div className="relative inline-block">
+      <div className="flex items-center justify-center gap-1.5">
         <button 
-          ref={buttonRef}
-          onClick={handleToggle}
-          className="p-2 rounded-lg transition-colors hover:bg-gray-100"
-          style={{ 
-            background: isOpen ? colors.surface.tertiary : 'transparent',
-            position: 'relative',
-            zIndex: 10
+          onClick={() => {
+            onEdit(user);
+            toast.showSuccess(`✅ ${user.name} edited successfully`);
           }}
+          className="p-1.5 rounded-lg transition-all duration-200 hover:scale-110"
+          style={{ 
+            color: colors.accent.indigo,
+            background: `${colors.accent.indigo}15`,
+          }}
+          title="Edit"
         >
-          <MoreVertical size={18} style={{ color: colors.text.secondary }} />
+          <Edit size={16} />
+        </button>
+        
+        <button 
+          onClick={handleSuspend}
+          className="p-1.5 rounded-lg transition-all duration-200 hover:scale-110"
+          style={{ 
+            color: user.status === 'active' ? colors.status.warning : colors.status.success,
+            background: user.status === 'active' ? `${colors.status.warning}15` : `${colors.status.success}15`,
+          }}
+          title={user.status === 'active' ? 'Suspend' : 'Activate'}
+        >
+          {user.status === 'active' ? <Lock size={16} /> : <Unlock size={16} />}
+        </button>
+        
+        <button 
+          onClick={handleDelete}
+          className="p-1.5 rounded-lg transition-all duration-200 hover:scale-110"
+          style={{ 
+            color: colors.status.error,
+            background: `${colors.status.error}15`,
+          }}
+          title="Delete"
+        >
+          <Trash2 size={16} />
         </button>
       </div>
-      
-      {isOpen && mounted && createPortal(
-        <>
-          <div 
-            className="fixed inset-0 z-40"
-            style={{ background: 'transparent' }}
-            onClick={handleClose}
-          />
-          
-          <div 
-            className="fixed min-w-[160px] rounded-lg shadow-lg overflow-hidden z-50"
-            style={{ 
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-              background: colors.surface.primary, 
-              border: `1px solid ${colors.border.primary}`,
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="py-1">
-              <button 
-                onClick={() => {
-                  onEdit(user);
-                  setIsOpen(false);
-                  toast.showSuccess(`✅ ${user.name} edited successfully`);
-                }}
-                className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 transition-colors hover:bg-gray-100"
-                style={{ color: colors.text.primary }}
-              >
-                <Edit size={16} /> 
-                <span>Edit</span>
-              </button>
-              <button 
-                onClick={handleSuspend}
-                className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 transition-colors hover:bg-gray-100"
-                style={{ color: user.status === 'active' ? colors.status.warning : colors.status.success }}
-              >
-                {user.status === 'active' ? <Lock size={16} /> : <Unlock size={16} />}
-                <span>{user.status === 'active' ? 'Suspend' : 'Activate'}</span>
-              </button>
-              <button 
-                onClick={handleDelete}
-                className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 transition-colors hover:bg-gray-100"
-                style={{ color: colors.status.error }}
-              >
-                <Trash2 size={16} /> 
-                <span>Delete</span>
-              </button>
-            </div>
-          </div>
-        </>,
-        document.body
-      )}
 
       <ConfirmationModal
         isOpen={modalConfig.isOpen}
@@ -401,6 +323,7 @@ interface UsersTableProps {
 export default function UsersTable({ users, onEdit, onDelete, onToggleStatus }: UsersTableProps) {
   const { colors } = useThemeColors();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   
   if (users.length === 0) {
     return (
@@ -428,57 +351,79 @@ export default function UsersTable({ users, onEdit, onDelete, onToggleStatus }: 
             </tr>
           </thead>
           <tbody>
-            {users.map((user, index) => (
-              <tr 
-                key={user.id}
-                onMouseEnter={() => setHoveredRow(user.id)}
-                onMouseLeave={() => setHoveredRow(null)}
-                style={{ 
-                  borderBottom: index < users.length - 1 ? `1px solid ${colors.border.light}` : 'none',
-                  background: hoveredRow === user.id ? colors.surface.tertiary : 'transparent'
-                }}
-              >
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-medium flex-shrink-0"
-                      style={{ background: `${colors.primary.main}20`, color: colors.primary.main }}>
-                      {user.name.charAt(0)}
+            {users.map((user, index) => {
+              const profileImageUrl = user.profile_picture ? getImageUrl(user.profile_picture) : null;
+              const hasImageError = imageErrors[user.id] || false;
+              
+              return (
+                <tr 
+                  key={user.id}
+                  onMouseEnter={() => setHoveredRow(user.id)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                  style={{ 
+                    borderBottom: index < users.length - 1 ? `1px solid ${colors.border.light}` : 'none',
+                    background: hoveredRow === user.id ? colors.surface.tertiary : 'transparent'
+                  }}
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar with Profile Image Support */}
+                      <div 
+                        className="w-10 h-10 rounded-full flex items-center justify-center font-medium flex-shrink-0 overflow-hidden"
+                        style={{ 
+                          background: !profileImageUrl || hasImageError ? `${colors.primary.main}20` : 'transparent',
+                          color: colors.primary.main 
+                        }}
+                      >
+                        {profileImageUrl && !hasImageError ? (
+                          <img 
+                            src={profileImageUrl} 
+                            alt={user.name}
+                            className="w-full h-full object-cover"
+                            onError={() => {
+                              setImageErrors(prev => ({ ...prev, [user.id]: true }));
+                            }}
+                          />
+                        ) : (
+                          user.name.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate" style={{ color: colors.text.primary }}>{user.name}</p>
+                        <p className="text-sm truncate" style={{ color: colors.text.secondary }}>{user.email}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-medium truncate" style={{ color: colors.text.primary }}>{user.name}</p>
-                      <p className="text-sm truncate" style={{ color: colors.text.secondary }}>{user.email}</p>
+                  </td>
+                  <td className="px-6 py-4"><RoleBadge role={user.role} /></td>
+                  <td className="px-6 py-4"><StatusBadge status={user.status} /></td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Phone size={14} className="flex-shrink-0" style={{ color: colors.text.tertiary }} />
+                      <span className="truncate" style={{ color: colors.text.secondary }}>{user.phone}</span>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4"><RoleBadge role={user.role} /></td>
-                <td className="px-6 py-4"><StatusBadge status={user.status} /></td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <Phone size={14} className="flex-shrink-0" style={{ color: colors.text.tertiary }} />
-                    <span className="truncate" style={{ color: colors.text.secondary }}>{user.phone}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="flex-shrink-0" style={{ color: colors.text.tertiary }} />
-                    <span className="truncate" style={{ color: colors.text.secondary }}>{user.createdAt}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="truncate block" style={{ color: colors.text.secondary }}>
-                    {new Date(user.lastLogin).toLocaleDateString()}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <ActionMenu 
-                    user={user} 
-                    onEdit={onEdit} 
-                    onDelete={onDelete} 
-                    onToggleStatus={onToggleStatus} 
-                  />
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="flex-shrink-0" style={{ color: colors.text.tertiary }} />
+                      <span className="truncate" style={{ color: colors.text.secondary }}>{user.createdAt}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="truncate block" style={{ color: colors.text.secondary }}>
+                      {new Date(user.lastLogin).toLocaleDateString()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <ActionButtons 
+                      user={user} 
+                      onEdit={onEdit} 
+                      onDelete={onDelete} 
+                      onToggleStatus={onToggleStatus} 
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
