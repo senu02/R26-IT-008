@@ -185,6 +185,14 @@ def enforce_behavior(
             flagged_labels=flagged_labels,
             event_type='allowed', profile=profile,
         )
+
+        # Let the profile recover — this is what actually brings
+        # severity_score / psychological_risk_score back down after a
+        # clean message. Previously nothing called this, so the scores
+        # only ever went up and then stayed frozen at their peak.
+        profile.record_clean_message()
+        profile.refresh_from_db()
+
         return _result(
             is_blocked=False, event_type='allowed',
             threshold=threshold, toxicity_score=toxicity_score,

@@ -443,6 +443,68 @@ class UserBehaviorProfile(models.Model):
         # Sync with CustomUser model
         self._sync_user_account_status()
 
+    def record_clean_message(self):
+        """
+        Record a clean (non-toxic) message and let the profile recover.
+
+        This is the missing counterpart to record_offence(). Without it,
+        severity_score / psychological_risk_score could only ever go up
+        (or stay flat) — a user who sent toxic messages and then switched
+        to sending only clean messages would stay stuck at their worst
+        score forever, because nothing ever told the profile "this user
+        is behaving now".
+        """
+        if self.toxic_count == 0:
+            # Nothing to recover from yet — keep everything at baseline.
+            return
+
+        now = timezone.now()
+        previous_risk = self.psychological_risk_score
+
+        # ── 1. Recalculate psychological metrics ─────────────────────
+        #    Re-derives malice / escalation / recovery / pattern from the
+        #    full event history (which now includes this clean message),
+        #    so a sustained streak of clean messages is recognised as a
+        #    "recovering" trend instead of being ignored. (Note: this can
+        #    set psychological_risk_score itself, but for the RECOVERING
+        #    pattern that formula has a hard floor of 0.2 — see step 3.)
+        self._calculate_psychological_metrics(event_severity=0.0)
+
+        # ── 2. Decay severity_score toward 0 ──────────────────────────
+        #    Mirrors the EMA blending used in record_offence(), just
+        #    pulling the score down instead of pushing it up.
+        self.severity_score = round(self.severity_score * 0.85, 4)
+        if self.severity_score < 0.01:
+            self.severity_score = 0.0
+
+        # ── 3. Decay risk relative to where it WAS, not the recompute ──
+        #    Step 1's formula has a 0.2 floor once the pattern becomes
+        #    "recovering", which would make risk plateau forever instead
+        #    of continuing toward 0 on a long clean streak. Decaying from
+        #    previous_risk (captured before step 1 ran) and taking the
+        #    lower of the two values keeps it trending down — the same
+        #    way record_offence() directly raises the score for a bad
+        #    message instead of leaving it to indirect recomputation.
+        decayed_risk = max(0.0, (previous_risk * 0.8) - 0.02)
+        self.psychological_risk_score = round(
+            min(self.psychological_risk_score, decayed_risk), 4
+        )
+
+        # ── 4. Ease the warning level off as risk drops ───────────────
+        if self.psychological_risk_score > 0.8:
+            self.warning_level = WarningLevel.BANNED
+        elif self.psychological_risk_score > 0.6:
+            self.warning_level = WarningLevel.SEVERE
+        elif self.psychological_risk_score > 0.4:
+            self.warning_level = WarningLevel.MODERATE
+        elif self.psychological_risk_score > 0.2:
+            self.warning_level = WarningLevel.MILD
+        else:
+            self.warning_level = WarningLevel.NONE
+
+        self.updated_at = now
+        self.save()
+
     def is_currently_suspended(self) -> bool:
         """Check if user is currently suspended (auto-expire)"""
         if not self.is_suspended:
