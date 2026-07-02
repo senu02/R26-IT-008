@@ -531,4 +531,4 @@ export default {
   isModerator,
   canManageUsers,
   getImageUrl
-};
+};
