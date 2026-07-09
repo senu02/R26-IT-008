@@ -12,7 +12,7 @@ export default function AdvancedFooter() {
       
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-16">
-          {/* Brand Column */}
+          
           <div className="flex flex-col gap-6">
             <Link href="/" className="flex items-center gap-3 group w-max">
               <div className="p-2.5 bg-gradient-to-br from-[#fd297b] to-[#ff655b] rounded-xl group-hover:scale-105 transition-transform shadow-lg shadow-pink-500/30">
