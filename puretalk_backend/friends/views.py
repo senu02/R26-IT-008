@@ -38,6 +38,15 @@ class FriendViewSet(viewsets.ViewSet):
                 message=serializer.validated_data.get('message', '')
             )
             
+            from notifications.models import Notification
+            Notification.objects.create(
+                recipient=serializer.target_user,
+                sender=request.user,
+                notification_type='friend_request',
+                message=f"{request.user.full_name or request.user.email.split('@')[0]} sent you a friend request.",
+                reference_id=friend_request.id
+            )
+            
             response_serializer = FriendRequestSerializer(friend_request)
             return Response({
                 'message': 'Friend request sent successfully',

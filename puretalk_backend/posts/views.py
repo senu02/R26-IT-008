@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Q, Count, F
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from notifications.models import Notification
 from .models import (
     Post, PostLike, Comment, CommentLike, PostSave, PostReport,
     PostPrivacy, PostStatus, PostType
@@ -27,6 +28,15 @@ def _run_toxicity_check(text, author, post=None, comment=None, content_type='pos
     if not text:
         return None
     try:
+        from toxicity_detection.ai_module.toxicity_model import load_model, preprocess_text, predict_toxicity
+        from toxicity_detection.ai_module.sentiment_model import get_sentiment_score
+        from toxicity_behavior.models import UserToxicityScore, UserBehaviorScore
+        from adptiveShelding.engine import run_adaptive_shielding
+        from notifications.models import Notification
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         from toxicity_detection.services import analyse_toxicity
         from toxicity_detection.models import ToxicityLog, UserToxicityProfile
         from django.utils import timezone as tz
@@ -351,6 +361,24 @@ class PostViewSet(viewsets.ModelViewSet):
             like.reaction_type = reaction_type
             like.is_active = True
             like.save()
+            
+            # Send notification for reaction update
+            Notification.objects.create(
+                recipient=post.author,
+                sender=request.user,
+                notification_type='like',
+                message=f"{request.user.full_name or request.user.email.split('@')[0]} reacted to your post.",
+                reference_id=post.id
+            )
+        else:
+            # Send notification for new reaction
+            Notification.objects.create(
+                recipient=post.author,
+                sender=request.user,
+                notification_type='like',
+                message=f"{request.user.full_name or request.user.email.split('@')[0]} reacted to your post.",
+                reference_id=post.id
+            )
 
         return Response({
             "message": "Post liked" if created else "Reaction updated",
@@ -529,6 +557,15 @@ class CommentViewSet(viewsets.ModelViewSet):
             comment = serializer.save()
         # ──────────────────────────────────────────────────────────────
 
+        # Send notification for comment
+        Notification.objects.create(
+            recipient=comment.post.author,
+            sender=request.user,
+            notification_type='comment',
+            message=f"{request.user.full_name or request.user.email.split('@')[0]} commented on your post.",
+            reference_id=comment.post.id
+        )
+
         return Response(
             CommentSerializer(comment, context={'request': request}).data,
             status=status.HTTP_201_CREATED
@@ -550,8 +587,25 @@ class CommentViewSet(viewsets.ModelViewSet):
             like.is_active = not like.is_active
             like.save()
             message = "Like removed" if not like.is_active else "Comment liked"
+            
+            if like.is_active:
+                Notification.objects.create(
+                    recipient=comment.author,
+                    sender=request.user,
+                    notification_type='like',
+                    message=f"{request.user.full_name or request.user.email.split('@')[0]} liked your comment.",
+                    reference_id=comment.post.id
+                )
         else:
             message = "Comment liked"
+            Notification.objects.create(
+                recipient=comment.author,
+                sender=request.user,
+                notification_type='like',
+                message=f"{request.user.full_name or request.user.email.split('@')[0]} liked your comment.",
+                reference_id=comment.post.id
+            )
+            
         return Response({"message": message, "like_count": comment.like_count})
 
     @action(detail=True, methods=['get'], url_path='replies')

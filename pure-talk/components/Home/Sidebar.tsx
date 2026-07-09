@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { notificationAPI } from '@/lib/api';
 import { useTheme } from 'next-themes';
 import { 
   Home, 
@@ -16,12 +17,15 @@ import {
   Settings,
   Users
 } from 'lucide-react';
+import { getCurrentUserAvatar } from '@/app/services/posts/actions';
+import { NotificationList } from '@/components/User/Notifications/NotificationList';
 
 const Sidebar = () => {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
@@ -29,30 +33,41 @@ const Sidebar = () => {
   useEffect(() => {
     setMounted(true);
     
-    // Demo user data - using localStorage to persist avatar preference
-    const savedAvatar = localStorage.getItem('demo_user_avatar');
-    if (savedAvatar) {
-      setUserAvatar(savedAvatar);
+    // Real user avatar
+    const avatar = getCurrentUserAvatar();
+    if (avatar && avatar !== 'null' && avatar !== 'undefined') {
+      setUserAvatar(avatar);
     } else {
-      // Set random demo avatar
-      const demoAvatars = [
-        'https://i.pravatar.cc/150?img=1',
-        'https://i.pravatar.cc/150?img=2',
-        'https://i.pravatar.cc/150?img=3',
-        'https://i.pravatar.cc/150?img=4',
-        'https://i.pravatar.cc/150?img=5',
-        'https://i.pravatar.cc/150?img=11',
-        'https://i.pravatar.cc/150?img=12',
-        'https://i.pravatar.cc/150?img=13'
-      ];
-      const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
-      setUserAvatar(randomAvatar);
-      localStorage.setItem('demo_user_avatar', randomAvatar);
+      // Fallback to random demo avatar if no profile picture
+      const savedAvatar = localStorage.getItem('demo_user_avatar');
+      if (savedAvatar) {
+        setUserAvatar(savedAvatar);
+      } else {
+        const demoAvatars = [
+          'https://i.pravatar.cc/150?img=1',
+          'https://i.pravatar.cc/150?img=2',
+          'https://i.pravatar.cc/150?img=11',
+        ];
+        const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
+        setUserAvatar(randomAvatar);
+        localStorage.setItem('demo_user_avatar', randomAvatar);
+      }
     }
 
-    // Demo notifications count - random between 0-5 for demo
-    const demoUnreadCount = Math.floor(Math.random() * 6);
-    setUnreadNotifications(demoUnreadCount);
+    // Fetch notifications count
+    const fetchNotifications = async () => {
+      try {
+        const data = await notificationAPI.getUnreadCount();
+        setUnreadNotifications(data.unread_count);
+      } catch (error) {
+        console.error('Failed to fetch unread notifications count:', error);
+      }
+    };
+    fetchNotifications();
+    
+    // Set up polling every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -89,7 +104,22 @@ const Sidebar = () => {
           <NavItem href="/users/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
           <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
-          <NavItem href="/notifications" icon={<Heart className="h-6 w-6" />} label="Notifications" active={pathname === '/notifications'} badge={unreadNotifications} />
+          
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${showNotifications ? 'font-bold' : 'font-normal'}`}
+          >
+            <div className="relative transition-transform group-hover:scale-105">
+              <Heart className="h-6 w-6" />
+              {unreadNotifications > 0 && (
+                <div className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </div>
+              )}
+            </div>
+            <span className="hidden lg:block text-[15px]">Notifications</span>
+          </button>
+
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
@@ -139,6 +169,25 @@ const Sidebar = () => {
         </div>
 
       </div>
+
+      {/* Notifications Sliding Drawer */}
+      <div 
+        className={`fixed top-0 bottom-0 left-[72px] lg:left-[245px] w-[350px] sm:w-[400px] bg-[var(--background)] border-r border-[var(--ig-border)] shadow-xl z-40 transition-transform duration-300 ease-in-out ${
+          showNotifications ? 'translate-x-0' : '-translate-x-full hidden'
+        }`}
+      >
+        <div className="h-full overflow-y-auto" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+          <NotificationList />
+        </div>
+      </div>
+      
+      {/* Overlay to close the drawer when clicking outside */}
+      {showNotifications && (
+        <div 
+          className="fixed inset-0 z-30 bg-black/20 dark:bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowNotifications(false)}
+        />
+      )}
     </>
   );
 };
