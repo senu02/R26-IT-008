@@ -1,44 +1,70 @@
 from rest_framework import serializers
-from .models import ImageToxicityLog
+from .models import ToxicImageLog
+
+ALLOWED_TYPES   = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+MAX_SIZE_MB     = 10
 
 
-class ImageToxicityLogSerializer(serializers.ModelSerializer):
-    author_username = serializers.CharField(
-        source='author.username', read_only=True
+# ─── Request Serializers ──────────────────────────────────────────────────────
+
+class ToxicImageSerializer(serializers.Serializer):
+    """Validates a single image upload."""
+
+    image = serializers.ImageField(
+        help_text="Image file (JPEG, PNG, WEBP, GIF). Max 10 MB."
+    )
+    model = serializers.ChoiceField(
+        choices=["h5", "pkl"],
+        default="h5",
+        required=False,
+        help_text="'h5' = MobileNetV2 (default) | 'pkl' = Keras pickle model."
+    )
+    threshold = serializers.FloatField(
+        default=0.5,
+        required=False,
+        min_value=0.0,
+        max_value=1.0,
+        help_text="Score threshold to flag as toxic (default: 0.5)."
     )
 
+    def validate_image(self, value):
+        if hasattr(value, "content_type") and value.content_type not in ALLOWED_TYPES:
+            raise serializers.ValidationError(
+                f"Unsupported type '{value.content_type}'. Allowed: {', '.join(ALLOWED_TYPES)}"
+            )
+        if value.size > MAX_SIZE_MB * 1024 * 1024:
+            raise serializers.ValidationError(
+                f"File too large ({value.size / 1024 / 1024:.1f} MB). Max is {MAX_SIZE_MB} MB."
+            )
+        return value
+
+
+class ToxicImageBatchSerializer(serializers.Serializer):
+    """Validates a batch image upload."""
+
+    model = serializers.ChoiceField(
+        choices=["h5", "pkl"],
+        default="h5",
+        required=False,
+    )
+    threshold = serializers.FloatField(
+        default=0.5,
+        required=False,
+        min_value=0.0,
+        max_value=1.0,
+    )
+
+
+# ─── Response / Log Serializers ───────────────────────────────────────────────
+
+class ToxicImageLogSerializer(serializers.ModelSerializer):
+    """Serializes stored ToxicImageLog records."""
+
     class Meta:
-        model = ImageToxicityLog
+        model  = ToxicImageLog
         fields = [
-            'id',
-            'author',
-            'author_username',
-            'post',
-            'content_type',
-            'image',
-            'is_toxic',
-            'confidence_score',
-            'toxic_probability',
-            'non_toxic_probability',
-            'model_available',
-            'is_reviewed',
-            'reviewer',
-            'review_notes',
-            'overridden',
-            'created_at',
+            "id", "image_name", "label", "is_toxic",
+            "score", "confidence", "model_used",
+            "threshold", "checked_at",
         ]
-        read_only_fields = [
-            'id', 'author', 'is_toxic', 'confidence_score',
-            'toxic_probability', 'non_toxic_probability',
-            'model_available', 'created_at',
-        ]
-
-
-class ImageCheckResultSerializer(serializers.Serializer):
-    """Lightweight serializer for quick-check responses (no DB save)."""
-    is_toxic = serializers.BooleanField()
-    confidence_score = serializers.FloatField()
-    toxic_probability = serializers.FloatField()
-    non_toxic_probability = serializers.FloatField()
-    model_available = serializers.BooleanField()
-    message = serializers.CharField()
+        read_only_fields = fields

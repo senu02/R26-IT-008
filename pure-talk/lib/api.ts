@@ -380,7 +380,7 @@ export const canManageUsers = (): boolean => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface AnalyzeResult {
-  strategy: 'Safe' | 'Warning' | 'Blurring' | 'Filtering' | 'Rewriting';
+  strategy: 'Safe' | 'Blurring' | 'Filtering' | 'Rewriting';
   output: string;
   toxicity: number;
   behavior: number;
@@ -531,4 +531,4 @@ export default {
   isModerator,
   canManageUsers,
   getImageUrl
-};
+};

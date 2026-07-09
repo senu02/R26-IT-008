@@ -215,11 +215,6 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
             ...prev,
             [postId]: { type: 'rewrite', message: '✏️ Your comment was auto-rewritten to keep things positive.' }
           }));
-        } else if (shield.strategy === 'Warning') {
-          setShieldAlert(prev => ({
-            ...prev,
-            [postId]: { type: 'warn', message: '⚠️ Your comment contains potentially harmful language.' }
-          }));
         } else if (shield.strategy === 'Blurring') {
           setShieldAlert(prev => ({
             ...prev,
@@ -550,8 +545,6 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
                               shieldAlert[post.id]?.type === 'block'
                                 ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                                : shieldAlert[post.id]?.type === 'warn'
-                                ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30'
                                 : shieldAlert[post.id]?.type === 'rewrite'
                                 ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
                                 : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'

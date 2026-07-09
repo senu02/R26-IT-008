@@ -112,63 +112,6 @@ def _toxicity_response(result):
     return None
 
 
-def _run_image_toxicity_check(image_files, author, post):
-    """
-    Run image toxicity scan on every uploaded image file.
-    Saves an ImageToxicityLog per image.
-    Returns (is_any_toxic: bool, first_blocked_response: Response | None)
-    Does NOT raise — failures are logged and ignored.
-    """
-    import logging
-    logger = logging.getLogger(__name__)
-
-    try:
-        from toxicity_image.services import analyse_image
-        from toxicity_image.models import ImageToxicityLog
-    except ImportError:
-        logger.warning("toxicity_image app not available — skipping image check")
-        return False, None
-
-    for image_file in image_files:
-        try:
-            # Seek to start in case file pointer moved during serializer save
-            if hasattr(image_file, 'seek'):
-                image_file.seek(0)
-
-            result = analyse_image(image_file)
-
-            # Persist log
-            if hasattr(image_file, 'seek'):
-                image_file.seek(0)
-
-            ImageToxicityLog.objects.create(
-                author=author,
-                post=post,
-                content_type='post',
-                image=image_file,
-                is_toxic=result['is_toxic'],
-                confidence_score=result['confidence_score'],
-                toxic_probability=result['toxic_probability'],
-                non_toxic_probability=result['non_toxic_probability'],
-                model_available=result['model_available'],
-            )
-
-            if result['model_available'] and result['is_toxic'] and TOXIC_BLOCK:
-                blocked_response = Response(
-                    {
-                        "error": "One or more images were flagged as inappropriate and could not be posted.",
-                        "confidence": result['confidence_score'],
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-                return True, blocked_response
-
-        except Exception as e:
-            logger.error("Image toxicity check failed for file %s: %s", getattr(image_file, 'name', '?'), e)
-
-    return False, None
-
-
 # ── PostViewSet ───────────────────────────────────────────────────────────────
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -260,20 +203,6 @@ class PostViewSet(viewsets.ModelViewSet):
                 return blocked
         else:
             post = serializer.save()
-        # ─────────────────────────────────────────────────────────────────
-
-        # ── Image toxicity check ─────────────────────────────────────────
-        uploaded_media = request.FILES.getlist('uploaded_media')
-        image_files = [
-            f for f in uploaded_media
-            if f.content_type and f.content_type.startswith('image/')
-        ]
-        if image_files:
-            is_toxic, blocked = _run_image_toxicity_check(image_files, request.user, post)
-            if blocked:
-                post.status = PostStatus.REPORTED
-                post.save(update_fields=['status'])
-                return blocked
         # ─────────────────────────────────────────────────────────────────
 
         return Response(

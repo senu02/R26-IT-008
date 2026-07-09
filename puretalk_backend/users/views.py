@@ -16,9 +16,17 @@ from .permissions import IsAdmin, IsModerator, IsSuperAdmin, CanModerateContent
 User = get_user_model()
 
 
+# Custom Permission Classes
 class IsAdminOrSelf(permissions.BasePermission):
+    """Allow access to admin or the user themselves"""
     def has_object_permission(self, request, view, obj):
         return request.user.is_admin or obj == request.user
+
+
+class IsModeratorOrAdmin(permissions.BasePermission):
+    """Allow access to moderators and admins"""
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.can_moderate()
 
 
 class LoginViewSet(viewsets.ViewSet):
@@ -41,41 +49,22 @@ class LoginViewSet(viewsets.ViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        # Check behavior profile suspension first
-        try:
-            from toxicity_behavior.models import UserBehaviorProfile
-            bp, _ = UserBehaviorProfile.objects.get_or_create(user=user)
-            
-            # Sync behavior profile status with user account
-            if bp.is_suspended and bp.suspended_until:
-                if timezone.now() > bp.suspended_until:
-                    # Expired suspension
-                    bp.is_suspended = False
-                    bp.suspended_until = None
-                    bp.suspension_reason = None
-                    bp.save()
-                    if user.account_status == 'suspended':
-                        user.account_status = 'active'
-                        user.suspended_until = None
-                        user.suspension_reason = None
-                        user.save()
-                else:
-                    # Active suspension from behavior profile
-                    if user.account_status != 'suspended':
-                        user.account_status = 'suspended'
-                        user.suspended_until = bp.suspended_until
-                        user.suspension_reason = bp.suspension_reason
-                        user.save(update_fields=['account_status', 'suspended_until', 'suspension_reason'])
-        except Exception as e:
-            pass
-        
-        # Auto-clear expired suspension from user account
+        # Auto-clear suspension if it has expired
         if user.account_status == 'suspended' and user.suspended_until:
             if timezone.now() > user.suspended_until:
                 user.account_status = 'active'
                 user.suspended_until = None
                 user.suspension_reason = None
                 user.save(update_fields=['account_status', 'suspended_until', 'suspension_reason'])
+                # Also clear behavior profile suspension if it exists
+                try:
+                    bp = user.behavior_profile
+                    bp.is_suspended = False
+                    bp.suspended_until = None
+                    bp.suspension_reason = None
+                    bp.save(update_fields=['is_suspended', 'suspended_until', 'suspension_reason'])
+                except Exception:
+                    pass
 
         # Check account status
         if user.account_status == 'suspended':
@@ -84,14 +73,14 @@ class LoginViewSet(viewsets.ViewSet):
                 until_str = f" until {user.suspended_until.strftime('%Y-%m-%d %H:%M UTC')}"
             reason_str = f" Reason: {user.suspension_reason}" if user.suspension_reason else ""
             return Response(
-                {"error": f"⚠️ Your account has been suspended{until_str}.{reason_str}"}, 
+                {"error": f"Your account has been suspended{until_str}.{reason_str}"}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
         if user.account_status == 'banned':
             reason_str = f" Reason: {user.banned_reason}" if user.banned_reason else ""
             return Response(
-                {"error": f"⛔ Your account has been permanently banned.{reason_str}"}, 
+                {"error": f"Your account has been permanently banned.{reason_str}"}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -108,16 +97,8 @@ class LoginViewSet(viewsets.ViewSet):
         # Create token
         _, token = AuthToken.objects.create(user)
         
-        # Get user data with behavior profile info
+        # Get user data
         user_data = UserProfileSerializer(user).data
-        
-        # Add behavior profile info
-        try:
-            from toxicity_behavior.services import get_user_status
-            behavior_status = get_user_status(user)
-            user_data['behavior_status'] = behavior_status
-        except Exception:
-            pass
         
         return Response({
             'user': user_data,
@@ -164,18 +145,23 @@ class UserView(viewsets.ModelViewSet):
         return UserProfileSerializer
     
     def get_queryset(self):
+        """Filter queryset based on user role"""
         user = self.request.user
         
         if user.role == 'super_admin':
             return User.objects.all()
         elif user.role == 'admin':
+            # Admins can see all except super admins
             return User.objects.exclude(role='super_admin')
         elif user.role == 'moderator':
+            # Moderators can see all regular users
             return User.objects.filter(role='user')
         else:
+            # Regular users only see themselves
             return User.objects.filter(id=user.id)
     
     def list(self, request):
+        """List users based on role permissions"""
         if not request.user.can_manage_users() and not request.user.is_moderator:
             return Response(
                 {"error": "You don't have permission to list all users"},
@@ -191,22 +177,13 @@ class UserView(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], url_path='me')
     def me(self, request):
-        """Get current logged in user profile with behavior status"""
+        """Get current logged in user profile"""
         serializer = UserProfileSerializer(request.user)
-        data = serializer.data
-        
-        # Add behavior profile info
-        try:
-            from toxicity_behavior.services import get_user_status
-            behavior_status = get_user_status(request.user)
-            data['behavior_status'] = behavior_status
-        except Exception as e:
-            pass
-        
-        return Response(data)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['patch'], url_path='me')
     def update_me(self, request):
+        """Update current logged in user profile"""
         serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
         
         if serializer.is_valid():
@@ -219,6 +196,7 @@ class UserView(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['delete'], url_path='me')
     def delete_me(self, request):
+        """Delete current logged in user account"""
         user = request.user
         
         password = request.data.get('password')
@@ -256,6 +234,7 @@ class UserView(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
+        # Prevent suspending higher roles
         if user.role == 'super_admin' or (user.role == 'admin' and request.user.role != 'super_admin'):
             return Response(
                 {"error": "You cannot suspend this user"},
@@ -266,33 +245,17 @@ class UserView(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        days = serializer.validated_data['days']
-        reason = serializer.validated_data.get('reason', f'Manual suspension by {request.user.email}')
-        suspended_until = timezone.now() + timedelta(days=days)
-        
-        # Update user account
         user.account_status = 'suspended'
-        user.suspended_until = suspended_until
-        user.suspension_reason = reason
+        user.suspended_until = timezone.now() + timedelta(days=serializer.validated_data['days'])
+        user.suspension_reason = serializer.validated_data.get('reason', '')
         user.save()
-        
-        # Update behavior profile
-        try:
-            from toxicity_behavior.models import UserBehaviorProfile
-            bp, _ = UserBehaviorProfile.objects.get_or_create(user=user)
-            bp.is_suspended = True
-            bp.suspended_until = suspended_until
-            bp.suspension_reason = reason
-            bp.save()
-        except Exception as e:
-            pass
         
         # Delete all auth tokens
         AuthToken.objects.filter(user=user).delete()
         
         return Response({
-            "message": f"User {user.email} suspended for {days} days",
-            "suspended_until": suspended_until
+            "message": f"User {user.email} suspended for {serializer.validated_data['days']} days",
+            "suspended_until": user.suspended_until
         })
     
     @action(detail=True, methods=['post'], url_path='unsuspend')
@@ -309,22 +272,10 @@ class UserView(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        # Update user account
         user.account_status = 'active'
         user.suspended_until = None
         user.suspension_reason = None
         user.save()
-        
-        # Update behavior profile
-        try:
-            from toxicity_behavior.models import UserBehaviorProfile
-            bp, _ = UserBehaviorProfile.objects.get_or_create(user=user)
-            bp.is_suspended = False
-            bp.suspended_until = None
-            bp.suspension_reason = None
-            bp.save()
-        except Exception as e:
-            pass
         
         return Response({"message": f"User {user.email} has been unsuspended"})
     
@@ -342,6 +293,7 @@ class UserView(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
+        # Prevent banning higher roles
         if user.role == 'super_admin' or (user.role == 'admin' and request.user.role != 'super_admin'):
             return Response(
                 {"error": "You cannot ban this user"},
@@ -357,6 +309,7 @@ class UserView(viewsets.ModelViewSet):
         user.banned_reason = serializer.validated_data['reason']
         user.save()
         
+        # Delete all auth tokens
         AuthToken.objects.filter(user=user).delete()
         
         return Response({"message": f"User {user.email} has been banned"})
@@ -384,6 +337,7 @@ class UserView(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['put', 'patch'], url_path='role')
     def change_user_role(self, request, pk=None):
+        """Admin only: Change user role"""
         if not request.user.can_manage_users() or request.user.role not in ['admin', 'super_admin']:
             return Response(
                 {"error": "Only admins can change user roles"},
@@ -402,12 +356,14 @@ class UserView(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Prevent changing super admin role
         if user.role == 'super_admin':
             return Response(
                 {"error": "Cannot change super admin role"},
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        # Only super admin can promote to admin
         if new_role == 'admin' and request.user.role != 'super_admin':
             return Response(
                 {"error": "Only super admin can promote users to admin"},
@@ -424,11 +380,13 @@ class UserView(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='change-password')
     def change_password(self, request, pk=None):
+        """Change user password (admin can change others' passwords)"""
         try:
             user = User.objects.get(pk=pk)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
+        # Check permission
         if user != request.user and not request.user.can_manage_users():
             return Response(
                 {"error": "You can only change your own password"},
@@ -436,6 +394,7 @@ class UserView(viewsets.ModelViewSet):
             )
         
         if user == request.user:
+            # Self password change
             old_password = request.data.get('old_password')
             new_password = request.data.get('new_password')
             confirm_password = request.data.get('confirm_password')
@@ -449,6 +408,7 @@ class UserView(viewsets.ModelViewSet):
             if not user.check_password(old_password):
                 return Response({"error": "Old password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
         else:
+            # Admin resetting password
             new_password = request.data.get('new_password')
             confirm_password = request.data.get('confirm_password')
             
@@ -464,6 +424,7 @@ class UserView(viewsets.ModelViewSet):
         user.set_password(new_password)
         user.save()
         
+        # Delete all existing tokens
         AuthToken.objects.filter(user=user).delete()
         
         return Response(
@@ -473,6 +434,7 @@ class UserView(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], url_path='moderators')
     def list_moderators(self, request):
+        """List all moderators and admins"""
         if not request.user.is_authenticated:
             return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
         
@@ -482,6 +444,7 @@ class UserView(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], url_path='stats')
     def user_stats(self, request):
+        """Get user statistics (admin only)"""
         if not request.user.can_manage_users():
             return Response(
                 {"error": "Only admins can view user statistics"},
