@@ -519,11 +519,57 @@ export const postsAPI = {
   },
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Notifications API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: number;
+  recipient: number;
+  sender: number | null;
+  sender_detail?: User | null;
+  notification_type: 'comment' | 'like' | 'friend_request' | 'system_shield';
+  message: string;
+  reference_id: number | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const notificationAPI = {
+  getNotifications: async (): Promise<Notification[]> => {
+    return await apiCall<Notification[]>('/api/notifications/');
+  },
+  
+  getUnreadCount: async (): Promise<{ unread_count: number }> => {
+    return await apiCall<{ unread_count: number }>('/api/notifications/unread_count/');
+  },
+  
+  markAsRead: async (id: number): Promise<{ status: string }> => {
+    return await apiCall<{ status: string }>(`/api/notifications/${id}/read/`, {
+      method: 'PATCH',
+    });
+  },
+  
+  markAllAsRead: async (): Promise<{ status: string }> => {
+    return await apiCall<{ status: string }>('/api/notifications/mark_all_read/', {
+      method: 'POST',
+    });
+  },
+  
+  createSystemNotification: async (message: string, type: string = 'system_shield'): Promise<Notification> => {
+    return await apiCall<Notification>('/api/notifications/system/', {
+      method: 'POST',
+      body: JSON.stringify({ message, type }),
+    });
+  },
+};
+
 export default {
   authAPI,
   userAPI,
   postsAPI,
   adaptiveShieldingAPI,
+  notificationAPI,
   isAuthenticated,
   getCurrentUserData,
   getUserRole,

@@ -14,7 +14,7 @@ import {
   getCurrentUserAvatar,
   type PostData 
 } from '@/app/services/posts/actions';
-import { adaptiveShieldingAPI } from '@/lib/api';
+import { adaptiveShieldingAPI, notificationAPI } from '@/lib/api';
 import { Lock, SendHorizontal, Loader2, PlusCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PostSectionProps {
@@ -146,9 +146,11 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
           } else if (shield.strategy === 'Rewriting') {
             finalContent = shield.output;
             alert('✏️ Your post was auto-rewritten to keep things positive.');
+            notificationAPI.createSystemNotification('Your post was auto-rewritten to keep things positive.');
           } else if (shield.strategy === 'Blurring') {
             finalContent = shield.output;
             alert('🌫️ Some words in your post have been blurred.');
+            notificationAPI.createSystemNotification('Some words in your post have been blurred.');
           }
         } catch (shieldErr) {
           console.warn('Shield check skipped:', shieldErr);
@@ -237,12 +239,14 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
             ...prev,
             [postId]: { type: 'rewrite', message: '✏️ Your comment was auto-rewritten to keep things positive.' }
           }));
+          notificationAPI.createSystemNotification('Your comment was auto-rewritten to keep things positive.');
         } else if (shield.strategy === 'Blurring') {
           setShieldAlert(prev => ({
             ...prev,
             [postId]: { type: 'blur', message: '🌫️ Some words in your comment have been blurred.' }
           }));
           finalContent = shield.output;
+          notificationAPI.createSystemNotification('Some words in your comment have been blurred.');
         }
       } catch (shieldErr) {
         // Shield unavailable — allow comment to pass through silently
