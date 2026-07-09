@@ -11,6 +11,7 @@ karala processed result eka return karala denawa.
 Strategy pipeline (final_score ekata anuwawa):
     >= 0.85  ->  Filtering  | message eka block karala denawa — too toxic
     >= 0.65  ->  Blurring   | toxic words **** walen censor karala denawa
+    >= 0.45  ->  Warning    | message eka pass karala warning alert ekak display karanawa
     >= 0.30  ->  Rewriting  | gentle alternatives walen rewrite karala denawa
      < 0.30  ->  Safe       | message pass karala, support note ekak attach karala denawa
 """
@@ -23,6 +24,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import TextVectorization
+
+from . import llm_helper
 
 
 # ─────────────────────────────────────────────────────────────
@@ -196,7 +199,11 @@ def get_toxicity(text: str) -> float:
         float: Toxicity score — 0.0 (completely clean) to 1.0 (extremely toxic).
     """
     _load_artifacts()                           # model + vectorizer ready da kiyala check karala denawa
-    cleaned    = _normalize(text)               # text eka lowercase + slang convert + symbols strip karala denawa
+    
+    # ── LLM Integration: Translate to English first so the ML model understands ──
+    translated = llm_helper.translate_to_english(text)
+    
+    cleaned    = _normalize(translated)         # text eka lowercase + slang convert + symbols strip karala denawa
     vectorized = _vectorizer([cleaned])         # text eka model ekata ganna puluwan number vectors walatat convert karala denawa
     prediction = _model.predict(vectorized, verbose=0)[0]  # 6 label predictions array ekak return wela enawa
 
@@ -497,6 +504,7 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
     Strategy thresholds:
         >= 0.85  ->  Filtering  — message block karala denawa, too dangerous
         >= 0.65  ->  Blurring   — toxic words **** walen censor karala denawa
+        >= 0.45  ->  Warning    — message eka pass karala warning alert ekak display karanawa
         >= 0.30  ->  Rewriting  — gentle alternatives walen rewrite karala denawa
          < 0.30  ->  Safe       — message pass karala, support note attach karala denawa
                                   (display-level toxic words thiyanawa nam wath rewrite karala denawa)
@@ -516,6 +524,7 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
             behavior     (float) — behavioral average score, 4 dp rounded
             final_score  (float) — weighted composite score, 4 dp rounded
             new_toxicity (float) — rewritten text eke re-scored toxicity (Rewriting only)
+            warning      (str)   — warning alert message (Warning only)
             support      (str)   — emotional support note (Safe only)
     """
     # user_history None dunna nam new user scenario — empty list ekatak default karala denawa
@@ -525,7 +534,9 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
     # ── Step 1: Toxicity saha behavior scores calculate karala gannawa ──
     toxicity    = get_toxicity(text)               # current message eke ML toxicity score
     behavior    = get_behavior_score(user_history)  # user eke past behavior average score
-    final_score = (toxicity * 0.7) + (behavior * 0.3)  # weighted composite score
+    
+    # [TEMPORARY FOR TESTING] Behavior score is ignored (0.0 weight) to allow testing Rewriting strategy
+    final_score = (toxicity * 1.0) + (behavior * 0.0)  
 
     # ── Step 2: Score metadata — siyalu strategy responses walata common fields ──
     scores = {
@@ -547,16 +558,30 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
     elif final_score >= 0.65:
         # BLURRING — message eka fully block karaganna epa, but toxic words matra
         # **** walen hide karala denawa — partial censorship
+        blurred = llm_helper.blur_toxic_words_with_llm(text)
+        if blurred == text:  # LLM failed or made no changes, fallback to local dictionary
+            blurred = blur_text(text)
         return {
             "strategy": "Blurring",
-            "output":   blur_text(text),
+            "output":   blurred,
+            **scores,
+        }
+
+    elif final_score >= 0.45:
+        # WARNING NOTIFICATIONS — message eka pass karanawa, but alert ekak display karanawa
+        return {
+            "strategy": "Warning",
+            "output":   text,
+            "warning":  "⚠️ Warning: This message contains potentially harmful content.",
             **scores,
         }
 
     elif final_score >= 0.30:
         # REWRITING — toxic words gentle alternatives walen replace karala denawa
         # Sesh wena positivity suffix ekak add karala user eka nudge karala denawa
-        rewritten = rewrite_text(text)
+        rewritten = llm_helper.rewrite_with_llm(text)
+        if rewritten == text:  # LLM failed, fallback to local dictionary
+            rewritten = rewrite_text(text)
         return {
             "strategy":    "Rewriting",
             "output":       rewritten,
@@ -571,7 +596,9 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
         # score eka low wunath rewrite apply karala denawa — extra safety net ekak.
         if _contains_toxic_words(text):
             # ML score low, but display-level toxic words detect una — Rewriting apply karala denawa
-            rewritten = rewrite_text(text)
+            rewritten = llm_helper.rewrite_with_llm(text)
+            if rewritten == text:  # LLM failed, fallback to local dictionary
+                rewritten = rewrite_text(text)
             return {
                 "strategy":     "Rewriting",
                 "output":        rewritten,

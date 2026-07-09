@@ -95,7 +95,7 @@ def _run_toxicity_check(text, author, post=None, comment=None, content_type='pos
         return None
 
 
-TOXIC_BLOCK = True   # Set False to log-only (warn but still allow the post)
+TOXIC_BLOCK = False   # Set False to log-only (warn but still allow the post)
 
 
 def _toxicity_response(result):

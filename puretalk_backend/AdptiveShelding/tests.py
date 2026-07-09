@@ -218,7 +218,21 @@ class AESMEngineStrategyTests(TestCase):
     """
     aesm_engine() ගේ strategy selection verify කරනවා.
     get_toxicity mock කරා — ML model load නොකෙරෙනවා.
+    LLM API calls mock කරා — local functions use වෙනවා.
     """
+
+    def setUp(self):
+        self.patcher1 = patch('adptiveShelding.engine.llm_helper.blur_toxic_words_with_llm', side_effect=blur_text)
+        self.patcher2 = patch('adptiveShelding.engine.llm_helper.rewrite_with_llm', side_effect=rewrite_text)
+        self.patcher3 = patch('adptiveShelding.engine.llm_helper.translate_to_english', side_effect=lambda x: x)
+        self.patcher1.start()
+        self.patcher2.start()
+        self.patcher3.start()
+
+    def tearDown(self):
+        self.patcher1.stop()
+        self.patcher2.stop()
+        self.patcher3.stop()
 
     # ── Filtering (final_score ≥ 0.85) ──────────────────────
     def test_filtering_strategy_high_toxicity(self):
@@ -254,7 +268,17 @@ class AESMEngineStrategyTests(TestCase):
             result = aesm_engine("test", user_history=[0.60])
         self.assertEqual(result["strategy"], "Blurring")
 
-    # ── Rewriting (0.30 ≤ final_score < 0.65) ───────────────
+    # ── Warning (0.45 ≤ final_score < 0.65) ─────────────────
+    def test_warning_strategy(self):
+        """Warning threshold (0.45 to 0.65) -> Warning strategy."""
+        # toxicity=0.60, behavior=0.30 → 0.42 + 0.09 = 0.51 ✓ Warning
+        with _mock_engine_with_score(0.60):
+            result = aesm_engine("some potentially harmful text", user_history=[0.30])
+        self.assertEqual(result["strategy"], "Warning")
+        self.assertIn("⚠️ Warning", result["warning"])
+        self.assertEqual(result["output"], "some potentially harmful text")
+
+    # ── Rewriting (0.30 ≤ final_score < 0.45) ───────────────
     def test_rewriting_strategy_mild(self):
         """Mildly toxic message → Rewriting strategy."""
         with _mock_engine_with_score(0.40):
@@ -263,9 +287,10 @@ class AESMEngineStrategyTests(TestCase):
         self.assertIn("Let's keep it positive", result["output"])
 
     def test_rewriting_strategy_moderate(self):
-        """Moderately toxic message → Rewriting (no Warning)."""
-        with _mock_engine_with_score(0.55):
-            result = aesm_engine("I hate this", user_history=[0.3])
+        """Moderately toxic message → Rewriting (score < 0.45)."""
+        # toxicity=0.50, behavior=0.20 → 0.35 + 0.06 = 0.41 ✓ Rewriting
+        with _mock_engine_with_score(0.50):
+            result = aesm_engine("I hate this", user_history=[0.2])
         self.assertEqual(result["strategy"], "Rewriting")
         self.assertIn("dislike", result["output"])
 
@@ -378,4 +403,4 @@ class EdgeCaseTests(TestCase):
         """Low toxicity but high behavior history → higher strategy selected."""
         with _mock_engine_with_score(0.3):
             result = aesm_engine("you are bad", user_history=[1.0])
-        self.assertIn(result["strategy"], ["Rewriting", "Blurring", "Filtering"])
+        self.assertIn(result["strategy"], ["Rewriting", "Warning", "Blurring", "Filtering"])
