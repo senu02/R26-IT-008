@@ -134,7 +134,29 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     }
 
     try {
-      const newPost = await postAPI.createPost({ content, image });
+      let finalContent = content;
+      
+      // ── Adaptive Shielding Check ──────────────────────────────────
+      if (content.trim()) {
+        try {
+          const shield = await adaptiveShieldingAPI.analyzeMessage(content);
+          if (shield.strategy === 'Filtering') {
+            alert('🚫 Post blocked: your message contains highly toxic content.');
+            return;
+          } else if (shield.strategy === 'Rewriting') {
+            finalContent = shield.output;
+            alert('✏️ Your post was auto-rewritten to keep things positive.');
+          } else if (shield.strategy === 'Blurring') {
+            finalContent = shield.output;
+            alert('🌫️ Some words in your post have been blurred.');
+          }
+        } catch (shieldErr) {
+          console.warn('Shield check skipped:', shieldErr);
+        }
+      }
+      // ─────────────────────────────────────────────────────────────
+
+      const newPost = await postAPI.createPost({ content: finalContent, image });
       if (newPost) {
         setPosts([newPost, ...posts]);
       }
