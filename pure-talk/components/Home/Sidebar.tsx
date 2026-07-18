@@ -16,6 +16,7 @@ import {
   Settings,
   Users
 } from 'lucide-react';
+import { notificationAPI } from '@/app/services/notifications/actions';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -50,10 +51,33 @@ const Sidebar = () => {
       localStorage.setItem('demo_user_avatar', randomAvatar);
     }
 
-    // Demo notifications count - random between 0-5 for demo
-    const demoUnreadCount = Math.floor(Math.random() * 6);
-    setUnreadNotifications(demoUnreadCount);
+    // Fetch real unread count from API
+    fetchUnreadCount();
+
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    
+    // Listen for notification updates (if you have a global event system)
+    const handleNotificationUpdate = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener('notificationUpdate', handleNotificationUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notificationUpdate', handleNotificationUpdate);
+    };
   }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const data = await notificationAPI.getUnreadCount();
+      setUnreadNotifications(data?.unread_count || 0);
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+      // Don't set to 0 on error, keep existing value
+    }
+  };
 
   return (
     <>
@@ -89,7 +113,13 @@ const Sidebar = () => {
           <NavItem href="/users/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
           <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
-          <NavItem href="/notifications" icon={<Heart className="h-6 w-6" />} label="Notifications" active={pathname === '/notifications'} badge={unreadNotifications} />
+          <NavItem 
+            href="/users/notifications" 
+            icon={<Heart className="h-6 w-6" />} 
+            label="Notifications" 
+            active={pathname === '/notifications'} 
+            badge={unreadNotifications}
+          />
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
@@ -152,7 +182,7 @@ const NavItem = ({ href, icon, label, active = false, badge }: { href: string, i
       <div className={`relative transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px]' : ''}`}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)]">
+          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)] animate-pulse">
             {badge > 99 ? '99+' : badge}
           </span>
         )}

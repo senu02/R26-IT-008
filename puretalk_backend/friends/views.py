@@ -11,6 +11,8 @@ from .serializers import (
     BlockUserSerializer, UnblockUserSerializer, FriendSuggestionSerializer
 )
 from users.serializers import UserProfileSerializer
+from notifications.services import notify_user
+from notifications.models import NotificationType
 
 User = get_user_model()
 
@@ -37,7 +39,16 @@ class FriendViewSet(viewsets.ViewSet):
                 to_user=serializer.target_user,
                 message=serializer.validated_data.get('message', '')
             )
-            
+
+            notify_user(
+                user=friend_request.to_user,
+                notification_type=NotificationType.FRIEND_REQUEST,
+                title="New friend request",
+                message=f"{request.user.get_full_name_display()} sent you a friend request.",
+                related_user=request.user,
+                metadata={'friend_request_id': friend_request.id},
+            )
+
             response_serializer = FriendRequestSerializer(friend_request)
             return Response({
                 'message': 'Friend request sent successfully',
@@ -57,7 +68,16 @@ class FriendViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             friend_request = serializer.friend_request
             friend_request.accept()
-            
+
+            notify_user(
+                user=friend_request.from_user,
+                notification_type=NotificationType.FRIEND_ACCEPTED,
+                title="Friend request accepted",
+                message=f"{request.user.get_full_name_display()} accepted your friend request.",
+                related_user=request.user,
+                metadata={'friend_request_id': friend_request.id},
+            )
+
             return Response({
                 'message': 'Friend request accepted',
                 'friend': UserProfileSerializer(friend_request.from_user).data

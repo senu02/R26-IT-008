@@ -16,6 +16,8 @@ IT22169594 | Manohara H U K R T | R26-IT-008
 import logging
 from django.utils import timezone
 from .ml_predictor import predict_risk_from_profile, is_model_available
+from notifications.services import notify_user, notify_admins
+from notifications.models import NotificationType
 
 logger = logging.getLogger(__name__)
 
@@ -264,6 +266,62 @@ def enforce_behavior(
         flagged_labels=flagged_labels,
         event_type=event_type, profile=profile,
     )
+
+    # ── 8. Notify the user ──────────────────────────────────
+    #    Previously this detailed message (pattern, risk %, suggestion)
+    #    was built above and then thrown away — the user only ever saw
+    #    a generic "flagged as inappropriate" error from posts/views.py.
+    #    Now it's saved as a real notification they can check anytime.
+    notify_user(
+        user=user,
+        notification_type=(
+            NotificationType.SUSPENDED if profile.is_suspended
+            else NotificationType.BLOCKED
+        ),
+        title=(
+            "Your account has been suspended"
+            if profile.is_suspended else "Your content was blocked"
+        ),
+        message=message,
+        metadata={
+            'severity': profile.severity_score,
+            'psychological_risk': profile.psychological_risk_score,
+            'pattern': profile.psychological_pattern,
+            'toxic_count': profile.toxic_count,
+        },
+    )
+
+    # ── 9. Alert admins on high-risk users ──────────────────
+    #    Don't spam staff on every single warning — only when the user
+    #    actually gets suspended, or shows a dangerous pattern with high
+    #    confidence (malicious / escalating + risk above 0.6).
+    is_high_risk_pattern = (
+        profile.psychological_pattern in ('malicious', 'escalating')
+        and profile.psychological_risk_score > 0.6
+    )
+    if profile.is_suspended or is_high_risk_pattern:
+        notify_admins(
+            notification_type=NotificationType.ADMIN_ALERT,
+            title=f"⚠️ High-risk user: {user.email}",
+            message=(
+                f"Pattern: {psych_summary_after['pattern']} | "
+                f"Risk: {profile.psychological_risk_score:.0%} | "
+                f"Violations: {profile.toxic_count} | "
+                f"Severity: {profile.severity_score:.0%}"
+                + (
+                    f"\nSuspended until: {profile.suspended_until.strftime('%Y-%m-%d %H:%M UTC')}"
+                    if profile.is_suspended else ""
+                )
+            ),
+            related_user=user,
+            metadata={
+                'pattern': profile.psychological_pattern,
+                'risk_score': profile.psychological_risk_score,
+                'toxic_count': profile.toxic_count,
+                'severity': profile.severity_score,
+                'is_suspended': profile.is_suspended,
+            },
+        )
 
     return _result(
         is_blocked=True, event_type=event_type,

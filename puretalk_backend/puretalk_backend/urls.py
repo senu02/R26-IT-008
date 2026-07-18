@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/', include('toxicity_behavior.urls')), 
     path('api/shield/', include('adptiveShelding.urls')),
     path('api/', include('toxicity_image.urls')),
+    path('api/', include('notifications.urls')),
 ]
 
 if settings.DEBUG:
