@@ -21,6 +21,7 @@ from notifications.models import NotificationType
 
 logger = logging.getLogger(__name__)
 
+# Category weights — must match training code exactly
 CATEGORY_WEIGHTS = {
     'toxic':         1.0,
     'severe_toxic':  2.0,
@@ -31,14 +32,15 @@ CATEGORY_WEIGHTS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
 def _calculate_severity(label_scores: dict) -> float:
-    """Weighted severity across all toxicity labels."""
+    """Weighted severity across all toxicity labels (matches training code)."""
     if not label_scores:
         return 0.0
-
-    total_weight = sum(
-        CATEGORY_WEIGHTS.get(k, 1.0) for k in CATEGORY_WEIGHTS
-    )
+    total_weight = sum(CATEGORY_WEIGHTS.get(k, 1.0) for k in CATEGORY_WEIGHTS)
     weighted_sum = sum(
         label_scores.get(k, 0.0) * CATEGORY_WEIGHTS.get(k, 1.0)
         for k in CATEGORY_WEIGHTS
@@ -72,6 +74,10 @@ def _get_or_create_profile(user):
 
     return profile
 
+
+# ---------------------------------------------------------------------------
+# Main enforcement function
+# ---------------------------------------------------------------------------
 
 def enforce_behavior(
     user,
@@ -119,7 +125,7 @@ def enforce_behavior(
             user=user, content_type=content_type,
             post=post, comment=comment,
             text=text, toxicity_score=toxicity_score,
-            severity=severity,
+            severity=_calculate_severity(label_scores),
             threshold=profile.get_effective_threshold(),
             category_scores=label_scores,
             flagged_labels=flagged_labels,
@@ -131,7 +137,7 @@ def enforce_behavior(
             event_type='suspended',
             threshold=profile.get_effective_threshold(),
             toxicity_score=toxicity_score,
-            severity=severity,
+            severity=_calculate_severity(label_scores),
             profile=profile,
             message=(
                 f"Your account is suspended until "
@@ -178,6 +184,7 @@ def enforce_behavior(
 
     # ── 4. Content is clean ────────────────────────────────
     if not is_toxic_for_user:
+        # Content passes for this user's current threshold
         _log_event(
             user=user, content_type=content_type,
             post=post, comment=comment,
@@ -332,6 +339,10 @@ def enforce_behavior(
     )
 
 
+# ---------------------------------------------------------------------------
+# Status helper (for API responses)
+# ---------------------------------------------------------------------------
+
 def get_user_status(user) -> dict:
     """Get user's current behavior status with ML analysis."""
     profile       = _get_or_create_profile(user)
@@ -396,7 +407,6 @@ def _result(is_blocked, event_type, threshold,
                 profile.get_psychological_pattern_display(),
             'psychological_risk':  profile.psychological_risk_score,
         },
-        'psychological_summary': psych_summary,
     }
 
     # Add ML result if available

@@ -14,7 +14,7 @@ import {
   getCurrentUserAvatar,
   type PostData 
 } from '@/app/services/posts/actions';
-import { adaptiveShieldingAPI } from '@/lib/api';
+import { adaptiveShieldingAPI, notificationAPI } from '@/lib/api';
 import { Lock, SendHorizontal, Loader2, PlusCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PostSectionProps {
@@ -134,7 +134,31 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     }
 
     try {
-      const newPost = await postAPI.createPost({ content, image });
+      let finalContent = content;
+      
+      // ── Adaptive Shielding Check ──────────────────────────────────
+      if (content.trim()) {
+        try {
+          const shield = await adaptiveShieldingAPI.analyzeMessage(content);
+          if (shield.strategy === 'Filtering') {
+            alert('🚫 Post blocked: your message contains highly toxic content.');
+            return;
+          } else if (shield.strategy === 'Rewriting') {
+            finalContent = shield.output;
+            alert('✏️ Your post was auto-rewritten to keep things positive.');
+            notificationAPI.createSystemNotification('Your post was auto-rewritten to keep things positive.');
+          } else if (shield.strategy === 'Blurring') {
+            finalContent = shield.output;
+            alert('🌫️ Some words in your post have been blurred.');
+            notificationAPI.createSystemNotification('Some words in your post have been blurred.');
+          }
+        } catch (shieldErr) {
+          console.warn('Shield check skipped:', shieldErr);
+        }
+      }
+      // ─────────────────────────────────────────────────────────────
+
+      const newPost = await postAPI.createPost({ content: finalContent, image });
       if (newPost) {
         setPosts([newPost, ...posts]);
       }
@@ -215,17 +239,14 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
             ...prev,
             [postId]: { type: 'rewrite', message: '✏️ Your comment was auto-rewritten to keep things positive.' }
           }));
-        } else if (shield.strategy === 'Warning') {
-          setShieldAlert(prev => ({
-            ...prev,
-            [postId]: { type: 'warn', message: '⚠️ Your comment contains potentially harmful language.' }
-          }));
+          notificationAPI.createSystemNotification('Your comment was auto-rewritten to keep things positive.');
         } else if (shield.strategy === 'Blurring') {
           setShieldAlert(prev => ({
             ...prev,
             [postId]: { type: 'blur', message: '🌫️ Some words in your comment have been blurred.' }
           }));
           finalContent = shield.output;
+          notificationAPI.createSystemNotification('Some words in your comment have been blurred.');
         }
       } catch (shieldErr) {
         // Shield unavailable — allow comment to pass through silently
@@ -550,8 +571,6 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
                               shieldAlert[post.id]?.type === 'block'
                                 ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                                : shieldAlert[post.id]?.type === 'warn'
-                                ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30'
                                 : shieldAlert[post.id]?.type === 'rewrite'
                                 ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
                                 : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
