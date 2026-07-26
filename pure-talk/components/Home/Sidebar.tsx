@@ -17,8 +17,7 @@ import {
   Settings,
   Users
 } from 'lucide-react';
-import { getCurrentUserAvatar } from '@/app/services/posts/actions';
-import { NotificationList } from '@/components/User/Notifications/NotificationList';
+import { notificationAPI } from '@/app/services/notifications/actions';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -54,21 +53,33 @@ const Sidebar = () => {
       }
     }
 
-    // Fetch notifications count
-    const fetchNotifications = async () => {
-      try {
-        const data = await notificationAPI.getUnreadCount();
-        setUnreadNotifications(data.unread_count);
-      } catch (error) {
-        console.error('Failed to fetch unread notifications count:', error);
-      }
-    };
-    fetchNotifications();
+    // Fetch real unread count from API
+    fetchUnreadCount();
+
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
     
-    // Set up polling every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    // Listen for notification updates (if you have a global event system)
+    const handleNotificationUpdate = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener('notificationUpdate', handleNotificationUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notificationUpdate', handleNotificationUpdate);
+    };
   }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const data = await notificationAPI.getUnreadCount();
+      setUnreadNotifications(data?.unread_count || 0);
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+      // Don't set to 0 on error, keep existing value
+    }
+  };
 
   return (
     <>
@@ -104,22 +115,13 @@ const Sidebar = () => {
           <NavItem href="/users/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
           <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
           <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
-          
-          <button 
-            onClick={() => setShowNotifications(!showNotifications)}
-            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${showNotifications ? 'font-bold' : 'font-normal'}`}
-          >
-            <div className="relative transition-transform group-hover:scale-105">
-              <Heart className="h-6 w-6" />
-              {unreadNotifications > 0 && (
-                <div className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                </div>
-              )}
-            </div>
-            <span className="hidden lg:block text-[15px]">Notifications</span>
-          </button>
-
+          <NavItem 
+            href="/users/notifications" 
+            icon={<Heart className="h-6 w-6" />} 
+            label="Notifications" 
+            active={pathname === '/notifications'} 
+            badge={unreadNotifications}
+          />
           <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
           <NavItem 
             href="/users/user-profile" 
@@ -201,7 +203,7 @@ const NavItem = ({ href, icon, label, active = false, badge }: { href: string, i
       <div className={`relative transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px] text-blue-500' : ''}`}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white border-2 border-[var(--background)]">
+          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)] animate-pulse">
             {badge > 99 ? '99+' : badge}
           </span>
         )}

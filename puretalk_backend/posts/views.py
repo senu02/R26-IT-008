@@ -16,6 +16,46 @@ from .serializers import (
     PostLikeSerializer,
 )
 from .permissions import IsAuthorOrReadOnly, CanModeratePost, CanDeleteAnyPost, CanViewPost
+from notifications.services import notify_user, notify_admins
+from notifications.models import NotificationType
+
+# ── Notification helpers ───────────────────────────────────────────────────────
+
+def _notify_comment_recipients(comment, commenter):
+    """
+    Notify whoever should hear about a new comment:
+      - top-level comment → the post's author (POST_COMMENT)
+      - reply             → the parent comment's author (COMMENT_REPLY)
+    Never notifies someone about their own comment/reply.
+    """
+    post = comment.post
+
+    if comment.parent_id:
+        parent_author = comment.parent.author
+        if parent_author.id != commenter.id:
+            notify_user(
+                user=parent_author,
+                notification_type=NotificationType.COMMENT_REPLY,
+                title="New reply to your comment",
+                message=f"{commenter.get_full_name_display()} replied to your comment.",
+                related_user=commenter,
+                metadata={
+                    'post_id': post.id,
+                    'comment_id': comment.id,
+                    'parent_comment_id': comment.parent_id,
+                },
+            )
+        return
+
+    if post.author_id != commenter.id:
+        notify_user(
+            user=post.author,
+            notification_type=NotificationType.POST_COMMENT,
+            title="New comment on your post",
+            message=f"{commenter.get_full_name_display()} commented on your post.",
+            related_user=commenter,
+            metadata={'post_id': post.id, 'comment_id': comment.id},
+        )
 
 # ── Toxicity helpers ──────────────────────────────────────────────────────────
 
@@ -380,6 +420,16 @@ class PostViewSet(viewsets.ModelViewSet):
                 reference_id=post.id
             )
 
+        if post.author_id != request.user.id:
+            notify_user(
+                user=post.author,
+                notification_type=NotificationType.POST_LIKE,
+                title="New reaction on your post",
+                message=f"{request.user.get_full_name_display()} reacted to your post.",
+                related_user=request.user,
+                metadata={'post_id': post.id, 'reaction_type': reaction_type},
+            )
+
         return Response({
             "message": "Post liked" if created else "Reaction updated",
             "like_count": post.like_count,
@@ -445,7 +495,25 @@ class PostViewSet(viewsets.ModelViewSet):
             context={'request': request, 'post_id': post.id}
         )
         if serializer.is_valid():
-            serializer.save()
+            report = serializer.save()
+
+            notify_admins(
+                notification_type=NotificationType.CONTENT_REPORT,
+                title=f"Post reported: {report.get_reason_display()}",
+                message=(
+                    f"{request.user.get_full_name_display()} reported a post "
+                    f"by {post.author.get_full_name_display()} for "
+                    f"'{report.get_reason_display()}'."
+                ),
+                related_user=post.author,
+                metadata={
+                    'post_id': post.id,
+                    'report_id': report.id,
+                    'reason': report.reason,
+                    'reporter_id': request.user.id,
+                },
+            )
+
             return Response({"message": "Post reported successfully"})
         return Response(serializer.errors, status=400)
 
@@ -557,14 +625,7 @@ class CommentViewSet(viewsets.ModelViewSet):
             comment = serializer.save()
         # ──────────────────────────────────────────────────────────────
 
-        # Send notification for comment
-        Notification.objects.create(
-            recipient=comment.post.author,
-            sender=request.user,
-            notification_type='comment',
-            message=f"{request.user.full_name or request.user.email.split('@')[0]} commented on your post.",
-            reference_id=comment.post.id
-        )
+        _notify_comment_recipients(comment, request.user)
 
         return Response(
             CommentSerializer(comment, context={'request': request}).data,
@@ -587,25 +648,21 @@ class CommentViewSet(viewsets.ModelViewSet):
             like.is_active = not like.is_active
             like.save()
             message = "Like removed" if not like.is_active else "Comment liked"
-            
-            if like.is_active:
-                Notification.objects.create(
-                    recipient=comment.author,
-                    sender=request.user,
-                    notification_type='like',
-                    message=f"{request.user.full_name or request.user.email.split('@')[0]} liked your comment.",
-                    reference_id=comment.post.id
-                )
+            just_liked = like.is_active
         else:
             message = "Comment liked"
-            Notification.objects.create(
-                recipient=comment.author,
-                sender=request.user,
-                notification_type='like',
-                message=f"{request.user.full_name or request.user.email.split('@')[0]} liked your comment.",
-                reference_id=comment.post.id
+            just_liked = True
+
+        if just_liked and comment.author_id != request.user.id:
+            notify_user(
+                user=comment.author,
+                notification_type=NotificationType.COMMENT_LIKE,
+                title="Someone liked your comment",
+                message=f"{request.user.get_full_name_display()} liked your comment.",
+                related_user=request.user,
+                metadata={'post_id': comment.post_id, 'comment_id': comment.id},
             )
-            
+
         return Response({"message": message, "like_count": comment.like_count})
 
     @action(detail=True, methods=['get'], url_path='replies')

@@ -16,8 +16,47 @@ from .serializers import (
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from friends.models import Friendship
 from django.contrib.auth import get_user_model
+from notifications.services import notify_user, notify_admins
+from notifications.models import NotificationType
 
 User = get_user_model()
+
+
+def _notify_video_comment_recipients(comment, commenter):
+    """
+    Notify whoever should hear about a new video comment:
+      - top-level comment → the video's owner (VIDEO_COMMENT)
+      - reply             → the parent comment's author (VIDEO_COMMENT_REPLY)
+    Never notifies someone about their own comment/reply.
+    """
+    video = comment.video
+
+    if comment.parent_id:
+        parent_author = comment.parent.user
+        if parent_author.id != commenter.id:
+            notify_user(
+                user=parent_author,
+                notification_type=NotificationType.VIDEO_COMMENT_REPLY,
+                title="New reply to your comment",
+                message=f"{commenter.get_full_name_display()} replied to your comment.",
+                related_user=commenter,
+                metadata={
+                    'video_id': video.id,
+                    'comment_id': comment.id,
+                    'parent_comment_id': comment.parent_id,
+                },
+            )
+        return
+
+    if video.user_id != commenter.id:
+        notify_user(
+            user=video.user,
+            notification_type=NotificationType.VIDEO_COMMENT,
+            title="New comment on your video",
+            message=f"{commenter.get_full_name_display()} commented on your video.",
+            related_user=commenter,
+            metadata={'video_id': video.id, 'comment_id': comment.id},
+        )
 
 
 class IsModeratorOrAdmin(permissions.BasePermission):
@@ -196,6 +235,15 @@ class VideoViewSet(viewsets.ModelViewSet):
         
         if created:
             video.increment_likes()
+            if video.user_id != request.user.id:
+                notify_user(
+                    user=video.user,
+                    notification_type=NotificationType.VIDEO_LIKE,
+                    title="Someone liked your video",
+                    message=f"{request.user.get_full_name_display()} liked your video.",
+                    related_user=request.user,
+                    metadata={'video_id': video.id},
+                )
             return Response({"message": "Video liked", "liked": True}, status=status.HTTP_201_CREATED)
         else:
             like.delete()
@@ -234,9 +282,35 @@ class VideoViewSet(viewsets.ModelViewSet):
         
         # Auto-flag video after 3 reports
         report_count = VideoReport.objects.filter(video=video, resolved=False).count()
-        if report_count >= 3:
+        auto_flagged = report_count >= 3
+        if auto_flagged:
             video.flag_for_moderation(reason=f"Auto-flagged due to {report_count} reports")
-        
+
+        notify_admins(
+            notification_type=NotificationType.CONTENT_REPORT,
+            title=(
+                f"🚩 Video auto-flagged ({report_count} reports)"
+                if auto_flagged
+                else f"Video reported: {report.get_reason_display()}"
+            ),
+            message=(
+                f"{request.user.get_full_name_display()} reported a video "
+                f"by {video.user.get_full_name_display()} for "
+                f"'{report.get_reason_display()}'."
+                + (f" This video now has {report_count} reports and was auto-flagged for moderation."
+                   if auto_flagged else "")
+            ),
+            related_user=video.user,
+            metadata={
+                'video_id': video.id,
+                'report_id': report.id,
+                'reason': report.reason,
+                'reporter_id': request.user.id,
+                'report_count': report_count,
+                'auto_flagged': auto_flagged,
+            },
+        )
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'], url_path='block')
@@ -478,7 +552,9 @@ class CommentViewSet(viewsets.ModelViewSet):
         
         self.perform_create(serializer)
         video.increment_comments()
-        
+
+        _notify_video_comment_recipients(serializer.instance, request.user)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     def destroy(self, request, *args, **kwargs):
@@ -516,6 +592,15 @@ class CommentViewSet(viewsets.ModelViewSet):
         
         if created:
             comment.increment_likes()
+            if comment.user_id != request.user.id:
+                notify_user(
+                    user=comment.user,
+                    notification_type=NotificationType.VIDEO_COMMENT_LIKE,
+                    title="Someone liked your comment",
+                    message=f"{request.user.get_full_name_display()} liked your comment.",
+                    related_user=request.user,
+                    metadata={'video_id': comment.video_id, 'comment_id': comment.id},
+                )
             return Response({"message": "Comment liked", "liked": True}, status=status.HTTP_201_CREATED)
         else:
             like.delete()
