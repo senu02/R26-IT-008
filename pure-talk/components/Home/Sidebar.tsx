@@ -124,23 +124,49 @@ const Sidebar = () => {
 
         {/* Navigation */}
         <div className="flex w-full flex-col gap-2">
-          <NavItem href="/home" icon={<Home className="h-6 w-6" />} label="Home" active={pathname === '/home'} />
-          <NavItem href="/users/friends" icon={<Users className="h-6 w-6" />} label="Friends" active={pathname === '/friends'} />
-          <NavItem href="#" icon={<Compass className="h-6 w-6" />} label="Explore" />
-          <NavItem href="#" icon={<MessageCircle className="h-6 w-6" />} label="Messages" />
+          <NavItem 
+            href="/home" 
+            icon={<Home className="h-6 w-6" />} 
+            label="Home" 
+            active={pathname === '/home'} 
+          />
+          <NavItem 
+            href="/users/friends" 
+            icon={<Users className="h-6 w-6" />} 
+            label="Friends" 
+            active={pathname === '/friends' || pathname === '/users/friends'} 
+          />
+          <NavItem 
+            href="#" 
+            icon={<Compass className="h-6 w-6" />} 
+            label="Explore" 
+          />
+          <NavItem 
+            href="#" 
+            icon={<MessageCircle className="h-6 w-6" />} 
+            label="Messages" 
+          />
           <NavItem 
             href="/users/notifications" 
             icon={<Heart className="h-6 w-6" />} 
             label="Notifications" 
-            active={pathname === '/notifications'} 
+            active={pathname === '/notifications' || pathname === '/users/notifications'} 
             badge={unreadNotifications}
           />
-          <NavItem href="#" icon={<PlusSquare className="h-6 w-6" />} label="Create" />
+          <NavItem 
+            href="#" 
+            icon={<PlusSquare className="h-6 w-6" />} 
+            label="Create" 
+          />
           <NavItem 
             href="/users/user-profile" 
-            icon={<div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden"><img src={userAvatar} alt="profile" className="h-full w-full object-cover" /></div>} 
+            icon={
+              <div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden">
+                <img src={userAvatar} alt="profile" className="h-full w-full object-cover" />
+              </div>
+            } 
             label="Profile" 
-            active={pathname === '/users/user-profile'}
+            active={pathname === '/users/user-profile' || pathname === '/profile'} 
           />
         </div>
 
@@ -152,7 +178,7 @@ const Sidebar = () => {
             <div className="absolute bottom-14 left-0 flex w-[220px] flex-col rounded-lg bg-[var(--background)] p-1 shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-[var(--ig-border)] dark:shadow-[0_4px_12px_rgba(255,255,255,0.08)]">
               <Link
                 href="/users/user-settings"
-                className="flex items-center gap-3 rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                className="flex items-center gap-3 rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               >
                 <Settings className="h-5 w-5" />
                 Settings
@@ -161,7 +187,7 @@ const Sidebar = () => {
               <button
                 type="button"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="flex w-full items-center justify-between rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                className="flex w-full items-center justify-between rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -174,7 +200,9 @@ const Sidebar = () => {
           <button
             type="button"
             onClick={() => setShowMoreMenu(!showMoreMenu)}
-            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${showMoreMenu ? 'font-bold' : 'font-normal'}`}
+            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${
+              showMoreMenu ? 'font-bold' : 'font-normal'
+            }`}
           >
             <div className={`transition-transform group-hover:scale-105 ${showMoreMenu ? '*:stroke-[3px]' : ''}`}>
               <Menu className="h-6 w-6" />
@@ -207,13 +235,38 @@ const Sidebar = () => {
   );
 };
 
-const NavItem = ({ href, icon, label, active = false, badge }: { href: string, icon: React.ReactNode, label: string, active?: boolean, badge?: number }) => {
+// FIXED NavItem Component with proper hover effects
+const NavItem = ({ 
+  href, 
+  icon, 
+  label, 
+  active = false, 
+  badge 
+}: { 
+  href: string, 
+  icon: React.ReactNode, 
+  label: string, 
+  active?: boolean, 
+  badge?: number 
+}) => {
   return (
     <Link
       href={href}
-      className={`group relative flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${active ? 'font-bold' : 'font-normal'}`}
+      className={`
+        group relative flex items-center justify-center gap-4 rounded-lg p-3 
+        transition-all duration-200 ease-in-out
+        hover:bg-black/5 dark:hover:bg-white/10 
+        lg:justify-start
+        ${active ? 'font-bold' : 'font-normal'}
+      `}
     >
-      <div className={`relative transition-transform group-hover:scale-105 ${active ? '*:stroke-[3px] text-blue-500' : ''}`}>
+      <div className={`
+        relative transition-all duration-200 ease-in-out
+        group-hover:scale-105
+        flex items-center justify-center
+        ${active ? 'text-blue-500' : 'text-[var(--foreground)]'}
+        ${!active && 'group-hover:text-blue-400'}
+      `}>
         {icon}
         {badge !== undefined && badge > 0 && (
           <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)] animate-pulse">
@@ -221,7 +274,13 @@ const NavItem = ({ href, icon, label, active = false, badge }: { href: string, i
           </span>
         )}
       </div>
-      <span className={`hidden lg:block text-[15px] ${active ? 'text-blue-500' : ''}`}>{label}</span>
+      <span className={`
+        hidden lg:block text-[15px] transition-colors duration-200 ease-in-out
+        ${active ? 'text-blue-500' : 'text-[var(--foreground)]'}
+        ${!active && 'group-hover:text-blue-400'}
+      `}>
+        {label}
+      </span>
     </Link>
   );
 };
