@@ -11,4 +11,4 @@ urlpatterns = [
     path("history/",        UserToxicityHistoryView.as_view(), name="aesm-history"),
     path("behavior-score/", UserBehaviorScoreView.as_view(),   name="aesm-behavior-score"),
     path("admin-records/",  AdminAllRecordsView.as_view(),     name="aesm-admin-records"),
-]
+]
