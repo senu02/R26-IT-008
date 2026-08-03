@@ -308,14 +308,14 @@ const FriendsPageContent = () => {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-[var(--background)] text-[var(--foreground)] font-sans relative overflow-x-hidden">
+    <div className="flex h-screen w-full bg-[var(--background)] text-[var(--foreground)] font-sans overflow-hidden">
       {/* Left Sidebar - Fixed Width, Hidden on Mobile */}
-      <aside className="hidden md:block fixed md:relative w-[72px] lg:w-[245px] shrink-0">
+      <aside className="hidden md:block w-[72px] lg:w-[245px] shrink-0 h-full">
         <Sidebar />
       </aside>
 
-      {/* Main Content Area - Same as Home Page */}
-      <main className="flex-1 flex justify-center min-w-0 px-4 md:px-6 py-4 md:py-6">
+      {/* Main Content Area - Scrollable */}
+      <main className="flex-1 flex justify-center min-w-0 px-4 md:px-6 py-4 md:py-6 overflow-y-auto h-full scrollbar-hide">
         <div className="w-full max-w-2xl lg:max-w-3xl mx-auto">
           
           {/* Instagram-style Header */}
@@ -546,8 +546,8 @@ const FriendsPageContent = () => {
       </main>
 
       {/* Right Sidebar - Fixed Width, Hidden on Tablet/Mobile */}
-      <aside className="hidden xl:block w-[320px] shrink-0 sticky top-0 h-screen overflow-y-auto">
-        <div className="py-6 pr-6">
+      <aside className="hidden xl:block w-[320px] shrink-0 h-full">
+        <div className="h-full overflow-y-auto py-6 pr-6 scrollbar-hide">
           <RightSidebar />
         </div>
       </aside>
