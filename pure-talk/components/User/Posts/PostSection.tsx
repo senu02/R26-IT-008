@@ -146,11 +146,9 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
           } else if (shield.strategy === 'Rewriting') {
             finalContent = shield.output;
             alert('✏️ Your post was auto-rewritten to keep things positive.');
-            // Removed notification creation - not needed for core functionality
           } else if (shield.strategy === 'Blurring') {
             finalContent = shield.output;
             alert('🌫️ Some words in your post have been blurred.');
-            // Removed notification creation - not needed for core functionality
           }
         } catch (shieldErr) {
           console.warn('Shield check skipped:', shieldErr);
@@ -218,11 +216,9 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     if (!content || !content.trim()) return;
 
     setSubmittingComment(prev => ({ ...prev, [postId]: true }));
-    // Clear any previous shield alert for this post
     setShieldAlert(prev => ({ ...prev, [postId]: null }));
 
     try {
-      // ── Adaptive Shielding Check ──────────────────────────────────
       let finalContent = content;
       try {
         const shield = await adaptiveShieldingAPI.analyzeMessage(content);
@@ -247,10 +243,8 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
           finalContent = shield.output;
         }
       } catch (shieldErr) {
-        // Shield unavailable — allow comment to pass through silently
         console.warn('Shield check skipped:', shieldErr);
       }
-      // ─────────────────────────────────────────────────────────────
 
       const newComment = await postAPI.createComment(postId, finalContent);
       if (newComment) {
@@ -391,7 +385,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   if (!isLoggedIn) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <div className={`${theme.surface.glass} ${theme.surface.border} rounded-2xl p-8 text-center`}>
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b] flex items-center justify-center">
             <Lock className="w-10 h-10 text-white" />
@@ -410,7 +404,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="w-full">
       {/* Filter Tabs - Instagram style */}
       <div className="flex border-b border-white/10 mb-6">
         {filterOptions.map((filter) => (
@@ -564,7 +558,6 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             className={`w-full ${theme.surface.glassHover} rounded-xl px-4 py-2 text-sm ${theme.text.primary} placeholder:${theme.text.muted} outline-none resize-none transition-all duration-200`}
                             rows={2}
                           />
-                          {/* Shield Alert Banner */}
                           {shieldAlert[post.id] && (
                             <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
                               shieldAlert[post.id]?.type === 'block'
