@@ -119,4 +119,4 @@ class AdminAllRecordsView(APIView):
                 "processed_output": r.processed_output,
                 "created_at": r.created_at.isoformat(),
             })
-        return Response({"count": len(data), "records": data}, status=status.HTTP_200_OK)
+        return Response({"count": len(data), "records": data}, status=status.HTTP_200_OK)

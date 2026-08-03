@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from django.db.models import Q, Count, F
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from notifications.models import Notification
 from .models import (
     Post, PostLike, Comment, CommentLike, PostSave, PostReport,
     PostPrivacy, PostStatus, PostType
@@ -68,15 +67,6 @@ def _run_toxicity_check(text, author, post=None, comment=None, content_type='pos
     if not text:
         return None
     try:
-        from toxicity_detection.ai_module.toxicity_model import load_model, preprocess_text, predict_toxicity
-        from toxicity_detection.ai_module.sentiment_model import get_sentiment_score
-        from toxicity_behavior.models import UserToxicityScore, UserBehaviorScore
-        from adptiveShelding.engine import run_adaptive_shielding
-        from notifications.models import Notification
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         from toxicity_detection.services import analyse_toxicity
         from toxicity_detection.models import ToxicityLog, UserToxicityProfile
         from django.utils import timezone as tz
@@ -145,7 +135,7 @@ def _run_toxicity_check(text, author, post=None, comment=None, content_type='pos
         return None
 
 
-TOXIC_BLOCK = False   # Set False to log-only (warn but still allow the post)
+TOXIC_BLOCK = True   # Set False to log-only (warn but still allow the post)
 
 
 def _toxicity_response(result):
@@ -160,6 +150,63 @@ def _toxicity_response(result):
             status=status.HTTP_400_BAD_REQUEST,
         )
     return None
+
+
+def _run_image_toxicity_check(image_files, author, post):
+    """
+    Run image toxicity scan on every uploaded image file.
+    Saves an ImageToxicityLog per image.
+    Returns (is_any_toxic: bool, first_blocked_response: Response | None)
+    Does NOT raise — failures are logged and ignored.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        from toxicity_image.services import analyse_image
+        from toxicity_image.models import ImageToxicityLog
+    except ImportError:
+        logger.warning("toxicity_image app not available — skipping image check")
+        return False, None
+
+    for image_file in image_files:
+        try:
+            # Seek to start in case file pointer moved during serializer save
+            if hasattr(image_file, 'seek'):
+                image_file.seek(0)
+
+            result = analyse_image(image_file)
+
+            # Persist log
+            if hasattr(image_file, 'seek'):
+                image_file.seek(0)
+
+            ImageToxicityLog.objects.create(
+                author=author,
+                post=post,
+                content_type='post',
+                image=image_file,
+                is_toxic=result['is_toxic'],
+                confidence_score=result['confidence_score'],
+                toxic_probability=result['toxic_probability'],
+                non_toxic_probability=result['non_toxic_probability'],
+                model_available=result['model_available'],
+            )
+
+            if result['model_available'] and result['is_toxic'] and TOXIC_BLOCK:
+                blocked_response = Response(
+                    {
+                        "error": "One or more images were flagged as inappropriate and could not be posted.",
+                        "confidence": result['confidence_score'],
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+                return True, blocked_response
+
+        except Exception as e:
+            logger.error("Image toxicity check failed for file %s: %s", getattr(image_file, 'name', '?'), e)
+
+    return False, None
 
 
 # ── PostViewSet ───────────────────────────────────────────────────────────────
@@ -253,6 +300,20 @@ class PostViewSet(viewsets.ModelViewSet):
                 return blocked
         else:
             post = serializer.save()
+        # ─────────────────────────────────────────────────────────────────
+
+        # ── Image toxicity check ─────────────────────────────────────────
+        uploaded_media = request.FILES.getlist('uploaded_media')
+        image_files = [
+            f for f in uploaded_media
+            if f.content_type and f.content_type.startswith('image/')
+        ]
+        if image_files:
+            is_toxic, blocked = _run_image_toxicity_check(image_files, request.user, post)
+            if blocked:
+                post.status = PostStatus.REPORTED
+                post.save(update_fields=['status'])
+                return blocked
         # ─────────────────────────────────────────────────────────────────
 
         return Response(
@@ -401,24 +462,6 @@ class PostViewSet(viewsets.ModelViewSet):
             like.reaction_type = reaction_type
             like.is_active = True
             like.save()
-            
-            # Send notification for reaction update
-            Notification.objects.create(
-                recipient=post.author,
-                sender=request.user,
-                notification_type='like',
-                message=f"{request.user.full_name or request.user.email.split('@')[0]} reacted to your post.",
-                reference_id=post.id
-            )
-        else:
-            # Send notification for new reaction
-            Notification.objects.create(
-                recipient=post.author,
-                sender=request.user,
-                notification_type='like',
-                message=f"{request.user.full_name or request.user.email.split('@')[0]} reacted to your post.",
-                reference_id=post.id
-            )
 
         if post.author_id != request.user.id:
             notify_user(

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { notificationAPI } from '@/lib/api';
 import { useTheme } from 'next-themes';
 import { 
   Home, 
@@ -78,6 +77,20 @@ const Sidebar = () => {
     } catch (err) {
       console.error('Error fetching unread count:', err);
       // Don't set to 0 on error, keep existing value
+    }
+  };
+
+  // Helper function to get current user avatar
+  const getCurrentUserAvatar = () => {
+    try {
+      const userData = localStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        return user?.profile_picture || user?.avatar || null;
+      }
+      return null;
+    } catch {
+      return null;
     }
   };
 
@@ -210,6 +223,16 @@ const NavItem = ({ href, icon, label, active = false, badge }: { href: string, i
       </div>
       <span className={`hidden lg:block text-[15px] ${active ? 'text-blue-500' : ''}`}>{label}</span>
     </Link>
+  );
+};
+
+// Placeholder component - you need to implement this or import it
+const NotificationList = () => {
+  return (
+    <div className="p-4">
+      <h2 className="text-lg font-bold mb-4">Notifications</h2>
+      <p className="text-gray-500">No notifications yet</p>
+    </div>
   );
 };
 
