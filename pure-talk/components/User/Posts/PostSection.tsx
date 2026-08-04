@@ -1,4 +1,3 @@
-// components/User/Posts/PostSection.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,13 +15,17 @@ import {
 } from '@/app/services/posts/actions';
 import { adaptiveShieldingAPI } from '@/lib/api';
 import { Lock, SendHorizontal, Loader2, PlusCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ToastProvider, useToast } from '@/context/userToast';
 
 interface PostSectionProps {
   theme: ThemeColors;
   isDark: boolean;
 }
 
-const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
+// Fallback avatar used if getCurrentUserAvatar() returns null/empty
+const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=fd297b&color=fff';
+
+const PostSectionContent: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   const [posts, setPosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +38,20 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   const [showCommentsForPost, setShowCommentsForPost] = useState<{ [key: string]: boolean }>({});
   const [shieldAlert, setShieldAlert] = useState<{ [key: string]: { type: string; message: string } | null }>({});
 
+  const toast = useToast();
+
   const filterOptions = ['For You', 'My Posts', 'Saved'];
+
+  // Helpers for the current user's avatar/name (used in Instagram-style toasts)
+  const getMyAvatar = (): string => {
+    const avatar = getCurrentUserAvatar();
+    return avatar && avatar.trim() !== '' ? avatar : DEFAULT_AVATAR;
+  };
+
+  const getMyName = (): string => {
+    const userData = getCurrentUserData();
+    return userData?.full_name || 'You';
+  };
 
   useEffect(() => {
     const checkAuth = () => {
@@ -129,47 +145,52 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleNewPost = async (content: string, image?: File) => {
     if (!isLoggedIn) {
-      alert('Please login to create a post');
+      toast.showError('Please login to create a post');
       return;
     }
 
     try {
       let finalContent = content;
-      
-      // ── Adaptive Shielding Check ──────────────────────────────────
+
       if (content.trim()) {
         try {
           const shield = await adaptiveShieldingAPI.analyzeMessage(content);
           if (shield.strategy === 'Filtering') {
-            alert('🚫 Post blocked: your message contains highly toxic content.');
+            toast.showError('🚫 Post blocked: your message contains highly toxic content.');
             return;
           } else if (shield.strategy === 'Rewriting') {
             finalContent = shield.output;
-            alert('✏️ Your post was auto-rewritten to keep things positive.');
-            // Removed notification creation - not needed for core functionality
+            toast.showInfo('✏️ Your post was auto-rewritten to keep things positive.');
           } else if (shield.strategy === 'Blurring') {
             finalContent = shield.output;
-            alert('🌫️ Some words in your post have been blurred.');
-            // Removed notification creation - not needed for core functionality
+            toast.showInfo('🌫️ Some words in your post have been blurred.');
           }
         } catch (shieldErr) {
           console.warn('Shield check skipped:', shieldErr);
         }
       }
-      // ─────────────────────────────────────────────────────────────
 
       const newPost = await postAPI.createPost({ content: finalContent, image });
+
       if (newPost) {
-        setPosts([newPost, ...posts]);
+        setPosts(prev => [newPost, ...prev]);
       }
+
+      toast.showInstagramToast(
+        'created a new post 🎉',
+        getMyName(),
+        getMyAvatar(),
+        'like'
+      );
+
     } catch (err: any) {
       if (err.message?.includes('flagged')) {
-        alert(err.message);
+        toast.showError(err.message);
       } else if (err.message?.includes('login')) {
-        alert('Please login to create a post');
+        toast.showError('Please login to create a post');
         setIsLoggedIn(false);
       } else {
-        alert('Failed to create post. Please try again.');
+        toast.showError('Failed to create post. Please try again.');
       }
       console.error('Error creating post:', err);
     }
@@ -177,7 +198,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleLike = async (id: string) => {
     if (!isLoggedIn) {
-      alert('Please login to like posts');
+      toast.showError('Please login to like posts');
       return;
     }
 
@@ -199,18 +220,18 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
       ));
     } catch (err: any) {
       if (err.message?.includes('login')) {
-        alert('Please login to like posts');
+        toast.showError('Please login to like posts');
         setIsLoggedIn(false);
       } else {
         console.error('Like/unlike failed:', err);
-        alert('Failed to like/unlike post. Please try again.');
+        toast.showError('Failed to like/unlike post. Please try again.');
       }
     }
   };
 
   const handleComment = async (postId: string) => {
     if (!isLoggedIn) {
-      alert('Please login to comment');
+      toast.showError('Please login to comment');
       return;
     }
 
@@ -218,11 +239,9 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     if (!content || !content.trim()) return;
 
     setSubmittingComment(prev => ({ ...prev, [postId]: true }));
-    // Clear any previous shield alert for this post
     setShieldAlert(prev => ({ ...prev, [postId]: null }));
 
     try {
-      // ── Adaptive Shielding Check ──────────────────────────────────
       let finalContent = content;
       try {
         const shield = await adaptiveShieldingAPI.analyzeMessage(content);
@@ -247,10 +266,8 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
           finalContent = shield.output;
         }
       } catch (shieldErr) {
-        // Shield unavailable — allow comment to pass through silently
         console.warn('Shield check skipped:', shieldErr);
       }
-      // ─────────────────────────────────────────────────────────────
 
       const newComment = await postAPI.createComment(postId, finalContent);
       if (newComment) {
@@ -266,12 +283,12 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     } catch (err: any) {
       console.error('Comment failed:', err);
       if (err.message?.includes('flagged')) {
-        alert(err.message);
+        toast.showError(err.message);
       } else if (err.message?.includes('login')) {
-        alert('Please login to comment');
+        toast.showError('Please login to comment');
         setIsLoggedIn(false);
       } else {
-        alert('Failed to add comment. Please try again.');
+        toast.showError('Failed to add comment. Please try again.');
       }
     } finally {
       setSubmittingComment(prev => ({ ...prev, [postId]: false }));
@@ -280,7 +297,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleEditComment = async (commentId: string, newContent: string) => {
     if (!isLoggedIn) {
-      alert('Please login to edit comments');
+      toast.showError('Please login to edit comments');
       return;
     }
 
@@ -301,9 +318,9 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     } catch (err: any) {
       console.error('Edit comment failed:', err);
       if (err.message?.includes('flagged')) {
-        alert(err.message);
+        toast.showError(err.message);
       } else {
-        alert('Failed to update comment. Please try again.');
+        toast.showError('Failed to update comment. Please try again.');
       }
       throw err;
     }
@@ -311,7 +328,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleDeleteComment = async (postId: string, commentId: string) => {
     if (!isLoggedIn) {
-      alert('Please login to delete comments');
+      toast.showError('Please login to delete comments');
       return;
     }
 
@@ -325,13 +342,13 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
       ));
     } catch (err) {
       console.error('Delete comment failed:', err);
-      alert('Failed to delete comment');
+      toast.showError('Failed to delete comment');
     }
   };
 
   const handleRepost = async (id: string) => {
     if (!isLoggedIn) {
-      alert('Please login to share posts');
+      toast.showError('Please login to share posts');
       return;
     }
 
@@ -348,32 +365,43 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
             ? { ...p, reposts: (p.reposts || 0) + 1 }
             : p
         ));
-        alert('Post shared successfully!');
+        toast.showInstagramToast(
+          'shared a post 🔁',
+          getMyName(),
+          getMyAvatar(),
+          'like'
+        );
       }
     } catch (err: any) {
       if (err.message?.includes('login')) {
-        alert('Please login to share posts');
+        toast.showError('Please login to share posts');
         setIsLoggedIn(false);
       } else {
         console.error('Repost failed:', err);
-        alert('Failed to share post');
+        toast.showError('Failed to share post');
       }
     }
   };
 
   const handleDelete = async (id: string): Promise<void> => {
     if (!isLoggedIn) {
-      alert('Please login to delete posts');
+      toast.showError('Please login to delete posts');
       return Promise.reject('Not logged in');
     }
 
     try {
       await postAPI.deletePost(id);
-      setPosts(posts.filter(p => p.id !== id));
+      setPosts(prev => prev.filter(p => p.id !== id));
+      toast.showInstagramToast(
+        'deleted a post 🗑️',
+        getMyName(),
+        getMyAvatar(),
+        'like'
+      );
       return Promise.resolve();
     } catch (err: any) {
       console.error('Error deleting post:', err);
-      alert('Failed to delete post. Please try again.');
+      toast.showError('Failed to delete post. Please try again.');
       return Promise.reject(err);
     }
   };
@@ -391,7 +419,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   if (!isLoggedIn) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <div className={`${theme.surface.glass} ${theme.surface.border} rounded-2xl p-8 text-center`}>
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b] flex items-center justify-center">
             <Lock className="w-10 h-10 text-white" />
@@ -410,7 +438,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="w-full">
       {/* Filter Tabs - Instagram style */}
       <div className="flex border-b border-white/10 mb-6">
         {filterOptions.map((filter) => (
@@ -564,7 +592,6 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             className={`w-full ${theme.surface.glassHover} rounded-xl px-4 py-2 text-sm ${theme.text.primary} placeholder:${theme.text.muted} outline-none resize-none transition-all duration-200`}
                             rows={2}
                           />
-                          {/* Shield Alert Banner */}
                           {shieldAlert[post.id] && (
                             <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
                               shieldAlert[post.id]?.type === 'block'
@@ -615,6 +642,14 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
         </div>
       )}
     </div>
+  );
+};
+
+const PostSection: React.FC<PostSectionProps> = (props) => {
+  return (
+    <ToastProvider>
+      <PostSectionContent {...props} />
+    </ToastProvider>
   );
 };
 

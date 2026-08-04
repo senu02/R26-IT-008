@@ -1,3 +1,4 @@
+// components/StoryRow.tsx
 "use client";
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { ChevronRight, ChevronLeft, Plus, Loader2, X, Image as ImageIcon, Type, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
@@ -12,12 +13,15 @@ import {
   type StoryFeedItem
 } from '@/app/services/Stories/actions';
 
+// Import toast provider and hook
+import { ToastProvider, useToast } from '@/context/userToast';
+
 type Story = StoryFeedItem;
 
-// Custom Popup Component
+// Custom Popup Component - Only for confirm now
 interface CustomPopupProps {
   isOpen: boolean;
-  type: 'confirm' | 'success' | 'error';
+  type: 'confirm'; // Only confirm type now
   title: string;
   message: string;
   onConfirm?: () => void;
@@ -51,54 +55,20 @@ const CustomPopup: React.FC<CustomPopupProps> = ({
 
   if (!isOpen) return null;
 
-  const getIcon = () => {
-    switch (type) {
-      case 'confirm':
-        return <Trash2 className="h-12 w-12 text-red-500" />;
-      case 'success':
-        return <CheckCircle className="h-12 w-12 text-green-500" />;
-      case 'error':
-        return <AlertCircle className="h-12 w-12 text-red-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const getButtonColors = () => {
-    switch (type) {
-      case 'confirm':
-        return 'bg-red-600 hover:bg-red-700 text-white';
-      case 'success':
-        return 'bg-green-600 hover:bg-green-700 text-white';
-      case 'error':
-        return 'bg-red-600 hover:bg-red-700 text-white';
-      default:
-        return 'bg-blue-600 hover:bg-blue-700 text-white';
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
-        if (e.target === e.currentTarget && type !== 'confirm') {
+        if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
       <div className="relative mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200 dark:bg-gray-900">
-        {type !== 'confirm' && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-3 top-3 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors dark:hover:bg-gray-800 dark:hover:text-gray-300"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
-
         <div className="flex flex-col items-center text-center">
-          <div className="mb-4">{getIcon()}</div>
+          <div className="mb-4">
+            <Trash2 className="h-12 w-12 text-red-500" />
+          </div>
           <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             {title}
           </h3>
@@ -106,32 +76,20 @@ const CustomPopup: React.FC<CustomPopupProps> = ({
             {message}
           </p>
           <div className="flex w-full gap-3">
-            {type === 'confirm' ? (
-              <>
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                >
-                  {cancelText}
-                </button>
-                <button
-                  type="button"
-                  onClick={onConfirm}
-                  className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${getButtonColors()}`}
-                >
-                  {confirmText}
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${getButtonColors()}`}
-              >
-                OK
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              {cancelText}
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+            >
+              {confirmText}
+            </button>
           </div>
         </div>
       </div>
@@ -139,8 +97,8 @@ const CustomPopup: React.FC<CustomPopupProps> = ({
   );
 };
 
-// Main StoryRow Component
-const StoryRow = () => {
+// Main StoryRow Component Content
+const StoryRowContent = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showLeft, setShowLeft] = useState(false);
@@ -149,7 +107,6 @@ const StoryRow = () => {
   const [feedStories, setFeedStories] = useState<StoryFeedItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<string | null>(null);
   const [viewer, setViewer] = useState<StoryFeedItem | null>(null);
   const [viewerStories, setViewerStories] = useState<StoryFeedItem[]>([]);
   const [viewerIndex, setViewerIndex] = useState<number>(0);
@@ -159,18 +116,20 @@ const StoryRow = () => {
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const isMounted = useRef(true);
   
-  // Popup states
+  // Initialize toast
+  const toast = useToast();
+  
+  // Popup states - only for confirm now
   const [popup, setPopup] = useState<{
     isOpen: boolean;
-    type: 'confirm' | 'success' | 'error';
     title: string;
     message: string;
     onConfirm?: () => void;
     storyId?: number;
   }>({
     isOpen: false,
-    type: 'confirm',
     title: '',
     message: '',
   });
@@ -196,6 +155,9 @@ const StoryRow = () => {
       setError(null);
       
       const stories = await storyApi.getFeed();
+      
+      if (!isMounted.current) return;
+      
       setFeedStories(stories);
       
       const userData = getCurrentUserData();
@@ -206,15 +168,23 @@ const StoryRow = () => {
       
     } catch (err) {
       console.error('Error fetching stories:', err);
+      if (!isMounted.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load stories.');
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
+    isMounted.current = true;
     fetchStories();
-  }, [fetchStories]);
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated()) return;
@@ -236,20 +206,18 @@ const StoryRow = () => {
       return;
     }
 
-    const STORY_DURATION = 5000; // 5 seconds per story
-    const UPDATE_INTERVAL = 50; // Update every 50ms for smooth progress
+    const STORY_DURATION = 5000;
+    const UPDATE_INTERVAL = 50;
 
     progressInterval.current = setInterval(() => {
       setProgress((prev) => {
         const newProgress = prev + (UPDATE_INTERVAL / STORY_DURATION) * 100;
         if (newProgress >= 100) {
-          // Move to next story
           if (viewerIndex < viewerStories.length - 1) {
             setViewerIndex(viewerIndex + 1);
             setViewer(viewerStories[viewerIndex + 1]);
             return 0;
           } else {
-            // Close viewer when all stories are done
             setViewer(null);
             setViewerStories([]);
             return 0;
@@ -267,7 +235,6 @@ const StoryRow = () => {
     };
   }, [viewer, viewerIndex, viewerStories, isPaused]);
 
-  // Reset progress when story changes
   useEffect(() => {
     setProgress(0);
   }, [viewerIndex]);
@@ -293,7 +260,6 @@ const StoryRow = () => {
   };
 
   const openAddStory = () => {
-    setMessage(null);
     setError(null);
     setShowAddOptions(false);
     fileInputRef.current?.click();
@@ -301,7 +267,6 @@ const StoryRow = () => {
 
   const uploadStory = async (file: File) => {
     if (!isAuthenticated()) {
-      setMessage('Please login to add a story.');
       return;
     }
 
@@ -327,14 +292,20 @@ const StoryRow = () => {
       setMyStories(prev => [storyWithDetails, ...prev]);
       setFeedStories(prev => [storyWithDetails, ...prev]);
       
-      setMessage('Story added successfully! 🎉');
-      setTimeout(() => setMessage(null), 3000);
+      // Instagram-style toast with profile image
+      toast.showInstagramToast(
+        'added a new story 🎉',
+        userData?.full_name || 'You',
+        myAvatar,
+        'like'
+      );
       
       setShowAddOptions(false);
       
     } catch (err) {
       console.error('Error uploading story:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload story.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upload story.';
+      setError(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -353,12 +324,13 @@ const StoryRow = () => {
       
       setViewerStories(prev => prev.filter(s => s.id !== storyId));
       
-      setPopup({
-        isOpen: true,
-        type: 'success',
-        title: 'Success!',
-        message: 'Story deleted successfully!',
-      });
+      // Show Instagram-style toast for deletion
+      toast.showInstagramToast(
+        'deleted a story 🗑️',
+        currentUser?.full_name || 'You',
+        myAvatar,
+        'like'
+      );
       
       if (viewerStories.length <= 1) {
         setViewer(null);
@@ -366,12 +338,7 @@ const StoryRow = () => {
       
     } catch (err) {
       console.error('Error deleting story:', err);
-      setPopup({
-        isOpen: true,
-        type: 'error',
-        title: 'Error!',
-        message: 'Failed to delete story. Please try again.',
-      });
+      setError('Failed to delete story. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -380,7 +347,6 @@ const StoryRow = () => {
   const handleDeleteConfirm = (storyId: number) => {
     setPopup({
       isOpen: true,
-      type: 'confirm',
       title: 'Delete Story?',
       message: 'Are you sure you want to delete this story? This action cannot be undone.',
       onConfirm: () => {
@@ -397,18 +363,15 @@ const StoryRow = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setMessage('Please choose an image file.');
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      setMessage('Image must be 8MB or smaller.');
       return;
     }
 
     await uploadStory(file);
   };
 
-  // Open story viewer with multiple stories
   const openStoryViewer = (stories: StoryFeedItem[], index: number = 0) => {
     setViewerStories(stories);
     setViewerIndex(index);
@@ -417,7 +380,6 @@ const StoryRow = () => {
     setIsPaused(false);
   };
 
-  // Navigate to next/previous story
   const navigateStory = (direction: 'next' | 'prev') => {
     if (!viewer) return;
     
@@ -432,17 +394,14 @@ const StoryRow = () => {
     }
   };
 
-  // Close popup
   const closePopup = () => {
     setPopup(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Toggle pause
   const togglePause = () => {
     setIsPaused(!isPaused);
   };
 
-  // If not authenticated
   if (!isAuthenticated()) {
     return (
       <section className="relative mb-6 w-full border-b border-[var(--ig-border)] bg-[var(--background)] pb-3 pt-1">
@@ -453,7 +412,6 @@ const StoryRow = () => {
     );
   }
 
-  // Loading state
   if (loading && feedStories.length === 0) {
     return (
       <section className="relative mb-6 w-full border-b border-[var(--ig-border)] bg-[var(--background)] pb-3 pt-1">
@@ -485,12 +443,6 @@ const StoryRow = () => {
         {error && (
           <p className="mt-2 px-1 text-center text-xs text-red-600 dark:text-red-400">
             {error}
-          </p>
-        )}
-
-        {message && (
-          <p className="mt-2 px-1 text-center text-xs text-green-600 dark:text-green-400">
-            {message}
           </p>
         )}
 
@@ -630,8 +582,6 @@ const StoryRow = () => {
               type="button"
               onClick={() => {
                 setShowAddOptions(false);
-                setMessage('Text stories coming soon!');
-                setTimeout(() => setMessage(null), 3000);
               }}
               className="flex w-full items-center gap-3 px-4 py-3 text-sm hover:bg-[var(--ig-hover)] transition-colors rounded-b-lg border-t border-[var(--ig-border)]"
             >
@@ -664,7 +614,7 @@ const StoryRow = () => {
         )}
       </section>
 
-      {/* Story Viewer Modal with Auto-play */}
+      {/* Story Viewer Modal */}
       {viewer && (
         <div
           className="fixed inset-0 z-[100] flex flex-col bg-black"
@@ -690,7 +640,6 @@ const StoryRow = () => {
             }
           }}
         >
-          {/* Pause indicator */}
           {isPaused && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
               <div className="bg-black/60 rounded-full p-4">
@@ -701,7 +650,6 @@ const StoryRow = () => {
             </div>
           )}
 
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 text-white bg-gradient-to-b from-black/50 to-transparent z-10">
             <div className="flex items-center gap-3">
               <img
@@ -730,7 +678,6 @@ const StoryRow = () => {
             </button>
           </div>
 
-          {/* Story progress bars */}
           <div className="flex justify-center gap-1 px-4 pt-2 z-10">
             {viewerStories.map((_, idx) => (
               <div
@@ -749,7 +696,6 @@ const StoryRow = () => {
             ))}
           </div>
 
-          {/* Story Image with click navigation and pause */}
           <div 
             className="flex flex-1 items-center justify-center px-4 pb-8 cursor-pointer relative"
             onClick={(e) => {
@@ -758,13 +704,11 @@ const StoryRow = () => {
               const y = e.clientY - rect.top;
               const height = rect.height;
               
-              // Click on top half - pause/play
               if (y < height * 0.3) {
                 togglePause();
                 return;
               }
               
-              // Click on bottom half - navigate
               if (viewerStories.length > 1) {
                 if (x < rect.width / 2) {
                   navigateStory('prev');
@@ -783,7 +727,6 @@ const StoryRow = () => {
               }}
             />
             
-            {/* Navigation arrows - visible on hover */}
             {viewerStories.length > 1 && (
               <div className="absolute inset-0 flex items-center justify-between px-2 opacity-0 hover:opacity-100 transition-opacity">
                 {viewerIndex > 0 && (
@@ -808,7 +751,6 @@ const StoryRow = () => {
             )}
           </div>
 
-          {/* Delete button */}
           {(viewer.user === currentUser?.id || viewer.user_id === currentUser?.id) && (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-10">
               <button
@@ -823,19 +765,28 @@ const StoryRow = () => {
         </div>
       )}
 
-      {/* Custom Popup */}
+      {/* Custom Popup - Only for confirm now */}
       <CustomPopup
         isOpen={popup.isOpen}
-        type={popup.type}
+        type="confirm"
         title={popup.title}
         message={popup.message}
         onConfirm={popup.onConfirm}
         onCancel={closePopup}
         onClose={closePopup}
-        confirmText={popup.type === 'confirm' ? 'Delete' : 'OK'}
+        confirmText="Delete"
         cancelText="Cancel"
       />
     </>
+  );
+};
+
+// Export wrapped with ToastProvider
+const StoryRow = () => {
+  return (
+    <ToastProvider>
+      <StoryRowContent />
+    </ToastProvider>
   );
 };
 
