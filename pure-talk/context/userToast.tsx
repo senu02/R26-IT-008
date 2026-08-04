@@ -1,4 +1,3 @@
-// components/Toast/Toast.tsx
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
@@ -34,11 +33,36 @@ const actionIcons = {
 
 const actionColors = {
   like: 'text-red-500',
-  comment: 'text-blue-500',
-  follow: 'text-purple-500',
+  comment: 'text-blue-400',
+  follow: 'text-purple-400',
 };
 
-// Toast Item Component - Instagram Style
+// Config for regular toast types
+const regularToastConfig = {
+  success: {
+    icon: CheckCircle,
+    iconColor: 'text-emerald-400',
+    iconBg: 'bg-emerald-500/15',
+    bar: 'from-emerald-400 via-emerald-500 to-emerald-600',
+    label: 'Success',
+  },
+  error: {
+    icon: AlertCircle,
+    iconColor: 'text-red-400',
+    iconBg: 'bg-red-500/15',
+    bar: 'from-red-400 via-red-500 to-red-600',
+    label: 'Error',
+  },
+  info: {
+    icon: Info,
+    iconColor: 'text-blue-400',
+    iconBg: 'bg-blue-500/15',
+    bar: 'from-blue-400 via-blue-500 to-blue-600',
+    label: 'Info',
+  },
+} as const;
+
+// Toast Item - dark card design (fixed dark theme, matches Instagram-style mock)
 const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: (id: string) => void }) => {
   const [isExiting, setIsExiting] = React.useState(false);
 
@@ -51,18 +75,23 @@ const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: (id: string) => 
     return () => clearTimeout(timer);
   }, [toast.id, toast.duration, onClose]);
 
-  // Instagram Style Toast
+  const handleClose = () => {
+    setIsExiting(true);
+    setTimeout(() => onClose(toast.id), 300);
+  };
+
+  const wrapperClass = `transform transition-all duration-300 ease-in-out ${
+    isExiting ? 'translate-x-full opacity-0 scale-95' : 'translate-x-0 opacity-100 scale-100'
+  } mb-3 w-[380px]`;
+
+  // Instagram Style Toast - dark card
   if (toast.type === 'instagram') {
     const ActionIcon = toast.action ? actionIcons[toast.action] : Heart;
     const actionColor = toast.action ? actionColors[toast.action] : 'text-red-500';
 
     return (
-      <div
-        className={`transform transition-all duration-300 ease-in-out ${
-          isExiting ? 'translate-x-full opacity-0 scale-95' : 'translate-x-0 opacity-100 scale-100'
-        } mb-3 w-[380px]`}
-      >
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+      <div className={wrapperClass}>
+        <div className="bg-[#1c2333] rounded-2xl shadow-2xl overflow-hidden border border-white/10">
           <div className="p-4">
             <div className="flex items-start gap-3">
               {/* Avatar */}
@@ -71,10 +100,10 @@ const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: (id: string) => 
                   <img
                     src={toast.avatarUrl}
                     alt={toast.username || 'User'}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
+                    className="w-11 h-11 rounded-full object-cover border-2 border-white/10"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg">
                     {toast.username?.[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
@@ -83,31 +112,28 @@ const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: (id: string) => 
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className="font-semibold text-gray-900 dark:text-white text-sm">
+                  <span className="font-semibold text-white text-sm">
                     {toast.username || 'User'}
                   </span>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">•</span>
-                  <span className="text-gray-500 dark:text-gray-400 text-xs">now</span>
+                  <span className="text-gray-500 text-sm">•</span>
+                  <span className="text-gray-400 text-xs">now</span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <ActionIcon className={`w-4 h-4 ${actionColor}`} />
-                  <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{toast.message}</p>
+                  <ActionIcon className={`w-4 h-4 ${actionColor}`} fill="currentColor" />
+                  <p className="text-sm text-gray-300 truncate">{toast.message}</p>
                 </div>
               </div>
 
               {/* Close Button */}
               <button
-                onClick={() => {
-                  setIsExiting(true);
-                  setTimeout(() => onClose(toast.id), 300);
-                }}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors mt-1"
+                onClick={handleClose}
+                className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors mt-1"
               >
                 <X size={16} />
               </button>
             </div>
 
-            {/* Instagram-style bottom border animation */}
+            {/* Bottom gradient bar */}
             <div className="mt-3 h-0.5 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-full animate-pulse" />
           </div>
         </div>
@@ -115,78 +141,46 @@ const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: (id: string) => 
     );
   }
 
-  // Regular Toast (Success/Error/Info)
-  const getColors = () => {
-    if (toast.type === 'error') {
-      return {
-        background: 'rgba(239, 68, 68, 0.12)',
-        border: 'rgb(239, 68, 68)',
-        icon: 'rgb(239, 68, 68)',
-        text: 'rgb(239, 68, 68)',
-        bgGradient: 'from-red-50 to-red-100',
-        iconComponent: AlertCircle,
-      };
-    }
-    if (toast.type === 'info') {
-      return {
-        background: 'rgba(59, 130, 246, 0.12)',
-        border: 'rgb(59, 130, 246)',
-        icon: 'rgb(59, 130, 246)',
-        text: 'rgb(59, 130, 246)',
-        bgGradient: 'from-blue-50 to-blue-100',
-        iconComponent: Info,
-      };
-    }
-    return {
-      background: 'rgba(34, 197, 94, 0.12)',
-      border: 'rgb(34, 197, 94)',
-      icon: 'rgb(34, 197, 94)',
-      text: 'rgb(34, 197, 94)',
-      bgGradient: 'from-emerald-50 to-emerald-100',
-      iconComponent: CheckCircle,
-    };
-  };
-
-  const colors = getColors();
-  const IconComponent = colors.iconComponent;
+  // Regular Toast (Success/Error/Info) - same dark card design
+  const config = regularToastConfig[toast.type as 'success' | 'error' | 'info'] || regularToastConfig.success;
+  const IconComponent = config.icon;
 
   return (
-    <div
-      className={`transform transition-all duration-300 ease-in-out ${
-        isExiting ? 'translate-x-full opacity-0 scale-95' : 'translate-x-0 opacity-100 scale-100'
-      } mb-3 w-[380px]`}
-    >
-      <div 
-        className="flex items-center gap-4 px-5 py-4 rounded-xl backdrop-blur-md relative overflow-hidden shadow-lg"
-        style={{
-          background: colors.background,
-          borderLeft: `4px solid ${colors.border}`,
-          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.12)',
-        }}
-      >
-        {/* Background gradient accent */}
-        <div className={`absolute inset-0 bg-gradient-to-r ${colors.bgGradient} opacity-20`} />
-        
-        <div className="flex-shrink-0 relative z-10">
-          <IconComponent size={22} style={{ color: colors.icon }} />
+    <div className={wrapperClass}>
+      <div className="bg-[#1c2333] rounded-2xl shadow-2xl overflow-hidden border border-white/10">
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            {/* Icon circle (replaces avatar) */}
+            <div className="flex-shrink-0">
+              <div className={`w-11 h-11 rounded-full ${config.iconBg} flex items-center justify-center`}>
+                <IconComponent className={`w-5 h-5 ${config.iconColor}`} />
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-white text-sm">
+                  {config.label}
+                </span>
+                <span className="text-gray-500 text-sm">•</span>
+                <span className="text-gray-400 text-xs">now</span>
+              </div>
+              <p className="text-sm text-gray-300 mt-0.5">{toast.message}</p>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors mt-1"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Bottom gradient bar, colored to match toast type */}
+          <div className={`mt-3 h-0.5 bg-gradient-to-r ${config.bar} rounded-full animate-pulse`} />
         </div>
-        
-        <div className="flex-1 relative z-10">
-          <p className="text-sm font-semibold" style={{ color: colors.text }}>
-            {toast.message}
-          </p>
-        </div>
-        
-        <button
-          onClick={() => {
-            setIsExiting(true);
-            setTimeout(() => onClose(toast.id), 300);
-          }}
-          className="flex-shrink-0 relative z-10 transition-colors hover:opacity-70"
-          style={{ color: colors.text }}
-        >
-          <X size={16} />
-        </button>
       </div>
     </div>
   );
@@ -231,14 +225,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     duration: number = 4000
   ) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { 
-      id, 
-      message, 
+    setToasts((prev) => [...prev, {
+      id,
+      message,
       type: 'instagram',
       username,
       avatarUrl,
       action,
-      duration 
+      duration
     }]);
   }, []);
 
