@@ -417,10 +417,10 @@ export interface ShieldAdminRecord {
 }
 
 export const adaptiveShieldingAPI = {
-  analyzeMessage: async (text: string): Promise<AnalyzeResult> => {
+  analyzeMessage: async (text: string, contentType: 'post' | 'comment' = 'post'): Promise<AnalyzeResult> => {
     return await apiCall<AnalyzeResult>('/api/shield/analyze/', {
       method: 'POST',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, content_type: contentType }),
     });
   },
 
