@@ -370,20 +370,26 @@ class UserBehaviorProfile(models.Model):
         if was_blocked:
             self.blocked_count += 1
         
+        # Capture the score BEFORE blending — this is what "shouldn't
+        # decrease" has to be measured against (see fix below).
+        old_severity_score = self.severity_score
+
         # Update severity score with exponential moving average
         if self.toxic_count == 1:
             self.severity_score = severity
         elif self.toxic_count <= 3:
-            self.severity_score = (self.severity_score * 0.6) + (severity * 0.4)
+            self.severity_score = (old_severity_score * 0.6) + (severity * 0.4)
         elif self.toxic_count <= 6:
-            self.severity_score = (self.severity_score * 0.5) + (severity * 0.5)
+            self.severity_score = (old_severity_score * 0.5) + (severity * 0.5)
         else:
-            self.severity_score = (self.severity_score * 0.35) + (severity * 0.65)
-        
-        # Ensure severity doesn't decrease artificially
-        if severity > self.severity_score and self.toxic_count > 1:
-            self.severity_score = min((self.severity_score + severity) / 1.4, 1.0)
-        
+            self.severity_score = (old_severity_score * 0.35) + (severity * 0.65)
+
+        # A fresh offence must never LOWER the cumulative severity score.
+        # (Previously this guard compared against the already-blended
+        # value instead of the pre-blend score, so it never actually
+        # fired when a milder new offence dragged the EMA down.)
+        # Only record_clean_message() should ever bring this score down.
+        self.severity_score = max(self.severity_score, old_severity_score)
         self.severity_score = min(self.severity_score, 1.0)
         
         # Set timestamps

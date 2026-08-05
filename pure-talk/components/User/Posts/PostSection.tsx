@@ -244,7 +244,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     try {
       let finalContent = content;
       try {
-        const shield = await adaptiveShieldingAPI.analyzeMessage(content);
+        const shield = await adaptiveShieldingAPI.analyzeMessage(content, 'comment');
         if (shield.strategy === 'Filtering') {
           setShieldAlert(prev => ({
             ...prev,

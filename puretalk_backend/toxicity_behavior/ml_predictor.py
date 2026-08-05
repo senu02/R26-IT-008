@@ -206,7 +206,19 @@ def predict_risk_from_profile(profile) -> dict:
     frequency    = profile.toxic_count
     severity     = float(profile.severity_score)
     max_severity = float(max(scores_arr))
-    hate_score   = float(profile.malice_score)
+
+    # hate_score MUST match the training definition exactly:
+    # mean of the 'threat' + 'identity_hate' category scores per
+    # message (NOT profile.malice_score, which is a different,
+    # severity-based psychological metric that ignores category
+    # labels entirely — using it here causes train/serve skew).
+    hate_vals = []
+    for e in event_list:
+        cs = e.category_scores or {}
+        hate_vals.append(
+            (cs.get('threat', 0.0) + cs.get('identity_hate', 0.0)) / 2.0
+        )
+    hate_score = float(np.mean(hate_vals)) if hate_vals else 0.0
 
     # Recency: recent severity minus early severity
     if len(scores) >= 6:
