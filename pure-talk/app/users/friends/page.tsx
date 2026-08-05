@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, UserPlus, UserCheck, UserX, Users, X, Sparkles, Compass, Loader2, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
-import Sidebar from '@/components/Home/Sidebar';
+import Sidebar from '@/components/User/Sidebar';
 import RightSidebar from '@/components/Home/RightSidebar';
 import {
   getFriendsList,

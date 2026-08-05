@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BackgroundWrapper, getTheme, animationStyles } from '@/context/theme';
-import Sidebar from '@/components/Home/Sidebar';
+import Sidebar from '@/components/User/Sidebar';
 import StoryRow from '@/components/Home/StoryRow';
 import PostSection from '@/components/User/Posts/PostSection';
 import RightSidebar from '@/components/Home/RightSidebar';

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Heart, MessageCircle, UserPlus, Info, CheckCircle2, Loader2, X, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
-import Sidebar from '@/components/Home/Sidebar';
+import Sidebar from '@/components/User/Sidebar';
 import RightSidebar from '@/components/Home/RightSidebar';
 import { notificationAPI, mapNotificationType, getUserAvatar, Notification } from '@/app/services/notifications/actions';
 import { useRouter } from 'next/navigation';

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { 
   Home, 
   Search, 
@@ -10,45 +9,43 @@ import {
   MessageCircle, 
   Heart, 
   PlusSquare, 
-  Menu,
-  Moon,
-  Sun,
-  Settings,
   Users
 } from 'lucide-react';
 import { notificationAPI } from '@/app/services/notifications/actions';
+import { getCurrentUserData, getImageUrl } from '@/lib/api';
+import Image from 'next/image';
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
-    setMounted(true);
-    
-    // Real user avatar
-    const avatar = getCurrentUserAvatar();
-    if (avatar && avatar !== 'null' && avatar !== 'undefined') {
-      setUserAvatar(avatar);
+    // Get user data from localStorage
+    const currentUser = getCurrentUserData();
+    if (currentUser) {
+      // Use getImageUrl to properly format the profile picture URL
+      const avatarUrl = getImageUrl(currentUser.profile_picture);
+      setUserAvatar(avatarUrl || 'https://i.pravatar.cc/150?img=11');
     } else {
-      // Fallback to random demo avatar if no profile picture
-      const savedAvatar = localStorage.getItem('demo_user_avatar');
-      if (savedAvatar) {
-        setUserAvatar(savedAvatar);
-      } else {
-        const demoAvatars = [
-          'https://i.pravatar.cc/150?img=1',
-          'https://i.pravatar.cc/150?img=2',
-          'https://i.pravatar.cc/150?img=11',
-        ];
-        const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
-        setUserAvatar(randomAvatar);
-        localStorage.setItem('demo_user_avatar', randomAvatar);
+      // Try to get from localStorage directly as fallback
+      try {
+        const userData = localStorage.getItem('user_data');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user?.profile_picture) {
+            const avatarUrl = getImageUrl(user.profile_picture);
+            setUserAvatar(avatarUrl || 'https://i.pravatar.cc/150?img=11');
+          } else if (user?.avatar) {
+            const avatarUrl = getImageUrl(user.avatar);
+            setUserAvatar(avatarUrl || 'https://i.pravatar.cc/150?img=11');
+          }
+        }
+      } catch {
+        // Use default avatar
+        setUserAvatar('https://i.pravatar.cc/150?img=11');
       }
     }
 
@@ -80,20 +77,6 @@ const Sidebar = () => {
     }
   };
 
-  // Helper function to get current user avatar
-  const getCurrentUserAvatar = () => {
-    try {
-      const userData = localStorage.getItem('user_data');
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user?.profile_picture || user?.avatar || null;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
   return (
     <>
       <div
@@ -106,8 +89,14 @@ const Sidebar = () => {
           
           {/* Desktop Logo */}
           <Link href="/home" className="hidden lg:flex items-center gap-3 group cursor-pointer relative py-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105">
-              <span className="text-sm font-bold text-white">P</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="Logo" 
+                width={36} 
+                height={36} 
+                className="object-contain"
+              />
             </div>
             <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">
               PURE-TALK
@@ -116,8 +105,14 @@ const Sidebar = () => {
 
           {/* Mobile Logo Collapse */}
           <Link href="/home" className="block lg:hidden group relative">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105">
-              <span className="font-bold text-sm text-white">P</span>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="Logo" 
+                width={32} 
+                height={32} 
+                className="object-contain"
+              />
             </div>
           </Link>
         </div>
@@ -168,47 +163,6 @@ const Sidebar = () => {
             label="Profile" 
             active={pathname === '/users/user-profile' || pathname === '/profile'} 
           />
-        </div>
-
-        {/* Bottom More Menu Trigger */}
-        <div className="mt-auto flex w-full flex-col relative">
-          
-          {/* Pop-up More Menu */}
-          {showMoreMenu && (
-            <div className="absolute bottom-14 left-0 flex w-[220px] flex-col rounded-lg bg-[var(--background)] p-1 shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-[var(--ig-border)] dark:shadow-[0_4px_12px_rgba(255,255,255,0.08)]">
-              <Link
-                href="/users/user-settings"
-                className="flex items-center gap-3 rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              >
-                <Settings className="h-5 w-5" />
-                Settings
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="flex w-full items-center justify-between rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                  <span>Switch Appearance</span>
-                </div>
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
-            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${
-              showMoreMenu ? 'font-bold' : 'font-normal'
-            }`}
-          >
-            <div className={`transition-transform group-hover:scale-105 ${showMoreMenu ? '*:stroke-[3px]' : ''}`}>
-              <Menu className="h-6 w-6" />
-            </div>
-            <span className="hidden lg:block text-[15px]">More</span>
-          </button>
         </div>
 
       </div>

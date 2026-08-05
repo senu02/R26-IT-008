@@ -144,34 +144,51 @@ const StoryRowContent = () => {
     ? getImageUrl(currentUser.profile_picture) 
     : PLACEHOLDER_AVATAR;
 
-  const fetchStories = useCallback(async () => {
+  const fetchStories = useCallback(async (silent = false) => {
     if (!isAuthenticated()) {
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      // Only show the loading state for the very first fetch —
+      // background polls (silent=true) must never toggle it, or the
+      // row visibly "refreshes" every 30s even when nothing changed.
+      if (!silent) setLoading(true);
       setError(null);
-      
+
       const stories = await storyApi.getFeed();
-      
+
       if (!isMounted.current) return;
-      
-      setFeedStories(stories);
-      
+
+      // Skip the state update entirely if the data is unchanged, so
+      // React doesn't re-render (and re-mount images) on every poll.
+      setFeedStories(prev => {
+        const sameLength = prev.length === stories.length;
+        const sameContent = sameLength && prev.every(
+          (s, i) => s.id === stories[i].id
+        );
+        return sameContent ? prev : stories;
+      });
+
       const userData = getCurrentUserData();
       if (userData) {
         const myStoriesFiltered = storyHelpers.getUserStories(stories, userData.id);
-        setMyStories(myStoriesFiltered);
+        setMyStories(prev => {
+          const sameLength = prev.length === myStoriesFiltered.length;
+          const sameContent = sameLength && prev.every(
+            (s, i) => s.id === myStoriesFiltered[i].id
+          );
+          return sameContent ? prev : myStoriesFiltered;
+        });
       }
-      
+
     } catch (err) {
       console.error('Error fetching stories:', err);
       if (!isMounted.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load stories.');
     } finally {
-      if (isMounted.current) {
+      if (isMounted.current && !silent) {
         setLoading(false);
       }
     }
@@ -190,7 +207,7 @@ const StoryRowContent = () => {
     if (!isAuthenticated()) return;
     
     const interval = setInterval(() => {
-      fetchStories();
+      fetchStories(true);   // silent — no loading flicker, no needless re-render
     }, 30000);
     
     return () => clearInterval(interval);
