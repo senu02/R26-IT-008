@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { 
   Home, 
   Search, 
@@ -10,10 +9,6 @@ import {
   MessageCircle, 
   Heart, 
   PlusSquare, 
-  Menu,
-  Moon,
-  Sun,
-  Settings,
   Users
 } from 'lucide-react';
 import { notificationAPI } from '@/app/services/notifications/actions';
@@ -22,17 +17,12 @@ import Image from 'next/image';
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
-    setMounted(true);
-    
     // Get user data from localStorage
     const currentUser = getCurrentUserData();
     if (currentUser) {
@@ -173,47 +163,6 @@ const Sidebar = () => {
             label="Profile" 
             active={pathname === '/users/user-profile' || pathname === '/profile'} 
           />
-        </div>
-
-        {/* Bottom More Menu Trigger */}
-        <div className="mt-auto flex w-full flex-col relative">
-          
-          {/* Pop-up More Menu */}
-          {showMoreMenu && (
-            <div className="absolute bottom-14 left-0 flex w-[220px] flex-col rounded-lg bg-[var(--background)] p-1 shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-[var(--ig-border)] dark:shadow-[0_4px_12px_rgba(255,255,255,0.08)]">
-              <Link
-                href="/users/user-settings"
-                className="flex items-center gap-3 rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              >
-                <Settings className="h-5 w-5" />
-                Settings
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="flex w-full items-center justify-between rounded-md p-3 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                  <span>Switch Appearance</span>
-                </div>
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
-            className={`group flex items-center justify-center gap-4 rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/10 lg:justify-start ${
-              showMoreMenu ? 'font-bold' : 'font-normal'
-            }`}
-          >
-            <div className={`transition-transform group-hover:scale-105 ${showMoreMenu ? '*:stroke-[3px]' : ''}`}>
-              <Menu className="h-6 w-6" />
-            </div>
-            <span className="hidden lg:block text-[15px]">More</span>
-          </button>
         </div>
 
       </div>
