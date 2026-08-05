@@ -17,6 +17,8 @@ import {
   Users
 } from 'lucide-react';
 import { notificationAPI } from '@/app/services/notifications/actions';
+import { getCurrentUserData, getImageUrl } from '@/lib/api';
+import Image from 'next/image';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -31,24 +33,29 @@ const Sidebar = () => {
   useEffect(() => {
     setMounted(true);
     
-    // Real user avatar
-    const avatar = getCurrentUserAvatar();
-    if (avatar && avatar !== 'null' && avatar !== 'undefined') {
-      setUserAvatar(avatar);
+    // Get user data from localStorage
+    const currentUser = getCurrentUserData();
+    if (currentUser) {
+      // Use getImageUrl to properly format the profile picture URL
+      const avatarUrl = getImageUrl(currentUser.profile_picture);
+      setUserAvatar(avatarUrl || 'https://i.pravatar.cc/150?img=11');
     } else {
-      // Fallback to random demo avatar if no profile picture
-      const savedAvatar = localStorage.getItem('demo_user_avatar');
-      if (savedAvatar) {
-        setUserAvatar(savedAvatar);
-      } else {
-        const demoAvatars = [
-          'https://i.pravatar.cc/150?img=1',
-          'https://i.pravatar.cc/150?img=2',
-          'https://i.pravatar.cc/150?img=11',
-        ];
-        const randomAvatar = demoAvatars[Math.floor(Math.random() * demoAvatars.length)];
-        setUserAvatar(randomAvatar);
-        localStorage.setItem('demo_user_avatar', randomAvatar);
+      // Try to get from localStorage directly as fallback
+      try {
+        const userData = localStorage.getItem('user_data');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user?.profile_picture) {
+            const avatarUrl = getImageUrl(user.profile_picture);
+            setUserAvatar(avatarUrl || 'https://i.pravatar.cc/150?img=11');
+          } else if (user?.avatar) {
+            const avatarUrl = getImageUrl(user.avatar);
+            setUserAvatar(avatarUrl || 'https://i.pravatar.cc/150?img=11');
+          }
+        }
+      } catch {
+        // Use default avatar
+        setUserAvatar('https://i.pravatar.cc/150?img=11');
       }
     }
 
@@ -80,20 +87,6 @@ const Sidebar = () => {
     }
   };
 
-  // Helper function to get current user avatar
-  const getCurrentUserAvatar = () => {
-    try {
-      const userData = localStorage.getItem('user_data');
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user?.profile_picture || user?.avatar || null;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
   return (
     <>
       <div
@@ -106,8 +99,14 @@ const Sidebar = () => {
           
           {/* Desktop Logo */}
           <Link href="/home" className="hidden lg:flex items-center gap-3 group cursor-pointer relative py-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105">
-              <span className="text-sm font-bold text-white">P</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="Logo" 
+                width={36} 
+                height={36} 
+                className="object-contain"
+              />
             </div>
             <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">
               PURE-TALK
@@ -116,8 +115,14 @@ const Sidebar = () => {
 
           {/* Mobile Logo Collapse */}
           <Link href="/home" className="block lg:hidden group relative">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105">
-              <span className="font-bold text-sm text-white">P</span>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="Logo" 
+                width={32} 
+                height={32} 
+                className="object-contain"
+              />
             </div>
           </Link>
         </div>
