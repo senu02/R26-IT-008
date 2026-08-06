@@ -1,4 +1,5 @@
-'use server';
+// lib/friends.ts
+'use client';
 
 // Note: We cannot access localStorage in server actions
 // So we'll receive the token from the client
@@ -120,6 +121,14 @@ export interface FriendSuggestion {
   mutual_friends: User[];
 }
 
+// Helper to get token from localStorage
+function getAuthToken(): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('auth_token') || localStorage.getItem('Token');
+  }
+  return null;
+}
+
 // Friend Actions - These will be called from client components with token
 export async function sendFriendRequest(token: string, userId: number, message?: string) {
   return apiRequest<{ message: string; data: FriendRequest }>(
@@ -181,11 +190,13 @@ export async function getSentRequests(token: string) {
 }
 
 export async function getFriendsList(token: string) {
+  console.log('getFriendsList called with token:', token ? 'Token exists' : 'No token');
   try {
     const response = await apiRequest<{ count: number; results: Friendship[] }>(
       '/friends/list/',
       token
     );
+    console.log('getFriendsList response:', response);
     return response.results || [];
   } catch (error) {
     console.error('Error fetching friends list:', error);
@@ -295,3 +306,113 @@ export async function searchUsers(token: string, query: string) {
     return { results: [] as User[] };
   }
 }
+
+// friendsAPI object for easier use in components
+export const friendsAPI = {
+  getFriendsList: async (): Promise<Friendship[]> => {
+    const token = getAuthToken();
+    if (!token) {
+      console.error('No auth token found');
+      return [];
+    }
+    return getFriendsList(token);
+  },
+
+  getFriendSuggestions: async (): Promise<FriendSuggestion[]> => {
+    const token = getAuthToken();
+    if (!token) {
+      console.error('No auth token found');
+      return [];
+    }
+    return getFriendSuggestions(token);
+  },
+
+  getPendingRequests: async (): Promise<FriendRequest[]> => {
+    const token = getAuthToken();
+    if (!token) {
+      console.error('No auth token found');
+      return [];
+    }
+    return getPendingRequests(token);
+  },
+
+  getSentRequests: async (): Promise<FriendRequest[]> => {
+    const token = getAuthToken();
+    if (!token) {
+      console.error('No auth token found');
+      return [];
+    }
+    return getSentRequests(token);
+  },
+
+  getDiscoverUsers: async (): Promise<User[]> => {
+    const token = getAuthToken();
+    if (!token) {
+      console.error('No auth token found');
+      return [];
+    }
+    return getDiscoverUsers(token);
+  },
+
+  getBlockedUsers: async (): Promise<User[]> => {
+    const token = getAuthToken();
+    if (!token) {
+      console.error('No auth token found');
+      return [];
+    }
+    return getBlockedUsers(token);
+  },
+
+  sendFriendRequest: async (userId: number, message?: string): Promise<any> => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return sendFriendRequest(token, userId, message);
+  },
+
+  acceptFriendRequest: async (requestId: number): Promise<any> => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return acceptFriendRequest(token, requestId);
+  },
+
+  rejectFriendRequest: async (requestId: number): Promise<any> => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return rejectFriendRequest(token, requestId);
+  },
+
+  removeFriend: async (friendId: number): Promise<any> => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return removeFriend(token, friendId);
+  },
+
+  blockUser: async (userId: number, reason?: string): Promise<any> => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return blockUser(token, userId, reason);
+  },
+
+  unblockUser: async (userId: number): Promise<any> => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return unblockUser(token, userId);
+  },
+
+  checkFriendStatus: async (userId: number): Promise<{ status: string }> => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated');
+    return checkFriendStatus(token, userId);
+  },
+
+  searchUsers: async (query: string): Promise<{ results: User[] }> => {
+    const token = getAuthToken();
+    if (!token) {
+      console.error('No auth token found');
+      return { results: [] };
+    }
+    return searchUsers(token, query);
+  },
+};
+
+export default friendsAPI;
