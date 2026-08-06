@@ -132,9 +132,9 @@ const Sidebar = () => {
             active={pathname === '/friends' || pathname === '/users/friends'} 
           />
           <NavItem 
-            href="#" 
+            href="/users/reels" 
             icon={<Compass className="h-6 w-6" />} 
-            label="Explore" 
+            label="Reels" 
           />
           <NavItem 
             href="#" 
