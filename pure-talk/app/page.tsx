@@ -2,203 +2,229 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
-
-const socialServices = [
-  {
-    id: '01',
-    title: 'Brand Identity',
-    description:
-      'Profile systems, visual language, and creator identity tools that make users memorable.'
-  },
-  {
-    id: '02',
-    title: 'Web & Digital',
-    description:
-      'High-performance feed surfaces and interaction patterns that convert visitors to active members.'
-  },
-  {
-    id: '03',
-    title: 'Campaign Design',
-    description:
-      'Launch mechanics, social motion, and growth loops built for community impact.'
-  }
-];
-
-const heroImages = [
-  'https://images.unsplash.com/photo-1523464862212-d6631d073194?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1546961329-78bef0414d7c?auto=format&fit=crop&w=1400&q=80'
-];
+import { motion, AnimatePresence } from 'framer-motion';
+import HeroVideo from '@/components/HeroVideo';
+import AnimatedText from '@/components/AnimatedText';
+import AnimatedButton from '@/components/AnimatedButton';
 
 export default function Home() {
-  const [activeHeroImage, setActiveHeroImage] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Preloader
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveHeroImage((prev) => (prev + 1) % heroImages.length);
-    }, 3500);
-
-    return () => clearInterval(interval);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#050507] text-white overflow-x-hidden">
-      <div className="pointer-events-none fixed inset-0 opacity-45 bg-[radial-gradient(circle_at_22%_8%,#6e41ff55,transparent_35%),radial-gradient(circle_at_62%_55%,#4020b833,transparent_35%),radial-gradient(circle_at_85%_10%,#ffffff14,transparent_28%)]" />
+    <div className="min-h-screen bg-[#111] text-white overflow-x-hidden selection:bg-red-500 selection:text-white font-sans">
       
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/45 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl leading-tight font-semibold tracking-[0.18em] hover:opacity-80 transition-opacity">
-            PURE<br />TALK
-          </Link>
-          <nav className="hidden md:flex items-center gap-10 text-xs tracking-[0.24em] text-white/70 uppercase">
-            <Link href="/home" className="hover:text-white transition-colors">Feed</Link>
-            <Link href="/users/friends" className="hover:text-white transition-colors">Friends</Link>
-            <Link href="/users/posts" className="hover:text-white transition-colors">Posts</Link>
-            <Link href="/users/notifications" className="hover:text-white transition-colors">Notifications</Link>
-          </nav>
-          <Link
-            href="http://localhost:3000/auth/login"
-            className="inline-flex items-center rounded-md border border-white/30 px-5 py-2 text-sm tracking-[0.12em] uppercase hover:bg-white/10 transition-colors"
+      {/* --- PRELOADER --- */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div 
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#111]"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, y: '-100%' }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
           >
-            Sign In
+            <motion.h2 
+              className="text-2xl md:text-5xl font-light tracking-[0.2em] uppercase text-white/50"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              pure talk
+            </motion.h2>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- NAVIGATION --- */}
+      <header className="fixed top-0 left-0 right-0 z-50 p-6 mix-blend-difference">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="text-xl md:text-2xl font-bold tracking-[0.15em] uppercase hover:opacity-70 transition-opacity flex items-center gap-2">
+            PURE TALK
           </Link>
+          
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="w-10 h-10 flex flex-col items-center justify-center gap-2 z-[60] relative group"
+            aria-label="Toggle Menu"
+          >
+            <span className={`w-8 h-0.5 bg-white transition-transform duration-300 ${isMenuOpen ? 'rotate-45 translate-y-1' : ''}`} />
+            <span className={`w-8 h-0.5 bg-white transition-transform duration-300 ${isMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
+          </button>
         </div>
       </header>
 
-      <main className="relative z-10">
-        <section className="max-w-7xl mx-auto px-6 pt-16 md:pt-24 pb-14 border-b border-white/10">
-          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-stretch">
-            <div>
-              <p className="text-xs tracking-[0.35em] text-white/60 uppercase">
-                Making communities unforgettable
-              </p>
-              <h1 className="mt-5 text-[clamp(72px,15vw,170px)] font-semibold leading-[0.86] tracking-tight uppercase">
-                Pure
-                <br />
-                Talk
-              </h1>
-              <div className="mt-7 grid md:grid-cols-2 gap-8 items-end">
-                <p className="text-sm tracking-[0.24em] uppercase text-white/70 leading-relaxed">
-                  Social media design and growth studio
-                  <br />
-                  est. 2026 - Global
-                </p>
-                <p className="hidden md:block text-right text-6xl font-light italic text-white/15">Pure Talk</p>
-              </div>
-            </div>
+      {/* OVERLAY MENU */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div 
+            className="fixed inset-0 z-40 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <nav className="flex flex-col items-center gap-8 text-3xl md:text-5xl font-light tracking-wide uppercase">
+              <Link href="/home" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Feed</Link>
+              <Link href="/users/friends" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Friends</Link>
+              <Link href="/users/posts" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Posts</Link>
+              <Link href="http://localhost:3000/auth/login" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="relative min-h-[380px] overflow-hidden bg-transparent">
-              {heroImages.map((image, index) => (
-                <img
-                  key={image}
-                  src={image}
-                  alt="People connecting on social platform"
-                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 scale-[1.06] animate-hero-pan ${
-                    activeHeroImage === index ? 'opacity-100' : 'opacity-0'
-                  }`}
-                />
-              ))}
-              <div className="absolute inset-0 bg-linear-to-t from-[#050507] via-[#050507]/45 to-transparent" />
-              <div className="absolute inset-0 bg-linear-to-r from-[#6e41ff2a] to-transparent" />
-              <div className="absolute top-4 left-4">
-                <span className="inline-flex items-center rounded-full border border-white/25 bg-black/35 px-3 py-1 text-[11px] tracking-[0.2em] uppercase text-white/80 backdrop-blur-md">
-                  Trending Now
-                </span>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <p className="text-xs tracking-[0.28em] uppercase text-white/60">Live Community</p>
-                <p className="mt-2 text-2xl font-semibold text-white">Real people. Real conversations.</p>
-              </div>
-              <div className="absolute bottom-5 right-6 flex gap-2">
-                {heroImages.map((_, index) => (
-                  <span
-                    key={`dot-${index}`}
-                    className={`h-1.5 rounded-full transition-all ${
-                      activeHeroImage === index ? 'w-7 bg-white' : 'w-3 bg-white/40'
-                    }`}
-                  />
+      <main className="relative">
+        
+        {/* --- HERO SECTION --- */}
+        <section className="relative h-[100svh] w-full flex items-center justify-center overflow-hidden bg-[#111]">
+          <HeroVideo />
+          
+          <div className="relative z-20 flex flex-col items-center mt-20 pointer-events-none">
+            <motion.h1 
+              className="text-[clamp(3rem,8vw,8rem)] font-bold tracking-tighter uppercase leading-none mix-blend-overlay text-white opacity-90"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1.5, delay: 2.2, ease: "easeOut" }}
+            >
+              PURE TALK
+            </motion.h1>
+            
+            {/* The SVG Stroke Animation component representing the "run" text in the original design */}
+            <div className="mt-[-20px] md:mt-[-40px]">
+              <AnimatedText />
+            </div>
+            
+            <motion.div 
+              className="mt-8 flex flex-col items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 3.5, duration: 1 }}
+            >
+              <p className="text-sm font-mono tracking-widest uppercase border border-white/20 rounded-full px-6 py-2 bg-black/20 backdrop-blur-md">
+                Est. 2026
+              </p>
+            </motion.div>
+          </div>
+
+          <motion.div 
+            className="absolute bottom-10 left-10 z-20 pointer-events-auto"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 3, duration: 1 }}
+          >
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-mono uppercase text-white/50">Next Event</span>
+              <AnimatedButton href="/home" variant="gradient">
+                Join the Community
+              </AnimatedButton>
+            </div>
+          </motion.div>
+        </section>
+
+        {/* --- SECOND SECTION (Mimicking "Uniting Runners") --- */}
+        <section id="communities" className="relative z-20 bg-[#111] w-full py-24 md:py-40">
+          <div className="max-w-7xl mx-auto px-6">
+            <motion.h2 
+              className="text-4xl md:text-7xl font-bold uppercase leading-[1.1] tracking-tight"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8 }}
+            >
+              Uniting People.<br/>
+              <span className="text-white/40">Community by Community.</span>
+            </motion.h2>
+            
+            <div className="mt-20 grid md:grid-cols-[1fr_1.5fr] gap-12 md:gap-24">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <h3 className="text-xl md:text-2xl font-light text-white/80 leading-relaxed">
+                  Join for a series of community talks across the globe. Built for conversation, connection, and the simple joy of moving together.
+                </h3>
+                
+                <div className="mt-12 text-sm font-mono text-white/50 uppercase tracking-widest flex flex-col gap-4">
+                  <p className="flex justify-between border-b border-white/10 pb-4">
+                    <span>Active Users</span>
+                    <span className="text-white">100K+</span>
+                  </p>
+                  <p className="flex justify-between border-b border-white/10 pb-4">
+                    <span>Global Reach</span>
+                    <span className="text-white">50+ Countries</span>
+                  </p>
+                  <p className="flex justify-between border-b border-white/10 pb-4">
+                    <span>Platform</span>
+                    <span className="text-white">Web & Mobile</span>
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* List of "Runs" or Communities */}
+              <div className="flex flex-col gap-6">
+                {[
+                  { city: "Düsseldorf", date: "24.02", members: "1.2K Active", href: "/home" },
+                  { city: "Berlin", date: "15.03", members: "3.4K Active", href: "/home" },
+                  { city: "London", date: "02.04", members: "5.1K Active", href: "/home" }
+                ].map((item, i) => (
+                  <motion.div 
+                    key={item.city}
+                    className="group relative flex flex-col md:flex-row md:items-center justify-between p-8 bg-[#1a1a1a] border border-white/5 hover:border-white/20 transition-colors duration-500"
+                    initial={{ opacity: 0, x: 20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.2 + (i * 0.1) }}
+                  >
+                    <div className="flex flex-col gap-2 mb-6 md:mb-0">
+                      <div className="flex items-center gap-4 text-xs font-mono text-white/40 uppercase">
+                        <span>Upcoming Event:</span>
+                        <span className="text-white/80">{item.date}</span>
+                      </div>
+                      <h4 className="text-3xl font-bold uppercase">{item.city}</h4>
+                      <p className="text-sm text-white/50">{item.members}</p>
+                    </div>
+                    
+                    <AnimatedButton href={item.href} variant="dark">
+                      View Event Details
+                    </AnimatedButton>
+                  </motion.div>
                 ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="border-b border-white/10 py-4 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-6 text-xs tracking-[0.3em] uppercase text-white/45 whitespace-nowrap marquee-track">
-            Brand Identity · Web Design · Motion · Social Strategy · Creator Growth ·
+        {/* --- MARQUEE SECTION --- */}
+        <section className="border-y border-white/10 py-6 overflow-hidden bg-[#111]">
+          <div className="flex whitespace-nowrap animate-[marquee_20s_linear_infinite]">
+            <span className="text-sm font-mono tracking-[0.3em] uppercase text-white/40 px-4">
+              Every day is day one · Uniting runners · Join the community · Pure Talk · You vs You · Keep pushing ·
+            </span>
+            <span className="text-sm font-mono tracking-[0.3em] uppercase text-white/40 px-4">
+              Every day is day one · Uniting runners · Join the community · Pure Talk · You vs You · Keep pushing ·
+            </span>
+            <span className="text-sm font-mono tracking-[0.3em] uppercase text-white/40 px-4">
+              Every day is day one · Uniting runners · Join the community · Pure Talk · You vs You · Keep pushing ·
+            </span>
           </div>
         </section>
 
-        <section id="services" className="max-w-7xl mx-auto px-6 py-14 md:py-20 border-b border-white/10">
-          <p className="text-xs tracking-[0.35em] uppercase text-white/50 mb-8">What We Do</p>
-          <div className="grid md:grid-cols-3">
-            {socialServices.map((service) => (
-              <article key={service.id} className="py-10 md:py-8 pr-8 border-r border-white/10 last:border-r-0">
-                <p className="text-xs tracking-[0.3em] text-white/45 mb-5">{service.id}</p>
-                <h3 className="text-4xl leading-[1.02] font-medium">{service.title}</h3>
-                <p className="text-white/60 mt-5 max-w-sm">{service.description}</p>
-                <Link
-                  href="/home"
-                  className="mt-7 inline-flex items-center gap-2 text-sm tracking-[0.2em] uppercase text-violet-300 hover:text-violet-200"
-                >
-                  Explore <ArrowRight className="w-4 h-4" />
-                </Link>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="max-w-7xl mx-auto px-6 py-14 md:py-20">
-          <div className="rounded-2xl border border-white/12 bg-white/3 px-7 py-10 md:px-10 md:py-12 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-            <h2 className="text-5xl md:text-6xl font-semibold leading-[0.95]">
-              Ready to be
-              <br />
-              <span className="italic text-white/75">Unforgettable?</span>
-            </h2>
-            <p className="text-white/60 max-w-xl">
-              Pure Talk is a social media platform focused on authentic conversations, creator growth, and safe communities.
-            </p>
-            <Link
-              href="http://localhost:3000/auth/login"
-              className="inline-flex items-center gap-2 rounded-md border border-white/30 px-6 py-3 text-sm tracking-[0.18em] uppercase hover:bg-white/10 transition-colors"
-            >
-              Sign In <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </section>
       </main>
 
       <style jsx global>{`
-        @keyframes hero-pan {
-          0% {
-            transform: scale(1.06) translate3d(0, 0, 0);
-          }
-          50% {
-            transform: scale(1.12) translate3d(-1.5%, -1%, 0);
-          }
-          100% {
-            transform: scale(1.08) translate3d(1%, 0.8%, 0);
-          }
-        }
-        .animate-hero-pan {
-          animation: hero-pan 8s ease-in-out infinite alternate;
-        }
         @keyframes marquee {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-50%);
-          }
-        }
-        .marquee-track {
-          width: max-content;
-          display: inline-block;
-          animation: marquee 18s linear infinite;
+          from { transform: translateX(0); }
+          to { transform: translateX(-33.33%); }
         }
       `}</style>
     </div>
