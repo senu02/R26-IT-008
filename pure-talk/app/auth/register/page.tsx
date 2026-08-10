@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaEye, FaEyeSlash, FaCheck, FaCamera, FaImage } from 'react-icons/fa';
 import { Loader2, Mail, X, Heart } from 'lucide-react';
 import { authAPI } from '@/lib/api';
+import HeroVideo from '@/components/HeroVideo';
 
 interface FormData {
   first_name: string;
@@ -36,11 +37,6 @@ const STEP_LABELS = [
 const Register: React.FC = () => {
   const router = useRouter();
 
-  // Wave canvas state
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
-  const [isHoveringForm, setIsHoveringForm] = useState(false);
-
   const [formData, setFormData] = useState<FormData>({
     first_name: '', last_name: '', email: '',
     password: '', confirmPassword: '', birthday: '', gender: '', bio: '', 
@@ -61,158 +57,6 @@ const Register: React.FC = () => {
   const [isAppleLoad,    setIsAppleLoad]    = useState(false);
   const [isModalOpen,    setIsModalOpen]    = useState(false);
   const [fieldErrors,    setFieldErrors]    = useState<Record<string, string>>({});
-
-  // Wave canvas animation
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationId: number;
-    let time = 0;
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-
-    const handleResize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
-    };
-
-    let ripples: { x: number; y: number; radius: number; alpha: number }[] = [];
-
-    const drawBackground = () => {
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#050507');
-      gradient.addColorStop(0.5, '#0a0a0f');
-      gradient.addColorStop(1, '#0f0f15');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.fillStyle = '#6e41ff22';
-      for (let i = 0; i < 100; i++) {
-        const starX = (i * 173) % width;
-        const starY = (i * 257) % (height * 0.4);
-        ctx.beginPath();
-        ctx.arc(starX, starY, Math.random() * 1.2 + 0.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
-    const drawWave = (
-      amplitude: number,
-      frequency: number,
-      speed: number,
-      color: string,
-      phaseOffset: number,
-      currentTime: number,
-      mouseInfluence: { x: number | null; strength: number }
-    ) => {
-      ctx.beginPath();
-      const baseY = height * 0.65;
-      let x = 0;
-      let y: number;
-
-      while (x <= width) {
-        let waveY = Math.sin(x * frequency + currentTime * speed + phaseOffset) * amplitude;
-        if (mouseInfluence.x !== null && mouseInfluence.strength > 0) {
-          const dx = x - mouseInfluence.x;
-          const distance = Math.abs(dx);
-          const maxDistance = 200;
-          if (distance < maxDistance) {
-            const rippleIntensity = mouseInfluence.strength * (1 - distance / maxDistance);
-            waveY += Math.sin(distance * 0.05 - currentTime * 15) * rippleIntensity * 12;
-          }
-        }
-        y = baseY + waveY;
-        if (x === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-        x += 5;
-      }
-
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
-      ctx.closePath();
-      ctx.fillStyle = color;
-      ctx.fill();
-    };
-
-    const drawRipples = () => {
-      ripples = ripples.filter(r => r.alpha > 0);
-      ripples.forEach(ripple => {
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(110, 65, 255, ${ripple.alpha * 0.6})`;
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, ripple.radius * 0.5, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(110, 65, 255, ${ripple.alpha * 0.4})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ripple.radius += 3;
-        ripple.alpha -= 0.025;
-      });
-    };
-
-    const addRipple = (x: number, y: number) => {
-      if (y > height * 0.5) {
-        ripples.push({ x, y, radius: 10, alpha: 0.9 });
-      }
-    };
-
-    const animate = () => {
-      if (!ctx) return;
-      drawBackground();
-
-      let mouseInfluence = { x: null as number | null, strength: 0 };
-      if (isHoveringForm && mousePosition) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const canvasX = (mousePosition.x - rect.left) * scaleX;
-        const canvasY = (mousePosition.y - rect.top) * scaleY;
-        mouseInfluence = { x: canvasX, strength: 0.75 };
-        if (Math.random() < 0.12) addRipple(canvasX, canvasY);
-      }
-
-      const waves = [
-        { amplitude: 18, frequency: 0.008, speed: 1.2, color: '#6e41ff22', phase: 0 },
-        { amplitude: 12, frequency: 0.012, speed: 1.5, color: '#6e41ff33', phase: 2 },
-        { amplitude: 8, frequency: 0.018, speed: 1.8, color: '#6e41ff44', phase: 4 },
-      ];
-
-      waves.forEach(wave => {
-        drawWave(wave.amplitude, wave.frequency, wave.speed, wave.color, wave.phase, time, mouseInfluence);
-      });
-
-      drawRipples();
-      time += 0.016;
-      animationId = requestAnimationFrame(animate);
-    };
-
-    const handleCanvasMouseMove = (e: MouseEvent) => {
-      if (isHoveringForm) setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    canvas.addEventListener('mousemove', handleCanvasMouseMove);
-    animate();
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('mousemove', handleCanvasMouseMove);
-      cancelAnimationFrame(animationId);
-    };
-  }, [isHoveringForm, mousePosition]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -402,18 +246,18 @@ const Register: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden font-sans bg-[#050507]">
-      {/* Wave Canvas Background */}
-      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full block" />
+    <div className="relative min-h-screen w-full overflow-x-hidden font-sans bg-[#111] text-white selection:bg-red-500 selection:text-white">
+      {/* Hero Video background */}
+      <HeroVideo />
+      
+      {/* Dark overlay */}
+      <div className="fixed inset-0 bg-black/65 z-10 pointer-events-none" />
 
-      {/* Gradient overlay matching home page */}
-      <div className="pointer-events-none fixed inset-0 opacity-45 bg-[radial-gradient(circle_at_22%_8%,#6e41ff55,transparent_35%),radial-gradient(circle_at_62%_55%,#4020b833,transparent_35%),radial-gradient(circle_at_85%_10%,#ffffff14,transparent_28%)]" />
-
-      {/* Header matching home page */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/45 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl leading-tight font-semibold tracking-[0.18em] hover:opacity-80 transition-opacity">
-            PURE<br />TALK
+      {/* Header matching landing page */}
+      <header className="sticky top-0 z-50 p-6 mix-blend-difference border-b border-white/10 bg-black/40 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href="/" className="text-xl md:text-2xl font-bold tracking-[0.15em] uppercase hover:opacity-70 transition-opacity">
+            PURE TALK
           </Link>
           <nav className="hidden md:flex items-center gap-10 text-xs tracking-[0.24em] text-white/70 uppercase">
             <Link href="/home" className="hover:text-white transition-colors">Feed</Link>
@@ -423,7 +267,7 @@ const Register: React.FC = () => {
           </nav>
           <Link
             href="/auth/login"
-            className="inline-flex items-center rounded-md border border-white/30 px-5 py-2 text-sm tracking-[0.12em] uppercase hover:bg-white/10 transition-colors"
+            className="inline-flex items-center rounded-full border border-white/30 px-6 py-2 text-xs tracking-[0.2em] uppercase hover:bg-white/10 transition-colors"
           >
             Sign In
           </Link>
@@ -431,7 +275,7 @@ const Register: React.FC = () => {
       </header>
 
       {/* Split layout */}
-      <div className="relative z-10 flex flex-col lg:flex-row min-h-[calc(100vh-73px)]">
+      <div className="relative z-20 flex flex-col lg:flex-row min-h-[calc(100vh-85px)] max-w-7xl mx-auto px-6 py-10">
 
         {/* LEFT — Branding */}
         <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-8 lg:p-14 order-2 lg:order-1">
@@ -441,40 +285,40 @@ const Register: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.2, ease: [0.23, 1, 0.32, 1] }}
             className="max-w-md w-full"
           >
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] mb-5">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold uppercase leading-tight tracking-tight mb-5">
               <span className="block text-white">Your story</span>
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#6e41ff] via-[#8b5cf6] to-[#a78bfa]">
+              <span className="block text-red-500">
                 starts here.
               </span>
             </h1>
 
-            <p className="text-base leading-relaxed font-light mb-8 max-w-sm text-white/60">
+            <p className="text-base leading-relaxed font-light mb-8 max-w-sm text-white/70">
               Share moments, spark conversations, and build your tribe — a community where every voice is heard and every story matters.
             </p>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {[
                 { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, title: 'Find your people', sub: 'Follow interests, not algorithms' },
                 { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>, title: 'Post, share & react', sub: 'Stories, threads, photos & more' },
                 { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, title: 'Safe & authentic', sub: 'AI keeps your feed toxicity-free' },
               ].map(({ icon, title, sub }) => (
-                <div key={title} className="flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-sm bg-white/4 border border-white/5">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `#6e41ff22` }}>
-                    <span className="text-[#6e41ff]">{icon}</span>
+                <div key={title} className="flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-white/10 text-red-400">
+                    {icon}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">{title}</p>
+                    <p className="text-sm font-bold text-white uppercase">{title}</p>
                     <p className="text-xs text-white/50">{sub}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 pt-5 border-t border-white/8 flex gap-7">
+            <div className="mt-8 pt-5 border-t border-white/10 flex gap-7">
               {[['2M+','Members'],['180+','Countries'],['4.9★','Rated']].map(([v, l]) => (
                 <div key={l}>
-                  <p className="text-xl font-bold bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] bg-clip-text text-transparent">{v}</p>
-                  <p className="text-xs mt-0.5 text-white/40">{l}</p>
+                  <p className="text-xl font-bold text-white tracking-tight">{v}</p>
+                  <p className="text-xs mt-0.5 font-mono text-white/40 uppercase">{l}</p>
                 </div>
               ))}
             </div>
@@ -482,42 +326,34 @@ const Register: React.FC = () => {
         </div>
 
         {/* RIGHT — Form */}
-        <div
-          className="lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-10 order-1 lg:order-2"
-          onMouseEnter={() => setIsHoveringForm(true)}
-          onMouseLeave={() => { setIsHoveringForm(false); setMousePosition(null); }}
-        >
+        <div className="lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-10 order-1 lg:order-2">
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.25, ease: [0.23, 1, 0.32, 1] }}
             className="w-full max-w-[680px]"
           >
-            <div
-              className="backdrop-blur-2xl rounded-3xl relative overflow-visible border border-white/15 bg-black/30"
-              style={{ boxShadow: '0 20px 60px rgba(110, 65, 255, 0.14), 0 0 0 0.5px rgba(255,255,255,0.06)' }}
-            >
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#6e41ff] via-[#8b5cf6] to-[#a78bfa]" />
+            <div className="backdrop-blur-2xl rounded-3xl relative overflow-visible border border-white/10 bg-[#1a1a1a]/80 shadow-2xl p-7">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-500 to-orange-500 rounded-t-3xl" />
 
-              <div className="px-7 pt-7 pb-6">
+              <div>
 
                 {/* Progress - 5 steps */}
-                <div className="flex justify-between items-center mb-6 pb-5 border-b border-white/8">
+                <div className="flex justify-between items-center mb-6 pb-5 border-b border-white/10">
                   {[1,2,3,4,5].map((n) => (
                     <React.Fragment key={n}>
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-mono font-bold transition-all duration-500 ${
                           step >= n
-                            ? 'bg-gradient-to-tr from-[#6e41ff] to-[#8b5cf6] text-white'
-                            : 'bg-white/5 text-gray-500 border border-white/10'
+                            ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
+                            : 'bg-black/40 text-gray-500 border border-white/10'
                         }`}
-                        style={step >= n ? { boxShadow: '0 0 14px rgba(110, 65, 255, 0.40)' } : {}}
                       >
                         {step > n ? <FaCheck size={11} /> : n}
                       </div>
                       {n < 5 && (
                         <div className="flex-1 mx-1.5">
-                          <div className={`h-0.5 rounded-full transition-all duration-500 ${step > n ? 'bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6]' : 'bg-white/10'}`} />
+                          <div className={`h-0.5 rounded-full transition-all duration-500 ${step > n ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-white/10'}`} />
                         </div>
                       )}
                     </React.Fragment>
@@ -526,8 +362,8 @@ const Register: React.FC = () => {
 
                 {/* Step heading */}
                 <div className="mb-5">
-                  <h2 className="text-2xl font-bold tracking-tight text-white">{curStep.title}</h2>
-                  <p className="text-sm mt-0.5 text-white/50">{curStep.sub}</p>
+                  <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{curStep.title}</h2>
+                  <p className="text-xs font-mono uppercase text-white/50 mt-0.5">{curStep.sub}</p>
                 </div>
 
                 {/* Alerts */}
@@ -537,10 +373,10 @@ const Register: React.FC = () => {
                       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                       animate={{ opacity: 1, height: 'auto', marginBottom: 14 }}
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                      className="p-3 rounded-xl text-xs flex items-start gap-2 bg-red-500/10 border border-red-500/30"
+                      className="p-3 rounded-xl text-xs flex items-start gap-2 bg-red-500/20 border border-red-500/40 text-red-300"
                     >
                       <X size={14} className="shrink-0 mt-0.5 cursor-pointer text-red-400" onClick={() => setApiError('')} />
-                      <p className="flex-1 break-words text-red-400">{apiError}</p>
+                      <p className="flex-1 break-words">{apiError}</p>
                     </motion.div>
                   )}
                   {successMsg && (
@@ -548,7 +384,7 @@ const Register: React.FC = () => {
                       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                       animate={{ opacity: 1, height: 'auto', marginBottom: 14 }}
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                      className="p-3 rounded-xl text-xs bg-[#6e41ff]/10 border border-[#6e41ff]/25 text-[#8b5cf6] flex items-start gap-2"
+                      className="p-3 rounded-xl text-xs bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 flex items-start gap-2"
                     >
                       <FaCheck size={12} className="shrink-0 mt-0.5" />
                       <p>{successMsg}</p>
@@ -563,14 +399,14 @@ const Register: React.FC = () => {
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">First name *</label>
+                          <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">First name *</label>
                           <input 
                             type="text" 
                             name="first_name" 
                             value={formData.first_name} 
                             onChange={handleChange} 
                             required 
-                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent" 
                             placeholder="Jane" 
                           />
                           {fieldErrors.first_name && (
@@ -578,14 +414,14 @@ const Register: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Last name *</label>
+                          <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Last name *</label>
                           <input 
                             type="text" 
                             name="last_name" 
                             value={formData.last_name} 
                             onChange={handleChange} 
                             required 
-                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent" 
                             placeholder="Doe" 
                           />
                           {fieldErrors.last_name && (
@@ -595,42 +431,42 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Email address *</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Email address *</label>
                         <input 
                           type="email" 
                           name="email" 
                           value={formData.email} 
                           onChange={handleChange} 
                           required 
-                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent" 
                           placeholder="jane@example.com" 
                         />
                         {fieldErrors.email ? (
                           <p className="text-red-400 text-[10px] mt-1">{fieldErrors.email}</p>
                         ) : (
-                          <p className="text-[11px] mt-1 text-white/40">We&apos;ll never share your email.</p>
+                          <p className="text-[11px] mt-1 text-white/40 font-mono">We&apos;ll never share your email.</p>
                         )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Birthday</label>
+                          <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Birthday</label>
                           <input 
                             type="date" 
                             name="birthday" 
                             value={formData.birthday} 
                             onChange={handleChange} 
-                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent [color-scheme:dark]" 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent [color-scheme:dark]" 
                           />
                           {fieldErrors.birthday && (
                             <p className="text-red-400 text-[10px] mt-1">{fieldErrors.birthday}</p>
                           )}
                         </div>
                         <div className="relative" ref={genderRef}>
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Gender</label>
+                          <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Gender</label>
                           <div 
                             onClick={openGenderDropdown}
-                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent cursor-pointer flex justify-between items-center"
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent cursor-pointer flex justify-between items-center"
                           >
                             <span className={!formData.gender ? 'text-white/30' : ''}>
                               {formData.gender ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1).replace(/_/g, ' ') : 'Select'}
@@ -651,7 +487,7 @@ const Register: React.FC = () => {
                   {step === 2 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Password *</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Password *</label>
                         <div className="relative">
                           <input 
                             type={showPw ? 'text' : 'password'} 
@@ -660,10 +496,10 @@ const Register: React.FC = () => {
                             onChange={handleChange} 
                             required 
                             minLength={6} 
-                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent pr-11" 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent pr-11" 
                             placeholder="Min 6 characters" 
                           />
-                          <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-[#6e41ff]">
+                          <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-white">
                             {showPw ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                           </button>
                         </div>
@@ -675,7 +511,7 @@ const Register: React.FC = () => {
                             {[1,2,3,4].map(i => (
                               <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                                 formData.password.length >= i * 3
-                                  ? i <= 1 ? 'bg-red-500' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-[#6e41ff]'
+                                  ? i <= 1 ? 'bg-red-500' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-emerald-500'
                                   : 'bg-white/10'
                               }`} />
                             ))}
@@ -684,7 +520,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Confirm password *</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Confirm password *</label>
                         <div className="relative">
                           <input 
                             type={showCPw ? 'text' : 'password'} 
@@ -692,10 +528,10 @@ const Register: React.FC = () => {
                             value={formData.confirmPassword} 
                             onChange={handleChange} 
                             required 
-                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent pr-11" 
+                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent pr-11" 
                             placeholder="Repeat password" 
                           />
-                          <button type="button" onClick={() => setShowCPw(!showCPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-[#6e41ff]">
+                          <button type="button" onClick={() => setShowCPw(!showCPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-white">
                             {showCPw ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                           </button>
                         </div>
@@ -703,19 +539,19 @@ const Register: React.FC = () => {
                           <p className="text-red-400 text-[10px] mt-1">{fieldErrors.confirmPassword}</p>
                         )}
                         {formData.confirmPassword && !fieldErrors.confirmPassword && (
-                          <p className={`text-[11px] mt-1.5 flex items-center gap-1 ${formData.password === formData.confirmPassword ? 'text-green-400' : 'text-red-400'}`}>
+                          <p className={`text-[11px] mt-1.5 flex items-center gap-1 font-mono ${formData.password === formData.confirmPassword ? 'text-emerald-400' : 'text-red-400'}`}>
                             {formData.password === formData.confirmPassword ? <FaCheck size={10} /> : <X size={10} />}
                             {formData.password === formData.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
                           </p>
                         )}
                       </div>
 
-                      <div className="p-4 rounded-2xl flex gap-3 items-start bg-[#6e41ff]/5 border border-[#6e41ff]/15">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-[#6e41ff]/15">
-                          <Heart className="w-3.5 h-3.5 text-[#6e41ff]" fill="currentColor" />
+                      <div className="p-4 rounded-2xl flex gap-3 items-start bg-white/5 border border-white/10">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-red-500/20 text-red-400">
+                          <Heart className="w-3.5 h-3.5" fill="currentColor" />
                         </div>
-                        <div className="text-xs text-[#8b5cf6]/75">
-                          <p className="font-semibold mb-0.5 text-[#8b5cf6]">Protect your account</p>
+                        <div className="text-xs text-white/60">
+                          <p className="font-mono uppercase font-bold mb-0.5 text-white">Protect your account</p>
                           <p>Mix letters, numbers, and symbols. Never share your password with anyone.</p>
                         </div>
                       </div>
@@ -726,13 +562,13 @@ const Register: React.FC = () => {
                   {step === 3 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Mobile Number (optional)</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Mobile Number (optional)</label>
                         <input 
                           type="tel" 
                           name="mobile_number" 
                           value={formData.mobile_number} 
                           onChange={handleChange} 
-                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent" 
                           placeholder="+1 234 567 8900" 
                         />
                         {fieldErrors.mobile_number && (
@@ -741,13 +577,13 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">Country (optional)</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Country (optional)</label>
                         <input 
                           type="text" 
                           name="country" 
                           value={formData.country} 
                           onChange={handleChange} 
-                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent" 
                           placeholder="United States" 
                         />
                         {fieldErrors.country && (
@@ -756,13 +592,13 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">City (optional)</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">City (optional)</label>
                         <input 
                           type="text" 
                           name="city" 
                           value={formData.city} 
                           onChange={handleChange} 
-                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent" 
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent" 
                           placeholder="New York" 
                         />
                         {fieldErrors.city && (
@@ -770,15 +606,15 @@ const Register: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="p-4 rounded-2xl flex gap-3 items-start bg-white/4 border border-white/8">
+                      <div className="p-4 rounded-2xl flex gap-3 items-start bg-white/5 border border-white/10">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-white/10">
-                          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                         </div>
-                        <div className="text-xs text-white/50">
-                          <p className="font-semibold mb-0.5 text-white/60">Location helps personalize your experience</p>
+                        <div className="text-xs text-white/60">
+                          <p className="font-mono uppercase font-bold mb-0.5 text-white">Location helps personalize your experience</p>
                           <p>Your location is never shared publicly without your permission.</p>
                         </div>
                       </div>
@@ -789,15 +625,14 @@ const Register: React.FC = () => {
                   {step === 4 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                       <div>
-                        <label className="block text-[11px] font-semibold mb-2 uppercase tracking-wider text-white/50">Profile photo</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-2 text-white/60">Profile photo</label>
                         <div className="flex items-center gap-4">
                           <div className="relative group flex-shrink-0">
                             {profilePreview ? (
-                              <img src={profilePreview} alt="Profile" className="w-[72px] h-[72px] rounded-full object-cover border-2 border-[#6e41ff] group-hover:scale-105 transition-transform"
-                                style={{ boxShadow: '0 0 14px rgba(110, 65, 255, 0.35)' }} />
+                              <img src={profilePreview} alt="Profile" className="w-[72px] h-[72px] rounded-full object-cover border-2 border-red-500 shadow-lg" />
                             ) : (
-                              <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center group-hover:scale-105 transition-transform bg-white/5 border border-white/20">
-                                <FaCamera className="text-white/35" size={22} />
+                              <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center bg-black/40 border border-white/20">
+                                <FaCamera className="text-white/40" size={22} />
                               </div>
                             )}
                           </div>
@@ -805,7 +640,7 @@ const Register: React.FC = () => {
                             <p className="text-xs mb-2 text-white/50">Your profile photo appears on your posts, comments, and profile page.</p>
                             <label className="cursor-pointer inline-block">
                               <input type="file" name="profile_image" accept="image/*" onChange={handleChange} className="hidden" />
-                              <span className="px-4 py-2 rounded-full text-xs font-bold transition-all bg-white/8 hover:bg-[#6e41ff]/20 hover:border-[#6e41ff]/40 text-white border border-white/10">
+                              <span className="px-5 py-2 rounded-full text-xs font-mono uppercase tracking-wider transition-all bg-white/10 hover:bg-white/20 text-white border border-white/20">
                                 {profilePreview ? 'Change photo' : 'Upload photo'}
                               </span>
                             </label>
@@ -817,23 +652,23 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-semibold mb-2 uppercase tracking-wider text-white/50">Cover photo</label>
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-2 text-white/60">Cover photo</label>
                         {coverPreview ? (
-                          <div className="relative group overflow-hidden rounded-2xl border border-[#6e41ff]/25 h-24 mb-2">
-                            <img src={coverPreview} alt="Cover" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          <div className="relative group overflow-hidden rounded-2xl border border-white/20 h-24 mb-2">
+                            <img src={coverPreview} alt="Cover" className="h-full w-full object-cover" />
                           </div>
                         ) : (
                           <div
-                            className="h-20 w-full rounded-2xl flex flex-col items-center justify-center border border-dashed transition-colors cursor-pointer mb-2 bg-white/4 border-white/15 hover:bg-[#6e41ff]/5 hover:border-[#6e41ff]/30"
+                            className="h-20 w-full rounded-2xl flex flex-col items-center justify-center border border-dashed transition-colors cursor-pointer mb-2 bg-black/40 border-white/20 hover:bg-white/5"
                             onClick={() => document.getElementById('cover-input')?.click()}
                           >
-                            <FaImage className="text-white/25" size={22} />
-                            <span className="text-xs mt-1.5 text-white/40">Add a cover photo for your profile</span>
+                            <FaImage className="text-white/30" size={22} />
+                            <span className="text-xs font-mono uppercase mt-1.5 text-white/40">Add a cover photo for your profile</span>
                           </div>
                         )}
                         <label className="cursor-pointer block w-full">
                           <input id="cover-input" type="file" name="cover_image" accept="image/*" onChange={handleChange} className="hidden" />
-                          <span className="block w-full text-center px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 hover:bg-[#6e41ff]/10 text-white border border-white/8 hover:border-[#6e41ff]/25">
+                          <span className="block w-full text-center px-4 py-2.5 rounded-xl text-xs font-mono uppercase tracking-wider transition-all bg-white/10 hover:bg-white/20 text-white border border-white/20">
                             {coverPreview ? 'Change cover' : 'Upload cover'}
                           </span>
                         </label>
@@ -843,7 +678,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-white/50">
+                        <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">
                           Bio <span className="normal-case font-normal">(optional)</span>
                         </label>
                         <textarea
@@ -852,13 +687,13 @@ const Register: React.FC = () => {
                           onChange={handleChange}
                           maxLength={150}
                           rows={2}
-                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent resize-none"
+                          className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent resize-none"
                           placeholder="Tell your community a little about yourself…"
                         />
                         {fieldErrors.bio && (
                           <p className="text-red-400 text-[10px] mt-1">{fieldErrors.bio}</p>
                         )}
-                        <p className="text-[11px] mt-1 text-right text-white/40">{formData.bio.length}/150</p>
+                        <p className="text-[11px] mt-1 text-right text-white/40 font-mono">{formData.bio.length}/150</p>
                       </div>
                     </motion.div>
                   )}
@@ -866,21 +701,21 @@ const Register: React.FC = () => {
                   {/* STEP 5 — Review */}
                   {step === 5 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                      <div className="p-4 rounded-2xl bg-white/4 border border-white/8">
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
                         <div className="flex items-center gap-3 mb-3">
                           {profilePreview
-                            ? <img src={profilePreview} alt="" className="w-11 h-11 rounded-full object-cover border border-[#6e41ff]/50" />
-                            : <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#6e41ff] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-base">
+                            ? <img src={profilePreview} alt="" className="w-11 h-11 rounded-full object-cover border border-red-500" />
+                            : <div className="w-11 h-11 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center text-white font-bold text-base">
                                 {formData.first_name[0]?.toUpperCase()}
                               </div>
                           }
                           <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate text-white">{formData.first_name} {formData.last_name}</p>
-                            <p className="text-xs text-[#6e41ff]">{formData.email}</p>
+                            <p className="font-bold text-sm truncate uppercase text-white">{formData.first_name} {formData.last_name}</p>
+                            <p className="text-xs font-mono text-red-400">{formData.email}</p>
                             {formData.bio && <p className="text-xs mt-0.5 line-clamp-1 text-white/50">{formData.bio}</p>}
                           </div>
                         </div>
-                        <div className="space-y-1.5 text-xs border-t pt-3 border-white/6">
+                        <div className="space-y-1.5 text-xs border-t pt-3 border-white/10 font-mono">
                           {[
                             ['Email', formData.email],
                             ...(formData.mobile_number ? [['Mobile', formData.mobile_number]] : []),
@@ -892,36 +727,36 @@ const Register: React.FC = () => {
                             ...(coverPreview ? [['Cover Photo', 'Uploaded']] : []),
                           ].map(([k, v]) => (
                             <div key={k} className="flex justify-between gap-4">
-                              <span className="flex-shrink-0 text-white/50">{k}</span>
+                              <span className="flex-shrink-0 text-white/40 uppercase">{k}</span>
                               <span className="font-medium capitalize truncate text-white">{v}</span>
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#6e41ff]/8 to-[#8b5cf6]/8 border border-[#6e41ff]/18">
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
                         <label className="flex items-start gap-3 cursor-pointer group">
                           <div className="relative flex items-center justify-center shrink-0 mt-0.5">
                             <input
                               type="checkbox"
                               checked={agreed}
                               onChange={(e) => setAgreed(e.target.checked)}
-                              className="w-4 h-4 appearance-none rounded border-2 border-[#6e41ff]/50 checked:bg-[#6e41ff] checked:border-[#6e41ff] outline-none transition-all cursor-pointer peer"
+                              style={{ accentColor: '#ef4444' }}
+                              className="w-4 h-4 rounded cursor-pointer"
                             />
-                            <FaCheck className="absolute text-white opacity-0 peer-checked:opacity-100 w-2.5 h-2.5 pointer-events-none transition-opacity" />
                           </div>
-                          <span className="text-xs leading-relaxed group-hover:text-white transition-colors text-white/60">
+                          <span className="text-xs leading-relaxed text-white/70">
                             I agree to PureTalk&apos;s{' '}
-                            <Link href="/terms" className="font-bold text-[#6e41ff] hover:text-[#8b5cf6] transition-colors">Terms of Service</Link>
+                            <Link href="/terms" className="font-bold text-red-400 hover:text-red-300 transition-colors">Terms of Service</Link>
                             {' '}and{' '}
-                            <Link href="/privacy" className="font-bold text-[#6e41ff] hover:text-[#8b5cf6] transition-colors">Privacy Policy</Link>.
+                            <Link href="/privacy" className="font-bold text-red-400 hover:text-red-300 transition-colors">Privacy Policy</Link>.
                             I&apos;ll keep my conversations real and respectful.
                           </span>
                         </label>
                       </div>
 
-                      <p className="text-xs flex items-center gap-2 px-1 text-white/50">
-                        <Heart className="w-3 h-3 text-[#6e41ff] flex-shrink-0" fill="currentColor" />
+                      <p className="text-xs flex items-center gap-2 px-1 text-white/50 font-mono uppercase">
+                        <Heart className="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="currentColor" />
                         After joining you can customise your feed, follow people, and post your first story.
                       </p>
                     </motion.div>
@@ -931,7 +766,7 @@ const Register: React.FC = () => {
                   <div className="flex gap-3 pt-2">
                     {step > 1 && (
                       <button type="button" onClick={prevStep} disabled={isLoading}
-                        className="py-3 px-5 rounded-full text-sm font-bold transition-all disabled:opacity-50 hidden sm:block active:scale-95 bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                        className="py-3 px-6 rounded-full text-xs font-mono uppercase tracking-wider transition-all disabled:opacity-50 hidden sm:block bg-white/10 hover:bg-white/20 text-white border border-white/20"
                       >
                         Back
                       </button>
@@ -939,8 +774,7 @@ const Register: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 py-3.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] hover:from-[#8b5cf6] hover:to-[#6e41ff] text-white hover:scale-[1.02] active:scale-95"
-                      style={{ boxShadow: '0 6px 20px rgba(110, 65, 255, 0.38)' }}
+                      className="flex-1 py-3.5 rounded-full text-xs font-mono uppercase tracking-widest font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg"
                     >
                       {isLoading
                         ? <><Loader2 className="animate-spin" size={17} />{step === 5 ? 'Creating profile…' : 'Saving…'}</>
@@ -955,10 +789,10 @@ const Register: React.FC = () => {
                   <>
                     <div className="relative my-5">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-white/8" />
+                        <div className="w-full border-t border-white/10" />
                       </div>
-                      <div className="relative flex justify-center text-[11px] uppercase font-bold tracking-widest">
-                        <span className="px-4 bg-[#0a0a0a]/60 text-gray-500">or join with</span>
+                      <div className="relative flex justify-center text-[11px] font-mono uppercase tracking-widest">
+                        <span className="px-4 bg-[#1a1a1a] text-white/40">or join with</span>
                       </div>
                     </div>
 
@@ -966,7 +800,7 @@ const Register: React.FC = () => {
                       <button
                         onClick={() => { setIsGoogleLoad(true); setTimeout(() => { alert('Google OAuth integration coming soon'); setIsGoogleLoad(false); }, 1500); }}
                         disabled={isGoogleLoad || isLoading}
-                        className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all bg-white hover:bg-gray-100 text-black text-sm font-semibold disabled:opacity-50 hover:scale-[1.02] active:scale-95"
+                        className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all bg-white hover:bg-gray-100 text-black text-xs font-mono uppercase tracking-wider font-bold disabled:opacity-50"
                       >
                         {isGoogleLoad ? <Loader2 className="animate-spin" size={17} /> : (
                           <>
@@ -984,7 +818,7 @@ const Register: React.FC = () => {
                       <button
                         onClick={() => { setIsAppleLoad(true); setTimeout(() => { alert('Apple OAuth integration coming soon'); setIsAppleLoad(false); }, 1500); }}
                         disabled={isAppleLoad || isLoading}
-                        className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm font-semibold disabled:opacity-50 hover:scale-[1.02] active:scale-95 bg-white/8 hover:bg-white/15 border border-white/10 text-white"
+                        className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-mono uppercase tracking-wider font-bold disabled:opacity-50 bg-white/10 hover:bg-white/20 border border-white/20 text-white"
                       >
                         {isAppleLoad ? <Loader2 className="animate-spin" size={17} /> : (
                           <>
@@ -1000,11 +834,11 @@ const Register: React.FC = () => {
                 )}
 
                 {/* Sign in link */}
-                <p className="text-center text-sm mt-6 text-white/50">
+                <p className="text-center text-xs font-mono uppercase mt-6 text-white/50">
                   Already have an account?{' '}
                   <Link
                     href="/auth/login"
-                    className="font-semibold text-[#6e41ff] hover:text-[#8b5cf6] transition-colors"
+                    className="font-bold text-red-400 hover:text-red-300 transition-colors"
                   >
                     Sign in instead
                   </Link>
@@ -1030,7 +864,7 @@ const Register: React.FC = () => {
               width: dropdownPosition.width,
               zIndex: 9999,
             }}
-            className="rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl border border-white/15 bg-[#1a1a1a]/95"
+            className="rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl border border-white/15 bg-[#1a1a1a]/95 text-white"
           >
             <div className="py-1">
               {['male', 'female', 'custom', 'prefer_not_to_say'].map((option) => (
@@ -1038,9 +872,9 @@ const Register: React.FC = () => {
                   key={option}
                   type="button"
                   onClick={() => selectGender(option)}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                  className={`w-full text-left px-4 py-2.5 text-xs font-mono uppercase transition-colors ${
                     formData.gender === option
-                      ? 'bg-[#6e41ff]/10 text-[#6e41ff]'
+                      ? 'bg-red-500/20 text-red-400'
                       : 'text-white/80 hover:bg-white/10'
                   }`}
                 >
@@ -1057,26 +891,24 @@ const Register: React.FC = () => {
         {isModalOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)} className="fixed inset-0 backdrop-blur-sm z-50 bg-black/60" />
+              onClick={() => setIsModalOpen(false)} className="fixed inset-0 backdrop-blur-md z-50 bg-black/80" />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-md rounded-2xl shadow-2xl overflow-hidden bg-[#0f0508]/95 backdrop-blur-xl border border-white/15"
-              style={{ boxShadow: '0 25px 50px rgba(110, 65, 255, 0.20)' }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-md rounded-3xl shadow-2xl overflow-hidden bg-[#1a1a1a] border border-white/10 text-white"
             >
-              <div className="flex justify-between items-center p-5 border-b border-white/10">
-                <h3 className="text-base font-bold flex items-center gap-2 text-white">
-                  <Mail className="text-[#6e41ff] w-4 h-4" /> Need Help?
+              <div className="flex justify-between items-center p-6 border-b border-white/10">
+                <h3 className="text-base font-bold uppercase tracking-tight flex items-center gap-2">
+                  <Mail className="text-red-400 w-4 h-4" /> Need Help?
                 </h3>
-                <button onClick={() => setIsModalOpen(false)} className="transition text-gray-400 hover:text-white">
-                  <X size={16} />
+                <button onClick={() => setIsModalOpen(false)} className="transition text-white/50 hover:text-white">
+                  <X size={18} />
                 </button>
               </div>
               <div className="p-6">
-                <p className="text-center mb-4 text-sm text-white/60">Trouble signing up? Our team is here for you.</p>
+                <p className="text-center mb-4 text-xs font-mono uppercase text-white/60">Trouble signing up? Our team is here for you.</p>
                 <button onClick={() => (window.location.href = 'mailto:support@puretalk.com')}
-                  className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] hover:from-[#8b5cf6] hover:to-[#6e41ff] text-white text-sm font-bold transition-all active:scale-95"
-                  style={{ boxShadow: '0 5px 15px rgba(110, 65, 255, 0.35)' }}
+                  className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-mono uppercase tracking-widest font-bold transition-all shadow-lg"
                 >
                   Email Support Team
                 </button>

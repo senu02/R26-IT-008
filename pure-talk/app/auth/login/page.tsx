@@ -1,12 +1,14 @@
 // app/auth/login/page.tsx
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Mail, Phone, X, Loader2, Heart, Zap, MessageCircle, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authAPI } from '@/lib/api';
 import Link from 'next/link';
+import HeroVideo from '@/components/HeroVideo';
+import AnimatedButton from '@/components/AnimatedButton';
 
 interface LoginError {
   status?: number;
@@ -31,10 +33,6 @@ export default function LoginPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
-  const [isHoveringForm, setIsHoveringForm] = useState(false);
-
   useEffect(() => {
     // Check if user is already logged in
     const token = localStorage.getItem('auth_token');
@@ -49,157 +47,6 @@ export default function LoginPage() {
       setRememberMe(true);
     }
   }, [router]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationId: number;
-    let time = 0;
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-
-    const handleResize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
-    };
-
-    let ripples: { x: number; y: number; radius: number; alpha: number }[] = [];
-
-    const drawBackground = () => {
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#050507');
-      gradient.addColorStop(0.5, '#0a0a0f');
-      gradient.addColorStop(1, '#0f0f15');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.fillStyle = '#6e41ff22';
-      for (let i = 0; i < 100; i++) {
-        const starX = (i * 173) % width;
-        const starY = (i * 257) % (height * 0.4);
-        ctx.beginPath();
-        ctx.arc(starX, starY, Math.random() * 1.2 + 0.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
-    const drawWave = (
-      amplitude: number,
-      frequency: number,
-      speed: number,
-      color: string,
-      phaseOffset: number,
-      currentTime: number,
-      mouseInfluence: { x: number | null; strength: number }
-    ) => {
-      ctx.beginPath();
-      const baseY = height * 0.65;
-      let x = 0;
-      let y: number;
-
-      while (x <= width) {
-        let waveY = Math.sin(x * frequency + currentTime * speed + phaseOffset) * amplitude;
-        if (mouseInfluence.x !== null && mouseInfluence.strength > 0) {
-          const dx = x - mouseInfluence.x;
-          const distance = Math.abs(dx);
-          const maxDistance = 200;
-          if (distance < maxDistance) {
-            const rippleIntensity = mouseInfluence.strength * (1 - distance / maxDistance);
-            waveY += Math.sin(distance * 0.05 - currentTime * 15) * rippleIntensity * 12;
-          }
-        }
-        y = baseY + waveY;
-        if (x === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-        x += 5;
-      }
-
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
-      ctx.closePath();
-      ctx.fillStyle = color;
-      ctx.fill();
-    };
-
-    const drawRipples = () => {
-      ripples = ripples.filter(r => r.alpha > 0);
-      ripples.forEach(ripple => {
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(110, 65, 255, ${ripple.alpha * 0.6})`;
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, ripple.radius * 0.5, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(110, 65, 255, ${ripple.alpha * 0.4})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ripple.radius += 3;
-        ripple.alpha -= 0.025;
-      });
-    };
-
-    const addRipple = (x: number, y: number) => {
-      if (y > height * 0.5) {
-        ripples.push({ x, y, radius: 10, alpha: 0.9 });
-      }
-    };
-
-    const animate = () => {
-      if (!ctx) return;
-      drawBackground();
-
-      let mouseInfluence = { x: null as number | null, strength: 0 };
-      if (isHoveringForm && mousePosition) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const canvasX = (mousePosition.x - rect.left) * scaleX;
-        const canvasY = (mousePosition.y - rect.top) * scaleY;
-        mouseInfluence = { x: canvasX, strength: 0.75 };
-        if (Math.random() < 0.12) addRipple(canvasX, canvasY);
-      }
-
-      const waves = [
-        { amplitude: 18, frequency: 0.008, speed: 1.2, color: '#6e41ff22', phase: 0 },
-        { amplitude: 12, frequency: 0.012, speed: 1.5, color: '#6e41ff33', phase: 2 },
-        { amplitude: 8, frequency: 0.018, speed: 1.8, color: '#6e41ff44', phase: 4 },
-      ];
-
-      waves.forEach(wave => {
-        drawWave(wave.amplitude, wave.frequency, wave.speed, wave.color, wave.phase, time, mouseInfluence);
-      });
-
-      drawRipples();
-      time += 0.016;
-      animationId = requestAnimationFrame(animate);
-    };
-
-    const handleCanvasMouseMove = (e: MouseEvent) => {
-      if (isHoveringForm) setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    canvas.addEventListener('mousemove', handleCanvasMouseMove);
-    animate();
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('mousemove', handleCanvasMouseMove);
-      cancelAnimationFrame(animationId);
-    };
-  }, [isHoveringForm, mousePosition]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,18 +128,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden font-sans bg-[#050507]">
-      {/* Wave Canvas Background */}
-      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full block" />
+    <div className="relative min-h-screen w-full overflow-x-hidden font-sans bg-[#111] text-white selection:bg-red-500 selection:text-white">
+      {/* Background Hero Video matching theme */}
+      <HeroVideo />
+      
+      {/* Dark theme overlay */}
+      <div className="fixed inset-0 bg-black/65 z-10 pointer-events-none" />
 
-      {/* Gradient overlay matching home page */}
-      <div className="pointer-events-none fixed inset-0 opacity-45 bg-[radial-gradient(circle_at_22%_8%,#6e41ff55,transparent_35%),radial-gradient(circle_at_62%_55%,#4020b833,transparent_35%),radial-gradient(circle_at_85%_10%,#ffffff14,transparent_28%)]" />
-
-      {/* Header with logo matching home page */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/45 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl leading-tight font-semibold tracking-[0.18em] hover:opacity-80 transition-opacity">
-            PURE<br />TALK
+      {/* Header matching landing page */}
+      <header className="sticky top-0 z-50 p-6 mix-blend-difference border-b border-white/10 bg-black/40 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href="/" className="text-xl md:text-2xl font-bold tracking-[0.15em] uppercase hover:opacity-70 transition-opacity">
+            PURE TALK
           </Link>
           <nav className="hidden md:flex items-center gap-10 text-xs tracking-[0.24em] text-white/70 uppercase">
             <Link href="/home" className="hover:text-white transition-colors">Feed</Link>
@@ -302,15 +149,15 @@ export default function LoginPage() {
           </nav>
           <Link
             href="/auth/register"
-            className="inline-flex items-center rounded-md border border-white/30 px-5 py-2 text-sm tracking-[0.12em] uppercase hover:bg-white/10 transition-colors"
+            className="inline-flex items-center rounded-full border border-white/30 px-6 py-2 text-xs tracking-[0.2em] uppercase hover:bg-white/10 transition-colors"
           >
             Sign Up
           </Link>
         </div>
       </header>
 
-      {/* Split layout */}
-      <div className="relative z-10 flex flex-col lg:flex-row min-h-[calc(100vh-73px)]">
+      {/* Main Split Layout */}
+      <div className="relative z-20 flex flex-col lg:flex-row min-h-[calc(100vh-85px)] max-w-7xl mx-auto px-6 py-10">
 
         {/* LEFT — Branding */}
         <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-8 md:p-12">
@@ -322,34 +169,34 @@ export default function LoginPage() {
           >
             {/* Logo badge */}
             <div className="mb-8">
-              <div className="inline-flex items-center gap-3 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/15 bg-black/25">
-                <Heart className="text-[#6e41ff]" size={26} fill="#6e41ff" />
-                <span className="text-xl font-bold tracking-tight text-white">PureTalk</span>
+              <div className="inline-flex items-center gap-3 backdrop-blur-md rounded-full px-5 py-2 border border-white/20 bg-black/40">
+                <Heart className="text-red-500" size={22} fill="#ef4444" />
+                <span className="text-sm font-mono tracking-widest uppercase text-white">PureTalk</span>
               </div>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-4 text-white">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold uppercase leading-tight tracking-tight mb-4 text-white">
               Connect with{' '}
-              <span className="bg-gradient-to-r from-[#6e41ff] via-[#8b5cf6] to-[#a78bfa] bg-clip-text text-transparent">
+              <span className="text-red-500">
                 Pure Intention.
               </span>
             </h1>
 
-            <p className="text-lg mb-6 leading-relaxed text-white/60">
+            <p className="text-base md:text-lg mb-8 leading-relaxed text-white/70 font-light">
               A social platform built for authentic connections. Share your story, join real conversations, and build meaningful relationships — no noise, no toxicity.
             </p>
 
             {/* Feature list */}
-            <div className="space-y-3 mt-8">
+            <div className="space-y-4">
               {[
                 { icon: <MessageCircle size={16} />, label: 'Real-time messaging with end-to-end encryption' },
                 { icon: <Users size={16} />, label: 'Communities built on shared values & interests' },
                 { icon: <Zap size={16} />, label: 'AI-powered toxicity filter for a safe feed' },
               ].map(({ icon, label }) => (
-                <div key={label} className="flex items-center gap-3 text-white/60">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-[#6e41ff]/15">
-                    <span className="text-[#6e41ff]">{icon}</span>
+                <div key={label} className="flex items-center gap-3 text-white/70 text-sm">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white/10 border border-white/10">
+                    <span className="text-red-400">{icon}</span>
                   </div>
                   <span>{label}</span>
                 </div>
@@ -364,8 +211,8 @@ export default function LoginPage() {
                 { value: '4.9★', label: 'App rating' },
               ].map(({ value, label }) => (
                 <div key={label}>
-                  <p className="text-2xl font-bold bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] bg-clip-text text-transparent">{value}</p>
-                  <p className="text-xs mt-0.5 text-white/40">{label}</p>
+                  <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
+                  <p className="text-xs mt-0.5 font-mono text-white/40 uppercase">{label}</p>
                 </div>
               ))}
             </div>
@@ -373,33 +220,24 @@ export default function LoginPage() {
         </div>
 
         {/* RIGHT — Login form */}
-        <div
-          className="lg:w-1/2 flex items-center justify-center p-6 sm:p-8 md:p-12"
-          onMouseEnter={() => setIsHoveringForm(true)}
-          onMouseLeave={() => { setIsHoveringForm(false); setMousePosition(null); }}
-        >
+        <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-8 md:p-12">
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease: [0.23, 1, 0.32, 1] }}
             className="w-full max-w-md"
           >
-            <div className="backdrop-blur-xl rounded-2xl shadow-2xl p-6 sm:p-8 transition-all duration-300 border border-white/15 bg-black/30 hover:border-[#6e41ff]/30"
-              style={{
-                boxShadow: '0 25px 50px rgba(110, 65, 255, 0.12), 0 0 0 0.5px rgba(255,255,255,0.08)'
-              }}
-            >
+            <div className="backdrop-blur-2xl rounded-3xl p-8 border border-white/10 bg-[#1a1a1a]/80 shadow-2xl">
+              
               {/* Card header */}
               <div className="mb-6 text-center">
-                <div className="w-14 h-14 mx-auto bg-gradient-to-br from-[#6e41ff] to-[#8b5cf6] rounded-xl flex items-center justify-center shadow-lg"
-                  style={{ boxShadow: '0 8px 24px rgba(110, 65, 255, 0.35)' }}
-                >
+                <div className="w-14 h-14 mx-auto bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
                   <Heart size={28} className="text-white" fill="white" />
                 </div>
-                <h2 className="mt-5 text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+                <h2 className="mt-5 text-2xl sm:text-3xl font-bold uppercase tracking-tight text-white">
                   Welcome back
                 </h2>
-                <p className="mt-1.5 text-sm text-[#6e41ff]/70">
+                <p className="mt-1.5 text-xs font-mono uppercase tracking-wider text-white/50">
                   Sign in to see what's happening on PureTalk
                 </p>
               </div>
@@ -407,19 +245,19 @@ export default function LoginPage() {
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-white/60">Email address</label>
+                  <label className="block text-xs font-mono uppercase tracking-wider mb-2 text-white/60">Email address</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     disabled={isLoading}
-                    className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent disabled:opacity-50"
+                    className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent disabled:opacity-50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-white/60">Password</label>
+                  <label className="block text-xs font-mono uppercase tracking-wider mb-2 text-white/60">Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
@@ -427,12 +265,12 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       disabled={isLoading}
-                      className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#6e41ff]/40 focus:border-transparent pr-12 disabled:opacity-50"
+                      className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent pr-12 disabled:opacity-50"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-[#6e41ff]"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-white"
                     >
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
@@ -445,7 +283,7 @@ export default function LoginPage() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="p-3 rounded-xl text-sm bg-red-500/10 border border-red-500/30 text-red-400"
+                      className="p-3 rounded-xl text-xs bg-red-500/20 border border-red-500/40 text-red-300"
                     >
                       {error}
                     </motion.div>
@@ -459,15 +297,15 @@ export default function LoginPage() {
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
                       disabled={isLoading}
-                      style={{ accentColor: '#6e41ff' }}
+                      style={{ accentColor: '#ef4444' }}
                       className="w-4 h-4 rounded"
                     />
-                    <span className="text-sm text-white/60">Remember me</span>
+                    <span className="text-xs font-mono text-white/60 uppercase">Remember me</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(true)}
-                    className="text-sm font-medium transition-colors text-[#6e41ff] hover:text-[#8b5cf6]"
+                    className="text-xs font-mono uppercase transition-colors text-red-400 hover:text-red-300"
                   >
                     Forgot password?
                   </button>
@@ -476,8 +314,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-[#6e41ff] to-[#8b5cf6] hover:from-[#8b5cf6] hover:to-[#6e41ff] text-white font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg hover:-translate-y-0.5"
-                  style={{ boxShadow: '0 8px 24px rgba(110, 65, 255, 0.30)' }}
+                  className="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-mono uppercase text-sm tracking-widest py-3.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg"
                 >
                   {isLoading ? (
                     <><Loader2 className="animate-spin" size={20} /> Signing in...</>
@@ -493,7 +330,7 @@ export default function LoginPage() {
                   <div className="w-full border-t border-white/10" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="px-2 bg-transparent text-white/40">
+                  <span className="px-3 bg-[#1a1a1a] text-white/40 font-mono">
                     or continue with
                   </span>
                 </div>
@@ -504,7 +341,7 @@ export default function LoginPage() {
                 <button
                   onClick={handleGoogleLogin}
                   disabled={isGoogleLoading || isLoading}
-                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 bg-white/8 hover:bg-white/15 border border-white/15"
+                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:opacity-50 bg-white/5 hover:bg-white/15 border border-white/10"
                 >
                   {isGoogleLoading ? <Loader2 className="animate-spin" size={20} /> : (
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -519,7 +356,7 @@ export default function LoginPage() {
                 <button
                   onClick={handleAppleLogin}
                   disabled={isAppleLoading || isLoading}
-                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 bg-white/8 hover:bg-white/15 border border-white/15"
+                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:opacity-50 bg-white/5 hover:bg-white/15 border border-white/10"
                 >
                   {isAppleLoading ? <Loader2 className="animate-spin" size={20} /> : (
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#FFFFFF">
@@ -529,13 +366,13 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <p className="text-center text-sm mt-6 text-white/50">
+              <p className="text-center text-xs font-mono uppercase mt-6 text-white/50">
                 New to PureTalk?{' '}
                 <Link
                   href="/auth/register"
-                  className="font-semibold transition-colors text-[#6e41ff] hover:text-[#8b5cf6]"
+                  className="font-bold text-red-400 hover:text-red-300 transition-colors"
                 >
-                  Create your profile
+                  Create profile
                 </Link>
               </p>
             </div>
@@ -552,28 +389,27 @@ export default function LoginPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="fixed inset-0 backdrop-blur-sm z-50 bg-black/60"
+              className="fixed inset-0 backdrop-blur-md z-50 bg-black/80"
             />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-md rounded-2xl shadow-2xl overflow-hidden bg-[#0f0508]/95 backdrop-blur-xl border border-white/15"
-              style={{ boxShadow: '0 25px 50px rgba(110, 65, 255, 0.20)' }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-md rounded-3xl shadow-2xl overflow-hidden bg-[#1a1a1a] border border-white/10 text-white"
             >
-              <div className="flex justify-between items-center p-5 border-b border-white/10">
-                <h3 className="text-xl font-bold text-white">Reset your password</h3>
+              <div className="flex justify-between items-center p-6 border-b border-white/10">
+                <h3 className="text-xl font-bold uppercase tracking-tight">Reset password</h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="transition text-white/50 hover:text-white/80"
+                  className="transition text-white/50 hover:text-white"
                 >
                   <X size={24} />
                 </button>
               </div>
 
               <div className="p-6 space-y-4">
-                <p className="text-center text-sm mb-4 text-white/60">
+                <p className="text-center text-xs font-mono uppercase text-white/60 mb-4">
                   Choose how you'd like to recover access to your account
                 </p>
 
@@ -594,23 +430,23 @@ export default function LoginPage() {
                   <button
                     key={title}
                     onClick={onClick}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl transition-all group text-left border border-white/10 hover:border-[#6e41ff]/40 hover:bg-[#6e41ff]/5"
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all group text-left border border-white/10 hover:border-red-500/40 hover:bg-white/5"
                   >
-                    <div className="p-3 rounded-full transition bg-[#6e41ff]/12">
-                      <span className="text-[#6e41ff]">{icon}</span>
+                    <div className="p-3 rounded-full transition bg-red-500/10 text-red-400">
+                      {icon}
                     </div>
                     <div>
-                      <p className="font-semibold text-white">{title}</p>
-                      <p className="text-sm text-white/50">{sub}</p>
+                      <p className="font-bold uppercase text-sm">{title}</p>
+                      <p className="text-xs text-white/50">{sub}</p>
                     </div>
                   </button>
                 ))}
               </div>
 
-              <div className="p-5 border-t border-white/10 bg-white/3">
+              <div className="p-5 border-t border-white/10 bg-black/20">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="w-full px-4 py-2 rounded-xl transition font-medium bg-white/8 text-white hover:bg-white/15"
+                  className="w-full px-4 py-2.5 rounded-xl transition font-mono uppercase text-xs tracking-wider bg-white/10 text-white hover:bg-white/20"
                 >
                   Cancel
                 </button>
@@ -619,11 +455,6 @@ export default function LoginPage() {
           </>
         )}
       </AnimatePresence>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
-        * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-      `}</style>
     </div>
   );
 }
