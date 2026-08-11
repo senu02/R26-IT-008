@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { 
   Home, 
   Search, 
@@ -9,17 +9,44 @@ import {
   MessageCircle, 
   Heart, 
   PlusSquare, 
-  Users
+  Users,
+  Menu,
+  Settings,
+  LogOut,
+  LifeBuoy,
+  UserCircle,
+  Palette,
+  Crown,
+  ChevronRight,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { notificationAPI } from '@/app/services/notifications/actions';
-import { getCurrentUserData, getImageUrl } from '@/lib/api';
+import { getCurrentUserData, getImageUrl, authAPI } from '@/lib/api';
 import Image from 'next/image';
 
 const Sidebar = () => {
+  const router = useRouter();
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showSettingsSubmenu, setShowSettingsSubmenu] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userAvatar, setUserAvatar] = useState('https://i.pravatar.cc/150?img=11');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await authAPI.logout();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      router.push('/auth/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
@@ -80,49 +107,51 @@ const Sidebar = () => {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col overflow-y-auto border-r border-red-500/20 bg-gradient-to-b from-[#1c0a10] via-[#0f172a] to-[#080d19] text-slate-100 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300 shadow-[8px_0_30px_rgba(0,0,0,0.5)]"
-        style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
+        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col justify-between border-r border-red-500/20 bg-gradient-to-b from-[#1c0a10] via-[#0f172a] to-[#080d19] text-slate-100 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300 shadow-[8px_0_30px_rgba(0,0,0,0.5)] py-4"
       >
         
-        {/* Modern "PT" Monogram Logo Area */}
-        <div className="mb-8 mt-4 flex w-full items-center justify-center lg:justify-start lg:px-4">
-          
-          {/* Desktop Logo */}
-          <Link href="/home" className="hidden lg:flex items-center gap-3.5 group cursor-pointer relative py-1">
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_25px_rgba(239,68,68,0.7)] group-hover:ring-red-400/60 overflow-hidden">
-              <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#0f172a] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
-                <span className="font-black text-lg tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
-                  PT
+        {/* Top Header & Logo Area */}
+        <div className="w-full shrink-0">
+          {/* Modern "PT" Monogram Logo Area */}
+          <div className="mb-6 flex w-full items-center justify-center lg:justify-start lg:px-4">
+            
+            {/* Desktop Logo */}
+            <Link href="/home" className="hidden lg:flex items-center gap-3.5 group cursor-pointer relative py-1">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_25px_rgba(239,68,68,0.7)] group-hover:ring-red-400/60 overflow-hidden">
+                <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#0f172a] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
+                  <span className="font-black text-lg tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                    PT
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-xl font-black tracking-widest uppercase bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent drop-shadow-sm leading-none">
+                    PURE TALK
+                  </h1>
+                </div>
+                <span className="text-[10px] tracking-[0.25em] text-red-500 uppercase font-bold mt-1.5 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                  CONNECT
                 </span>
               </div>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-xl font-black tracking-widest uppercase bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent drop-shadow-sm leading-none">
-                  PURE TALK
-                </h1>
-              </div>
-              <span className="text-[10px] tracking-[0.25em] text-red-500 uppercase font-bold mt-1.5 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                CONNECT
-              </span>
-            </div>
-          </Link>
+            </Link>
 
-          {/* Mobile Logo Collapse */}
-          <Link href="/home" className="block lg:hidden group relative">
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 transition-all duration-300 group-hover:scale-105 overflow-hidden">
-              <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
-                <span className="font-black text-lg tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
-                  PT
-                </span>
+            {/* Mobile Logo Collapse */}
+            <Link href="/home" className="block lg:hidden group relative">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 transition-all duration-300 group-hover:scale-105 overflow-hidden">
+                <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
+                  <span className="font-black text-lg tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                    PT
+                  </span>
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+          </div>
         </div>
 
-        {/* Navigation */}
-        <div className="flex w-full flex-col gap-2">
+        {/* Scrollable Navigation List */}
+        <div className="flex w-full flex-1 flex-col gap-1.5 px-2 overflow-y-auto scrollbar-none" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           <NavItem 
             href="/home" 
             icon={<Home className="h-6 w-6" />} 
@@ -160,13 +189,97 @@ const Sidebar = () => {
           <NavItem 
             href="/users/user-profile" 
             icon={
-              <div className="h-6 w-6 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 overflow-hidden">
+              <div className="h-6 w-6 rounded-full bg-neutral-800 border border-rose-500/40 overflow-hidden">
                 <img src={userAvatar} alt="profile" className="h-full w-full object-cover" />
               </div>
             } 
             label="Profile" 
             active={pathname === '/users/user-profile' || pathname === '/profile'} 
           />
+        </div>
+
+        {/* Bottom Pinned More Menu Trigger */}
+        <div className="shrink-0 flex w-full flex-col relative px-2 pt-2">
+          {/* Pop-up More Menu */}
+          {showMoreMenu && (
+            <div className="absolute bottom-16 left-2 flex w-[230px] flex-col rounded-2xl bg-[#181e2e] p-2 shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-slate-700/80 z-50 text-slate-100 backdrop-blur-xl">
+              {/* Settings with submenu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsSubmenu(!showSettingsSubmenu)}
+                  className="flex w-full items-center justify-between rounded-xl p-3 text-sm transition-colors hover:bg-slate-800 text-slate-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <Settings className="h-5 w-5 text-rose-400" />
+                    <span className="font-medium">Settings</span>
+                  </div>
+                  <ChevronRight
+                    className={`h-4 w-4 transition-transform duration-200 text-slate-400 ${showSettingsSubmenu ? 'rotate-90' : ''}`}
+                  />
+                </button>
+
+                {showSettingsSubmenu && (
+                  <div className="ml-2 mt-1 flex flex-col border-l border-slate-700/80 pl-2 space-y-1">
+                    <Link
+                      href="/users/user-settings?section=profile"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setShowSettingsSubmenu(false);
+                      }}
+                      className="flex items-center gap-3 rounded-lg p-2.5 text-sm transition-colors hover:bg-slate-800 text-slate-300 hover:text-white"
+                    >
+                      <UserCircle className="h-4 w-4 text-rose-400" />
+                      <div className="flex flex-col text-left">
+                        <span className="font-semibold text-xs">Profile Settings</span>
+                        <span className="text-[10px] text-slate-400">Personal info</span>
+                      </div>
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Help Center */}
+              <Link
+                href="/help-center"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-3 rounded-xl p-3 text-sm hover:bg-slate-800 text-slate-200 transition-colors"
+              >
+                <LifeBuoy className="h-5 w-5 text-rose-400" />
+                <span className="font-medium">Help Center</span>
+              </Link>
+
+              {/* Logout button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="flex w-full items-center gap-3 rounded-xl p-3 text-sm text-red-400 hover:bg-red-500/15 transition-colors disabled:opacity-60 font-semibold"
+              >
+                <LogOut className="h-5 w-5 text-red-500" />
+                <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+              </button>
+
+              {/* Premium badge */}
+              <div className="mt-1 flex items-center gap-2 rounded-xl border-t border-slate-700/60 px-3 pt-2.5 pb-1">
+                <Crown className="h-4 w-4 text-amber-400 animate-pulse" />
+                <span className="text-xs font-bold text-amber-400">Premium Member</span>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            className={`group flex items-center justify-center gap-4 rounded-xl p-3 transition-colors hover:bg-rose-500/10 hover:text-white text-slate-300 lg:justify-start w-full ${
+              showMoreMenu ? 'font-bold text-white bg-rose-500/15' : 'font-normal'
+            }`}
+          >
+            <div className="transition-transform group-hover:scale-110">
+              <Menu className="h-6 w-6 text-rose-400" />
+            </div>
+            <span className="hidden lg:block text-[15px] font-medium">More</span>
+          </button>
         </div>
 
       </div>
