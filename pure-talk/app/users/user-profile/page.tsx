@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Sidebar } from '@/components/User/UserProfile/Sidebar';
+import Sidebar from '@/components/User/Sidebar';
 import { BackgroundWrapper } from '@/context/theme';
 import PostsPage from '@/app/users/posts/page';
 import { getTheme } from '@/context/theme';
@@ -242,15 +242,13 @@ function ProfilePageContent() {
   };
 
   // Shared style fragments
-  const cardClass = isDark
-    ? 'bg-[#121212] border border-[#262626]'
-    : 'bg-white border border-[#DBDBDB]';
+  const cardClass = 'bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl hover:border-slate-700/60 transition-all text-slate-100';
 
   if (loading) {
     return (
       <BackgroundWrapper isDark={isDark}>
         <Sidebar />
-        <div className="flex-1 lg:ml-64 min-h-screen flex items-center justify-center">
+        <div className="flex-1 lg:ml-[245px] min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div
               className="animate-spin rounded-full h-12 w-12 border-2 border-t-transparent mx-auto"
@@ -264,44 +262,50 @@ function ProfilePageContent() {
   }
 
   return (
-    <BackgroundWrapper isDark={isDark}>
+    <div className="flex bg-[#0b0f17] min-h-screen font-sans selection:bg-red-500 selection:text-white">
       {/* Left Sidebar - Fixed */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className={`flex-1 lg:ml-64 min-h-screen ${isDark ? 'bg-black' : 'bg-[#FAFAFA]'}`}>
+      <div className="flex-1 lg:ml-[245px] min-h-screen bg-[#0b0f17] text-slate-100">
         <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-6xl">
           {/* Mobile padding */}
           <div className="lg:hidden h-12"></div>
 
           {error && (
-            <p className="mb-4 px-1 text-center text-xs text-red-600 dark:text-red-400">
+            <p className="mb-4 px-1 text-center text-xs text-red-500 font-medium">
               {error}
             </p>
           )}
           
-          {/* Cover Photo Section */}
+          {/* Cover Photo & Profile Hero Header */}
           <div className="relative mb-28">
-            <div className={`relative h-64 md:h-80 rounded-2xl overflow-hidden group border ${isDark ? 'border-[#262626]' : 'border-[#DBDBDB]'}`}>
+            {/* Cover Banner */}
+            <div className="relative h-64 md:h-80 rounded-3xl overflow-hidden group border border-slate-800/80 shadow-2xl">
               {/* Cover Image */}
               {user?.cover_image ? (
                 <img 
                   src={getImageUrl(user.cover_image) || undefined}
                   alt="Cover"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
-                <div className="absolute inset-0" style={{ background: IG_GRADIENT }}></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-red-950 via-rose-900 to-slate-900">
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-rose-500/20 via-transparent to-transparent"></div>
+                </div>
               )}
+
+              {/* Ambient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0b0f17] via-transparent to-black/30"></div>
               
               {/* Cover overlay for edit button */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+              <div className="absolute top-4 right-4 opacity-90 group-hover:opacity-100 transition-opacity">
                 <button 
                   onClick={() => coverInputRef.current?.click()}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold bg-white text-[#262626] hover:bg-white/90 transition-all"
+                  className="rounded-xl px-4 py-2 text-xs font-bold bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-all shadow-xl border border-white/20 flex items-center gap-2"
                 >
-                  <Camera className="inline h-4 w-4 mr-2" />
-                  Edit Cover Photo
+                  <Camera className="h-4 w-4 text-red-400" />
+                  <span>Edit Cover</span>
                 </button>
               </div>
               
@@ -316,73 +320,98 @@ function ProfilePageContent() {
             </div>
 
             {/* Profile Info Overlay */}
-            <div className="absolute -bottom-20 left-4 md:left-8 flex flex-col md:flex-row md:items-end gap-4">
-              {/* Avatar with edit button */}
-              <div className="relative group">
-                <div className="p-[3px] rounded-full" style={{ background: IG_GRADIENT }}>
-                  <div className={`p-[3px] rounded-full ${isDark ? 'bg-black' : 'bg-white'}`}>
-                    <div className="h-24 w-24 md:h-32 md:w-32 overflow-hidden rounded-full">
-                      <img
-                        src={getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=262626&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`}
-                        alt={user?.full_name || 'User'}
-                        className="h-full w-full object-cover"
-                      />
+            <div className="absolute -bottom-20 left-4 md:left-8 flex flex-col md:flex-row md:items-end gap-5 right-4 justify-between">
+              <div className="flex flex-col md:flex-row md:items-end gap-5">
+                {/* Avatar with edit button */}
+                <div className="relative group">
+                  <div className="p-[3px] rounded-full bg-gradient-to-tr from-red-600 via-rose-500 to-amber-300 shadow-[0_0_25px_rgba(244,63,94,0.4)] ring-4 ring-[#0b0f17]">
+                    <div className="p-[2px] rounded-full bg-[#0b0f17]">
+                      <div className="h-24 w-24 md:h-36 md:w-36 overflow-hidden rounded-full border border-slate-700/60">
+                        <img
+                          src={getImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?background=1e293b&color=fff&size=128&name=${encodeURIComponent(user?.full_name || 'User')}`}
+                          alt={user?.full_name || 'User'}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
                     </div>
                   </div>
+                  
+                  <button 
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="absolute bottom-1 right-1 rounded-full p-2.5 text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-xl hover:scale-110 transition-transform duration-200 border-2 border-[#0b0f17]"
+                    title="Change Profile Photo"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
+                  
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarImageSelect}
+                    className="hidden"
+                  />
                 </div>
-                
-                <button 
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="absolute bottom-1 right-1 rounded-full p-1.5 text-white shadow-lg hover:scale-110 transition-transform duration-200 border-2"
-                  style={{ backgroundColor: IG_BLUE, borderColor: isDark ? '#000' : '#fff' }}
+
+                {/* Name and Bio */}
+                <div className="mb-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-sm">
+                      {user?.full_name || 'User Name'}
+                    </h1>
+                    {getRoleBadge()}
+                  </div>
+                  <p className="text-sm text-slate-300 mt-1 max-w-lg font-medium leading-relaxed">
+                    {user?.bio || 'No bio added yet'}
+                  </p>
+                  {getAccountStatusDisplay()}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 mb-2 self-start md:self-end">
+                <button
+                  className="rounded-xl px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-red-600 via-rose-500 to-rose-600 hover:from-red-500 hover:to-rose-500 transition-all shadow-[0_4px_20px_rgba(244,63,94,0.35)] hover:scale-105 flex items-center gap-2"
                 >
-                  <Camera className="h-3 w-3" />
+                  <UserPlus className="h-4 w-4" />
+                  <span>Add Friend</span>
                 </button>
-                
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarImageSelect}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Name and Bio */}
-              <div className="mb-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className={`text-2xl md:text-3xl font-bold ${isDark ? 'text-white' : 'text-[#262626]'}`}>
-                    {user?.full_name || 'User Name'}
-                  </h1>
-                  {getRoleBadge()}
-                </div>
-                <p className={`text-sm ${isDark ? 'text-[#a8a8a8]' : 'text-[#737373]'}`}>
-                  {user?.bio || 'No bio yet'}
-                </p>
-                {getAccountStatusDisplay()}
-              </div>
+                <button className="rounded-xl px-4 py-2.5 text-sm font-semibold border border-slate-700/80 bg-slate-900/80 backdrop-blur-md text-slate-200 hover:bg-slate-800 hover:text-white transition-all shadow-md hover:scale-105 flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-rose-400" />
+                  <span>Message</span>
+                </button>
+                <button className="rounded-xl p-2.5 border border-slate-700/80 bg-slate-900/80 backdrop-blur-md text-slate-200 hover:bg-slate-800 hover:text-white transition-all shadow-md hover:scale-105">
+                  <MoreHorizontal className="h-5 w-5" />
+                </button>
             </div>
+          </div>
+        </div>
 
-            {/* Action Buttons */}
-            <div className="absolute -bottom-20 right-4 flex gap-2">
-              <button
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-all shadow-sm"
-                style={{ backgroundColor: IG_BLUE }}
-              >
-                <UserPlus className="inline h-4 w-4 mr-1" />
-                Add Friend
-              </button>
-              <button className={`rounded-lg px-4 py-2 text-sm font-semibold border transition-all shadow-sm ${
-                isDark ? 'bg-[#121212] text-white border-[#363636] hover:bg-[#1c1c1c]' : 'bg-white text-[#262626] border-[#DBDBDB] hover:bg-[#FAFAFA]'
-              }`}>
-                <MessageCircle className="inline h-4 w-4 mr-1" />
-                Message
-              </button>
-              <button className={`rounded-lg p-2 border transition-all shadow-sm ${
-                isDark ? 'bg-[#121212] text-white border-[#363636] hover:bg-[#1c1c1c]' : 'bg-white text-[#262626] border-[#DBDBDB] hover:bg-[#FAFAFA]'
-              }`}>
-                <MoreHorizontal className="h-5 w-5" />
-              </button>
+          {/* Quick Stats Bar */}
+          <div className="mb-8 grid grid-cols-3 gap-3 md:gap-6 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-4 md:p-5 shadow-2xl">
+            <div className="flex flex-col items-center justify-center border-r border-slate-800/80 pr-2 md:pr-4">
+              <span className="text-xl md:text-3xl font-black bg-gradient-to-r from-red-500 to-rose-400 bg-clip-text text-transparent">
+                {friends.length}
+              </span>
+              <span className="text-xs md:text-sm text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                Friends
+              </span>
+            </div>
+            <div className="flex flex-col items-center justify-center border-r border-slate-800/80 px-2 md:px-4">
+              <span className="text-xl md:text-3xl font-black text-white">
+                9
+              </span>
+              <span className="text-xs md:text-sm text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                Photos
+              </span>
+            </div>
+            <div className="flex flex-col items-center justify-center pl-2 md:pl-4">
+              <span className="text-xl md:text-3xl font-black text-rose-400">
+                100%
+              </span>
+              <span className="text-xs md:text-sm text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                Verified
+              </span>
             </div>
           </div>
 
@@ -539,26 +568,26 @@ function ProfilePageContent() {
                 <div className="space-y-3 text-sm">
                   {user?.location && (
                     <div className="flex items-center gap-3">
-                      <MapPin className={`h-4 w-4 ${isDark ? 'text-[#a8a8a8]' : 'text-[#737373]'}`} />
-                      <span className={isDark ? 'text-[#e0e0e0]' : 'text-[#262626]'}>Lives in {user.location}</span>
+                      <MapPin className="h-4 w-4 text-slate-400" />
+                      <span className="text-slate-200">Lives in {user.location}</span>
                     </div>
                   )}
                   {user?.email && (
                     <div className="flex items-center gap-3">
-                      <Mail className={`h-4 w-4 ${isDark ? 'text-[#a8a8a8]' : 'text-[#737373]'}`} />
-                      <span className={isDark ? 'text-[#e0e0e0]' : 'text-[#262626]'}>{user.email}</span>
+                      <Mail className="h-4 w-4 text-slate-400" />
+                      <span className="text-slate-200">{user.email}</span>
                     </div>
                   )}
                   {user?.mobile_number && (
                     <div className="flex items-center gap-3">
-                      <Phone className={`h-4 w-4 ${isDark ? 'text-[#a8a8a8]' : 'text-[#737373]'}`} />
-                      <span className={isDark ? 'text-[#e0e0e0]' : 'text-[#262626]'}>{user.mobile_number}</span>
+                      <Phone className="h-4 w-4 text-slate-400" />
+                      <span className="text-slate-200">{user.mobile_number}</span>
                     </div>
                   )}
                   {user?.birthday && (
                     <div className="flex items-center gap-3">
-                      <Calendar className={`h-4 w-4 ${isDark ? 'text-[#a8a8a8]' : 'text-[#737373]'}`} />
-                      <span className={isDark ? 'text-[#e0e0e0]' : 'text-[#262626]'}>Born {new Date(user.birthday).toLocaleDateString()}</span>
+                      <Calendar className="h-4 w-4 text-slate-400" />
+                      <span className="text-slate-200">Born {new Date(user.birthday).toLocaleDateString()}</span>
                     </div>
                   )}
                 </div>
@@ -567,23 +596,23 @@ function ProfilePageContent() {
               {/* Friends Card - Dynamic from API */}
               <div className={`rounded-2xl p-4 ${cardClass}`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-[#262626]'}`}>Friends</h3>
-                  <button className="text-sm font-semibold hover:opacity-80" style={{ color: IG_BLUE }}>
+                  <h3 className="text-base font-semibold text-slate-100">Friends</h3>
+                  <button className="text-sm font-semibold text-red-500 hover:text-red-400 transition-colors">
                     See All Friends
                   </button>
                 </div>
                 
                 {friendsLoading ? (
                   <div className="flex justify-center py-6">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style={{ borderColor: IG_BLUE }}></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent"></div>
                   </div>
                 ) : friends.length === 0 ? (
-                  <p className={`text-sm text-center py-6 ${isDark ? 'text-[#a8a8a8]' : 'text-[#737373]'}`}>
+                  <p className="text-sm text-center py-6 text-slate-400">
                     No friends yet. Start connecting with people!
                   </p>
                 ) : (
                   <>
-                    <p className={`text-sm mb-3 ${isDark ? 'text-[#a8a8a8]' : 'text-[#737373]'}`}>
+                    <p className="text-sm mb-3 text-slate-400">
                       {friends.length} {friends.length === 1 ? 'friend' : 'friends'}
                     </p>
                     <div className="grid grid-cols-3 gap-3">
@@ -593,16 +622,16 @@ function ProfilePageContent() {
                         
                         const friendName = friend.full_name || friend.email || 'Unknown';
                         const friendAvatar = getImageUrl(friend.profile_picture) || 
-                          `https://ui-avatars.com/api/?background=262626&color=fff&size=128&name=${encodeURIComponent(friendName)}`;
+                          `https://ui-avatars.com/api/?background=1e293b&color=fff&size=128&name=${encodeURIComponent(friendName)}`;
                         
                         return (
                           <div key={friendship.id} className="text-center cursor-pointer transition-transform hover:scale-105">
                             <img 
                               src={friendAvatar} 
                               alt={friendName} 
-                              className="w-full rounded-lg mb-1 aspect-square object-cover"
+                              className="w-full rounded-lg mb-1 aspect-square object-cover border border-slate-700/50"
                             />
-                            <p className={`text-xs font-medium truncate ${isDark ? 'text-white' : 'text-[#262626]'}`}>
+                            <p className="text-xs font-medium truncate text-slate-200">
                               {friendName.split(' ').slice(0, 2).join(' ')}
                             </p>
                           </div>
@@ -611,7 +640,7 @@ function ProfilePageContent() {
                     </div>
                     
                     {friends.length > 9 && (
-                      <button className="w-full mt-3 text-center text-sm font-semibold hover:opacity-80" style={{ color: IG_BLUE }}>
+                      <button className="w-full mt-3 text-center text-sm font-semibold text-red-500 hover:text-red-400 transition-colors">
                         Show {friends.length - 9} more friends
                       </button>
                     )}
@@ -622,8 +651,8 @@ function ProfilePageContent() {
               {/* Photos Card */}
               <div className={`rounded-2xl p-4 ${cardClass}`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-[#262626]'}`}>Photos</h3>
-                  <button className="text-sm font-semibold hover:opacity-80" style={{ color: IG_BLUE }}>
+                  <h3 className="text-base font-semibold text-slate-100">Photos</h3>
+                  <button className="text-sm font-semibold text-red-500 hover:text-red-400 transition-colors">
                     See All Photos
                   </button>
                 </div>
@@ -633,7 +662,7 @@ function ProfilePageContent() {
                       key={i}
                       src={`https://picsum.photos/id/${i + 10}/200/200`} 
                       alt={`Photo ${i}`}
-                      className="w-full aspect-square object-cover rounded-lg cursor-pointer transition-transform hover:scale-105"
+                      className="w-full aspect-square object-cover rounded-lg cursor-pointer transition-transform hover:scale-105 border border-slate-700/50"
                     />
                   ))}
                 </div>
@@ -642,6 +671,6 @@ function ProfilePageContent() {
           </div>
         </div>
       </div>
-    </BackgroundWrapper>
+    </div>
   );
 }

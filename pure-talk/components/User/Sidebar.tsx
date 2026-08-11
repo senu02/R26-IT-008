@@ -80,39 +80,43 @@ const Sidebar = () => {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col overflow-y-auto border-r border-[var(--ig-border)] bg-[var(--background)] text-[var(--foreground)] lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-200"
+        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col overflow-y-auto border-r border-red-500/20 bg-gradient-to-b from-[#1c0a10] via-[#0f172a] to-[#080d19] text-slate-100 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300 shadow-[8px_0_30px_rgba(0,0,0,0.5)]"
         style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
       >
         
-        {/* Advanced Logo Area */}
-        <div className="mb-10 mt-2 flex w-full items-center justify-center lg:justify-start lg:pl-3">
+        {/* Modern "PT" Monogram Logo Area */}
+        <div className="mb-8 mt-4 flex w-full items-center justify-center lg:justify-start lg:px-4">
           
           {/* Desktop Logo */}
-          <Link href="/home" className="hidden lg:flex items-center gap-3 group cursor-pointer relative py-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
-              <Image 
-                src="/logo.png" 
-                alt="Logo" 
-                width={36} 
-                height={36} 
-                className="object-contain"
-              />
+          <Link href="/home" className="hidden lg:flex items-center gap-3.5 group cursor-pointer relative py-1">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_25px_rgba(239,68,68,0.7)] group-hover:ring-red-400/60 overflow-hidden">
+              <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#0f172a] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
+                <span className="font-black text-lg tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                  PT
+                </span>
+              </div>
             </div>
-            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">
-              PURE-TALK
-            </h1>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xl font-black tracking-widest uppercase bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent drop-shadow-sm leading-none">
+                  PURE TALK
+                </h1>
+              </div>
+              <span className="text-[10px] tracking-[0.25em] text-red-500 uppercase font-bold mt-1.5 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                CONNECT
+              </span>
+            </div>
           </Link>
 
           {/* Mobile Logo Collapse */}
           <Link href="/home" className="block lg:hidden group relative">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg transition-transform group-hover:scale-105 overflow-hidden">
-              <Image 
-                src="/logo.png" 
-                alt="Logo" 
-                width={32} 
-                height={32} 
-                className="object-contain"
-              />
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 transition-all duration-300 group-hover:scale-105 overflow-hidden">
+              <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
+                <span className="font-black text-lg tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                  PT
+                </span>
+              </div>
             </div>
           </Link>
         </div>
@@ -169,7 +173,7 @@ const Sidebar = () => {
 
       {/* Notifications Sliding Drawer */}
       <div 
-        className={`fixed top-0 bottom-0 left-[72px] lg:left-[245px] w-[350px] sm:w-[400px] bg-[var(--background)] border-r border-[var(--ig-border)] shadow-xl z-40 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 bottom-0 left-[72px] lg:left-[245px] w-[350px] sm:w-[400px] bg-gradient-to-b from-[#1c0a10] via-[#0f172a] to-[#080d19] border-r border-red-500/20 text-slate-100 shadow-2xl z-40 transition-transform duration-300 ease-in-out ${
           showNotifications ? 'translate-x-0' : '-translate-x-full hidden'
         }`}
       >
@@ -207,31 +211,34 @@ const NavItem = ({
     <Link
       href={href}
       className={`
-        group relative flex items-center justify-center gap-4 rounded-lg p-3 
-        transition-all duration-200 ease-in-out
-        hover:bg-black/5 dark:hover:bg-white/10 
+        group relative flex items-center justify-center gap-4 rounded-xl p-3 
+        transition-all duration-300 ease-out
         lg:justify-start
-        ${active ? 'font-bold' : 'font-normal'}
+        ${active 
+          ? 'bg-gradient-to-r from-red-600/25 via-rose-500/15 to-transparent border-l-4 border-rose-500 font-bold shadow-[inset_0_0_15px_rgba(244,63,94,0.15)]' 
+          : 'hover:bg-rose-500/10 hover:border-rose-500/20 border border-transparent font-normal'}
       `}
     >
       <div className={`
-        relative transition-all duration-200 ease-in-out
-        group-hover:scale-105
+        relative transition-all duration-300 ease-out
+        group-hover:scale-110
         flex items-center justify-center
-        ${active ? 'text-blue-500' : 'text-[var(--foreground)]'}
-        ${!active && 'group-hover:text-blue-400'}
+        ${active 
+          ? 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.6)]' 
+          : 'text-slate-300 group-hover:text-rose-400'}
       `}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd297b] px-1 text-[10px] font-bold text-white border-2 border-[var(--background)] animate-pulse">
+          <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-600 px-1 text-[10px] font-extrabold text-white border-2 border-[#1c0a10] shadow-[0_0_10px_rgba(244,63,94,0.7)] animate-pulse">
             {badge > 99 ? '99+' : badge}
           </span>
         )}
       </div>
       <span className={`
-        hidden lg:block text-[15px] transition-colors duration-200 ease-in-out
-        ${active ? 'text-blue-500' : 'text-[var(--foreground)]'}
-        ${!active && 'group-hover:text-blue-400'}
+        hidden lg:block text-[15px] transition-colors duration-300 ease-out tracking-wide
+        ${active 
+          ? 'bg-gradient-to-r from-rose-400 via-red-400 to-white bg-clip-text text-transparent font-bold' 
+          : 'text-slate-300 group-hover:text-white'}
       `}>
         {label}
       </span>
