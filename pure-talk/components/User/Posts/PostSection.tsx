@@ -20,16 +20,27 @@ import { ToastProvider, useToast } from '@/context/userToast';
 interface PostSectionProps {
   theme: ThemeColors;
   isDark: boolean;
+  defaultFilter?: string;
+  onlyMyPosts?: boolean;
+  onlyImages?: boolean;
+  hideFilterTabs?: boolean;
 }
 
 // Fallback avatar used if getCurrentUserAvatar() returns null/empty
 const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=fd297b&color=fff';
 
-const PostSectionContent: React.FC<PostSectionProps> = ({ theme, isDark }) => {
+const PostSectionContent: React.FC<PostSectionProps> = ({ 
+  theme, 
+  isDark, 
+  defaultFilter,
+  onlyMyPosts = false,
+  onlyImages = false,
+  hideFilterTabs = false
+}) => {
   const [posts, setPosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState('For You');
+  const [activeFilter, setActiveFilter] = useState(defaultFilter || (onlyMyPosts ? 'My Posts' : 'For You'));
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [commentText, setCommentText] = useState<{ [key: string]: string }>({});
   const [submittingComment, setSubmittingComment] = useState<{ [key: string]: boolean }>({});
@@ -79,7 +90,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     setError(null);
     try {
       let data: PostData[] = [];
-      if (activeFilter === 'My Posts') {
+      if (onlyMyPosts || activeFilter === 'My Posts') {
         data = await postAPI.getMyPosts();
       } else if (activeFilter === 'Saved') {
         data = await postAPI.getSavedPosts();
@@ -88,6 +99,9 @@ const PostSectionContent: React.FC<PostSectionProps> = ({ theme, isDark }) => {
       }
       
       if (Array.isArray(data)) {
+        if (onlyImages) {
+          data = data.filter(p => !!p.image && p.image.trim() !== '');
+        }
         setPosts(data);
       } else {
         console.error('Expected array but got:', data);
@@ -440,24 +454,26 @@ const PostSectionContent: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   return (
     <div className="w-full">
       {/* Filter Tabs - Instagram style */}
-      <div className="flex border-b border-white/10 mb-6">
-        {filterOptions.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => setActiveFilter(filter)}
-            className={`flex-1 py-3 text-center font-semibold text-sm transition-all duration-200 relative ${
-              activeFilter === filter
-                ? theme.text.primary
-                : theme.text.muted
-            }`}
-          >
-            {filter}
-            {activeFilter === filter && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-full" />
-            )}
-          </button>
-        ))}
-      </div>
+      {!hideFilterTabs && (
+        <div className="flex border-b border-white/10 mb-6">
+          {filterOptions.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`flex-1 py-3 text-center font-semibold text-sm transition-all duration-200 relative ${
+                activeFilter === filter
+                  ? theme.text.primary
+                  : theme.text.muted
+              }`}
+            >
+              {filter}
+              {activeFilter === filter && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       <CreatePost theme={theme} isDark={isDark} onPost={handleNewPost} />
 
@@ -492,9 +508,13 @@ const PostSectionContent: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                   <PlusCircle className="w-8 h-8 text-[#fd297b]" />
                 </div>
                 <div>
-                  <p className={`${theme.text.primary} font-medium mb-1`}>No posts yet</p>
+                  <p className={`${theme.text.primary} font-medium mb-1`}>
+                    {onlyImages ? "No photo posts yet" : "No posts yet"}
+                  </p>
                   <p className={`${theme.text.muted} text-sm`}>
-                    {activeFilter === 'My Posts' 
+                    {onlyImages 
+                      ? "You haven't uploaded any photo posts yet. Create a post with an image to showcase it on your profile!" 
+                      : activeFilter === 'My Posts' 
                       ? "You haven't created any posts yet. Share something with the community!" 
                       : activeFilter === 'Saved'
                       ? "You haven't saved any posts yet. Save posts to read them later!"

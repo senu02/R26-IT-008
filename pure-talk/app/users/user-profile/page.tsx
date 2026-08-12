@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { getCurrentUserData, getImageUrl, authAPI, User } from '@/lib/api';
 import { friendsAPI, Friendship } from '@/app/services/friends/actions';
+import PostSection from '@/components/User/Posts/PostSection';
+import { postAPI } from '@/app/services/posts/actions';
 
 // Instagram-esque story-ring gradient
 const IG_GRADIENT = 'linear-gradient(45deg, #F9CE34 0%, #EE2A7B 55%, #6228D7 100%)';
@@ -43,6 +45,8 @@ function ProfilePageContent() {
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(true);
+  const [userPhotos, setUserPhotos] = useState<string[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(true);
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedCoverImage, setSelectedCoverImage] = useState<File | null>(null);
@@ -72,6 +76,7 @@ function ProfilePageContent() {
     
     loadUserData();
     loadFriends();
+    loadUserPhotos();
     
     return () => observer.disconnect();
   }, []);
@@ -80,6 +85,22 @@ function ProfilePageContent() {
     const userData = getCurrentUserData();
     setUser(userData);
     setLoading(false);
+  };
+
+  const loadUserPhotos = async () => {
+    setPhotosLoading(true);
+    try {
+      const myPosts = await postAPI.getMyPosts();
+      const photos = myPosts
+        .filter(p => !!p.image && p.image.trim() !== '')
+        .map(p => p.image as string);
+      setUserPhotos(photos);
+    } catch (err) {
+      console.error('Error loading user photos:', err);
+      setUserPhotos([]);
+    } finally {
+      setPhotosLoading(false);
+    }
   };
 
   const loadFriends = async () => {
@@ -399,7 +420,7 @@ function ProfilePageContent() {
             </div>
             <div className="flex flex-col items-center justify-center border-r border-slate-800/80 px-2 md:px-4">
               <span className="text-xl md:text-3xl font-black text-white">
-                9
+                {photosLoading ? '...' : userPhotos.length}
               </span>
               <span className="text-xs md:text-sm text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
                 Photos
@@ -555,9 +576,16 @@ function ProfilePageContent() {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Posts Feed */}
+            {/* Left Column - User Image Posts Feed */}
             <div className="lg:col-span-2">
-              <PostsPage />
+              <PostSection 
+                theme={theme} 
+                isDark={true} 
+                defaultFilter="My Posts" 
+                onlyMyPosts={true} 
+                onlyImages={true} 
+                hideFilterTabs={true} 
+              />
             </div>
 
             {/* Right Column */}
@@ -648,7 +676,7 @@ function ProfilePageContent() {
                 )}
               </div>
 
-              {/* Photos Card */}
+              {/* Photos Card - Dynamic from User Image Posts */}
               <div className={`rounded-2xl p-4 ${cardClass}`}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-base font-semibold text-slate-100">Photos</h3>
@@ -656,16 +684,26 @@ function ProfilePageContent() {
                     See All Photos
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-                    <img 
-                      key={i}
-                      src={`https://picsum.photos/id/${i + 10}/200/200`} 
-                      alt={`Photo ${i}`}
-                      className="w-full aspect-square object-cover rounded-lg cursor-pointer transition-transform hover:scale-105 border border-slate-700/50"
-                    />
-                  ))}
-                </div>
+                {photosLoading ? (
+                  <div className="flex justify-center py-6">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-red-500 border-t-transparent"></div>
+                  </div>
+                ) : userPhotos.length === 0 ? (
+                  <p className="text-xs text-center py-6 text-slate-400">
+                    No photo posts uploaded yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {userPhotos.slice(0, 9).map((photoUrl, i) => (
+                      <img 
+                        key={i}
+                        src={photoUrl} 
+                        alt={`Photo ${i + 1}`}
+                        className="w-full aspect-square object-cover rounded-lg cursor-pointer transition-transform hover:scale-105 border border-slate-700/50"
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
