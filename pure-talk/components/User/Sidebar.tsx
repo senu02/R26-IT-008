@@ -107,11 +107,23 @@ const Sidebar = () => {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col justify-between border-r border-red-500/20 bg-gradient-to-b from-[#1c0a10] via-[#0f172a] to-[#080d19] text-slate-100 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300 shadow-[8px_0_30px_rgba(0,0,0,0.5)] py-4"
+        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col justify-between border-r border-rose-500/20 bg-[#090d16] text-slate-100 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300 shadow-[8px_0_35px_rgba(0,0,0,0.7)] py-4 overflow-hidden"
       >
+        {/* Modern Dark Pattern Background Layers */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1a0812] via-[#0d1424] to-[#070b14] opacity-95 pointer-events-none" />
+        <div className="absolute inset-0 bg-sidebar-dark-pattern opacity-40 pointer-events-none" />
+        <div className="absolute inset-0 bg-sidebar-grid-pattern opacity-30 pointer-events-none" />
         
+        {/* Ambient Glow Spotlights */}
+        <div className="absolute -top-24 -left-20 h-64 w-64 rounded-full bg-rose-600/20 blur-3xl pointer-events-none animate-pulse-slow" />
+        <div className="absolute top-1/2 -right-20 h-56 w-56 rounded-full bg-indigo-600/15 blur-3xl pointer-events-none animate-pulse-slow delay-1000" />
+        <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-red-900/25 blur-3xl pointer-events-none animate-pulse-slow delay-2000" />
+        
+        {/* Glowing right edge line */}
+        <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-rose-500/40 via-red-500/20 to-transparent pointer-events-none" />
+
         {/* Top Header & Logo Area */}
-        <div className="w-full shrink-0">
+        <div className="relative z-10 w-full shrink-0">
           {/* Modern "PT" Monogram Logo Area */}
           <div className="mb-6 flex w-full items-center justify-center lg:justify-start lg:px-4">
             
@@ -151,7 +163,7 @@ const Sidebar = () => {
         </div>
 
         {/* Scrollable Navigation List */}
-        <div className="flex w-full flex-1 flex-col gap-1.5 px-2 overflow-y-auto scrollbar-none" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+        <div className="relative z-10 flex w-full flex-1 flex-col gap-1.5 px-2 overflow-y-auto scrollbar-none" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           <NavItem 
             href="/home" 
             icon={<Home className="h-6 w-6" />} 
@@ -199,16 +211,16 @@ const Sidebar = () => {
         </div>
 
         {/* Bottom Pinned More Menu Trigger */}
-        <div className="shrink-0 flex w-full flex-col relative px-2 pt-2">
+        <div className="relative z-10 shrink-0 flex w-full flex-col px-2 pt-2">
           {/* Pop-up More Menu */}
           {showMoreMenu && (
-            <div className="absolute bottom-16 left-2 flex w-[230px] flex-col rounded-2xl bg-[#181e2e] p-2 shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-slate-700/80 z-50 text-slate-100 backdrop-blur-xl">
+            <div className="absolute bottom-16 left-2 flex w-[230px] flex-col rounded-2xl bg-[#141b2d]/95 backdrop-blur-xl p-2 shadow-[0_10px_35px_rgba(0,0,0,0.9)] border border-rose-500/20 z-50 text-slate-100 sidebar-card-pattern">
               {/* Settings with submenu */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowSettingsSubmenu(!showSettingsSubmenu)}
-                  className="flex w-full items-center justify-between rounded-xl p-3 text-sm transition-colors hover:bg-slate-800 text-slate-200"
+                  className="flex w-full items-center justify-between rounded-xl p-3 text-sm transition-colors hover:bg-rose-500/10 text-slate-200"
                 >
                   <div className="flex items-center gap-3">
                     <Settings className="h-5 w-5 text-rose-400" />
@@ -220,14 +232,14 @@ const Sidebar = () => {
                 </button>
 
                 {showSettingsSubmenu && (
-                  <div className="ml-2 mt-1 flex flex-col border-l border-slate-700/80 pl-2 space-y-1">
+                  <div className="ml-2 mt-1 flex flex-col border-l border-rose-500/20 pl-2 space-y-1">
                     <Link
                       href="/users/user-settings?section=profile"
                       onClick={() => {
                         setShowMoreMenu(false);
                         setShowSettingsSubmenu(false);
                       }}
-                      className="flex items-center gap-3 rounded-lg p-2.5 text-sm transition-colors hover:bg-slate-800 text-slate-300 hover:text-white"
+                      className="flex items-center gap-3 rounded-lg p-2.5 text-sm transition-colors hover:bg-rose-500/10 text-slate-300 hover:text-white"
                     >
                       <UserCircle className="h-4 w-4 text-rose-400" />
                       <div className="flex flex-col text-left">
@@ -243,7 +255,7 @@ const Sidebar = () => {
               <Link
                 href="/help-center"
                 onClick={() => setShowMoreMenu(false)}
-                className="flex items-center gap-3 rounded-xl p-3 text-sm hover:bg-slate-800 text-slate-200 transition-colors"
+                className="flex items-center gap-3 rounded-xl p-3 text-sm hover:bg-rose-500/10 text-slate-200 transition-colors"
               >
                 <LifeBuoy className="h-5 w-5 text-rose-400" />
                 <span className="font-medium">Help Center</span>
@@ -286,11 +298,13 @@ const Sidebar = () => {
 
       {/* Notifications Sliding Drawer */}
       <div 
-        className={`fixed top-0 bottom-0 left-[72px] lg:left-[245px] w-[350px] sm:w-[400px] bg-gradient-to-b from-[#1c0a10] via-[#0f172a] to-[#080d19] border-r border-red-500/20 text-slate-100 shadow-2xl z-40 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 bottom-0 left-[72px] lg:left-[245px] w-[350px] sm:w-[400px] bg-[#090d16] border-r border-rose-500/20 text-slate-100 shadow-2xl z-40 transition-transform duration-300 ease-in-out overflow-hidden ${
           showNotifications ? 'translate-x-0' : '-translate-x-full hidden'
         }`}
       >
-        <div className="h-full overflow-y-auto" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1a0812] via-[#0d1424] to-[#070b14] opacity-95 pointer-events-none" />
+        <div className="absolute inset-0 bg-sidebar-dark-pattern opacity-40 pointer-events-none" />
+        <div className="relative z-10 h-full overflow-y-auto" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           <NotificationList />
         </div>
       </div>

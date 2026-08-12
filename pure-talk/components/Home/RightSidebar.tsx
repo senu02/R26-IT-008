@@ -150,20 +150,21 @@ const RightSidebar = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="w-full max-w-[320px] text-sm text-[var(--foreground)] relative h-full">
-        <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-[var(--ig-border)]"></div>
-        <div className="pl-4 h-full flex flex-col">
+      <div className="w-full max-w-[320px] relative rounded-3xl overflow-hidden bg-[#090d16]/90 border border-rose-500/20 backdrop-blur-xl p-5 shadow-[0_10px_35px_rgba(0,0,0,0.6)]">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1a0812] via-[#0d1424] to-[#070b14] opacity-90 pointer-events-none" />
+        <div className="absolute inset-0 bg-sidebar-dark-pattern opacity-30 pointer-events-none" />
+        <div className="relative z-10 flex flex-col text-slate-200">
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-14 w-14 rounded-full bg-[var(--ig-hover)] animate-pulse"></div>
+              <div className="h-14 w-14 rounded-full bg-slate-800/80 animate-pulse ring-2 ring-rose-500/30"></div>
               <div className="space-y-2">
-                <div className="h-4 w-24 bg-[var(--ig-hover)] rounded animate-pulse"></div>
-                <div className="h-3 w-16 bg-[var(--ig-hover)] rounded animate-pulse"></div>
+                <div className="h-4 w-24 bg-slate-800/80 rounded animate-pulse"></div>
+                <div className="h-3 w-16 bg-slate-800/80 rounded animate-pulse"></div>
               </div>
             </div>
           </div>
           <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-[var(--ig-muted)]" />
+            <Loader2 className="h-6 w-6 animate-spin text-rose-400" />
           </div>
         </div>
       </div>
@@ -171,22 +172,29 @@ const RightSidebar = () => {
   }
 
   return (
-    <div className="w-full max-w-[320px] text-sm text-[var(--foreground)] relative h-full">
-      <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-[var(--ig-border)]"></div>
+    <div className="w-full max-w-[320px] relative rounded-3xl overflow-hidden bg-[#090d16]/90 border border-rose-500/20 backdrop-blur-xl p-5 shadow-[0_10px_35px_rgba(0,0,0,0.6)] text-slate-100 transition-all duration-300">
+      {/* Modern Dark Pattern Background Layers */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1a0812] via-[#0d1424] to-[#070b14] opacity-95 pointer-events-none" />
+      <div className="absolute inset-0 bg-sidebar-dark-pattern opacity-35 pointer-events-none" />
+      <div className="absolute inset-0 bg-sidebar-grid-pattern opacity-25 pointer-events-none" />
 
-      <div className="pl-4 h-full flex flex-col">
+      {/* Ambient Glows */}
+      <div className="absolute -top-16 -right-16 h-48 w-48 rounded-full bg-rose-600/15 blur-3xl pointer-events-none animate-pulse-slow" />
+      <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-indigo-600/15 blur-3xl pointer-events-none animate-pulse-slow delay-1000" />
+
+      <div className="relative z-10 h-full flex flex-col">
         {/* Current user */}
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between p-2.5 rounded-2xl bg-white/5 border border-white/10 shadow-inner backdrop-blur-md">
           <div className="flex min-w-0 cursor-pointer items-center gap-3">
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[var(--ig-border)]">
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.3)]">
               <img src={userAvatar} alt={userName} className="h-full w-full object-cover" />
             </div>
             <div className="min-w-0 flex flex-col text-sm">
-              <span className="truncate font-semibold">{userName}</span>
-              <span className="truncate text-[var(--ig-muted)]">{fullName}</span>
+              <span className="truncate font-bold text-white tracking-wide">{userName}</span>
+              <span className="truncate text-xs text-slate-400">{fullName}</span>
             </div>
           </div>
-          <button type="button" className="shrink-0 text-xs font-semibold text-[var(--ig-link)] hover:opacity-80">
+          <button type="button" className="shrink-0 text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors px-2 py-1 rounded-lg hover:bg-rose-500/10">
             Switch
           </button>
         </div>
@@ -195,18 +203,21 @@ const RightSidebar = () => {
         {pendingRequests.length > 0 && (
           <div className="mb-5">
             <div className="mb-3 flex items-center justify-between">
-              <span className="font-semibold text-[var(--ig-muted)]">Friend Requests</span>
-              <Link href="/friends" className="text-xs font-semibold text-[var(--foreground)] hover:opacity-70">
+              <span className="font-semibold text-xs tracking-wider uppercase text-rose-400/90 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                Friend Requests
+              </span>
+              <Link href="/friends" className="text-xs font-medium text-slate-400 hover:text-white transition-colors">
                 See all
               </Link>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               {pendingRequests.slice(0, 5).map((req) => {
                 const from = req.from_user_detail;
                 return (
-                  <div key={req.id} className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full">
+                  <div key={req.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-rose-500/30 transition-all">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-rose-500/30">
                         <img
                           src={safeGetImageUrl(from?.profile_picture)}
                           alt={from?.full_name || 'user'}
@@ -214,16 +225,16 @@ const RightSidebar = () => {
                         />
                       </div>
                       <div className="min-w-0 flex flex-col">
-                        <span className="truncate text-sm font-semibold">{from?.full_name || 'Unknown'}</span>
-                        <span className="truncate text-xs text-[var(--ig-muted)]">Requested to follow</span>
+                        <span className="truncate text-xs font-semibold text-slate-100">{from?.full_name || 'Unknown'}</span>
+                        <span className="truncate text-[10px] text-slate-400">Requested to follow</span>
                       </div>
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 gap-1.5">
                       <button
                         type="button"
                         disabled={actionLoading[req.id]}
                         onClick={() => handleAccept(req.id)}
-                        className="rounded-md bg-[#0095f6] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 hover:bg-[#1877f2] transition-colors"
+                        className="rounded-lg bg-gradient-to-r from-red-600 to-rose-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-[0_0_10px_rgba(239,68,68,0.4)] disabled:opacity-50 hover:brightness-110 transition-all"
                       >
                         {actionLoading[req.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Accept'}
                       </button>
@@ -231,7 +242,7 @@ const RightSidebar = () => {
                         type="button"
                         disabled={actionLoading[req.id]}
                         onClick={() => handleReject(req.id)}
-                        className="rounded-md bg-[var(--ig-border)] px-3 py-1.5 text-xs font-semibold disabled:opacity-50 hover:bg-[var(--ig-hover)] transition-colors"
+                        className="rounded-lg bg-slate-800 px-2 py-1 text-[11px] font-medium text-slate-300 disabled:opacity-50 hover:bg-slate-700 transition-colors"
                       >
                         Delete
                       </button>
@@ -244,23 +255,23 @@ const RightSidebar = () => {
         )}
 
         {/* Suggestions */}
-        <div className="mb-4 flex items-center justify-between">
-          <span className="font-semibold text-[var(--ig-muted)]">Suggestions for you</span>
-          <Link href="/friends" className="text-xs font-semibold text-[var(--foreground)] hover:opacity-70">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="font-semibold text-xs tracking-wider uppercase text-slate-400">Suggestions for you</span>
+          <Link href="/friends" className="text-xs font-medium text-slate-400 hover:text-white transition-colors">
             See all
           </Link>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {suggestions.length === 0 ? (
-            <div className="text-xs text-[var(--ig-muted)] py-2">
+            <div className="text-xs text-slate-500 py-3 text-center bg-slate-900/40 rounded-xl border border-slate-800/60">
               No suggestions right now
             </div>
           ) : (
             suggestions.slice(0, 5).map((s) => (
-              <div key={s.user.id} className="flex items-center justify-between gap-2">
-                <Link href={`/profile/${s.user.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                  <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full">
+              <div key={s.user.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-900/40 border border-slate-800/50 hover:bg-slate-900/80 hover:border-rose-500/20 transition-all">
+                <Link href={`/profile/${s.user.id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-700">
                     <img
                       src={safeGetImageUrl(s.user.profile_picture)}
                       alt={s.user.full_name}
@@ -268,8 +279,8 @@ const RightSidebar = () => {
                     />
                   </div>
                   <div className="min-w-0 flex flex-col">
-                    <span className="truncate text-sm font-semibold hover:opacity-70">{s.user.full_name}</span>
-                    <span className="w-full max-w-[180px] truncate text-xs text-[var(--ig-muted)]">
+                    <span className="truncate text-xs font-semibold text-slate-200 hover:text-rose-400 transition-colors">{s.user.full_name}</span>
+                    <span className="w-full max-w-[150px] truncate text-[10px] text-slate-400">
                       {s.mutual_friends_count > 0
                         ? `${s.mutual_friends_count} mutual friend${s.mutual_friends_count > 1 ? 's' : ''}`
                         : 'Suggested for you'}
@@ -280,9 +291,9 @@ const RightSidebar = () => {
                   type="button"
                   disabled={actionLoading[s.user.id]}
                   onClick={() => handleFollow(s.user.id)}
-                  className="shrink-0 text-xs font-semibold text-[var(--ig-link)] hover:opacity-80 disabled:opacity-50"
+                  className="shrink-0 text-xs font-bold text-rose-400 hover:text-rose-300 disabled:opacity-50 px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 transition-all border border-rose-500/20"
                 >
-                  {actionLoading[s.user.id] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Follow'}
+                  {actionLoading[s.user.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Follow'}
                 </button>
               </div>
             ))
@@ -290,19 +301,17 @@ const RightSidebar = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-auto pt-8 flex flex-col gap-3 text-xs font-normal text-[var(--ig-muted)]">
-          <div className="flex flex-wrap gap-x-2 gap-y-1">
-            <a href="#" className="hover:underline">About</a>
-            <a href="#" className="hover:underline">Help</a>
-            <a href="#" className="hover:underline">Press</a>
-            <a href="#" className="hover:underline">API</a>
-            <a href="#" className="hover:underline">Jobs</a>
-            <a href="#" className="hover:underline">Privacy</a>
-            <a href="#" className="hover:underline">Terms</a>
-            <a href="#" className="hover:underline">Locations</a>
-            <a href="#" className="hover:underline">Language</a>
+        <div className="mt-auto pt-6 flex flex-col gap-2.5 text-[11px] font-normal text-slate-500 border-t border-slate-800/80">
+          <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+            <a href="#" className="hover:text-slate-300 transition-colors">About</a>
+            <a href="#" className="hover:text-slate-300 transition-colors">Help</a>
+            <a href="#" className="hover:text-slate-300 transition-colors">Press</a>
+            <a href="#" className="hover:text-slate-300 transition-colors">API</a>
+            <a href="#" className="hover:text-slate-300 transition-colors">Jobs</a>
+            <a href="#" className="hover:text-slate-300 transition-colors">Privacy</a>
+            <a href="#" className="hover:text-slate-300 transition-colors">Terms</a>
           </div>
-          <span className="uppercase tracking-wide">© {new Date().getFullYear()} PureTalk</span>
+          <span className="uppercase text-[10px] tracking-widest text-slate-600 font-bold">© {new Date().getFullYear()} PURETALK</span>
         </div>
       </div>
     </div>

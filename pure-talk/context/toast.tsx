@@ -27,64 +27,73 @@ const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: (id: string) => 
     const timer = setTimeout(() => {
       setIsExiting(true);
       setTimeout(() => onClose(toast.id), 300);
-    }, toast.duration || 3000);
+    }, toast.duration || 3500);
 
     return () => clearTimeout(timer);
   }, [toast.id, toast.duration, onClose]);
 
-  const getColors = () => {
-    if (toast.type === 'error') {
-      return {
-        background: 'rgba(239, 68, 68, 0.12)',
-        border: 'rgb(239, 68, 68)',
-        icon: 'rgb(239, 68, 68)',
-        text: 'rgb(239, 68, 68)',
-      };
-    }
-    return {
-      background: 'rgba(34, 197, 94, 0.12)',
-      border: 'rgb(34, 197, 94)',
-      icon: 'rgb(34, 197, 94)',
-      text: 'rgb(34, 197, 94)',
-    };
+  const handleClose = () => {
+    setIsExiting(true);
+    setTimeout(() => onClose(toast.id), 300);
   };
 
-  const colors = getColors();
+  const isError = toast.type === 'error';
+  const badgeLabel = isError ? 'ALERT' : 'SUCCESS';
+  const glowColor = isError ? 'from-rose-600/20 to-red-950/10' : 'from-emerald-600/20 to-teal-900/10';
+  const borderColor = isError ? 'border-rose-500/30' : 'border-emerald-500/30';
+  const iconBg = isError ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+  const badgeBg = isError ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+  const barColor = isError ? 'from-rose-500 via-red-500 to-rose-700' : 'from-emerald-400 via-teal-400 to-emerald-600';
 
   return (
     <div
-      className={`transform transition-all duration-300 ease-in-out ${
-        isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'
-      } mb-4`}
+      className={`transform transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${
+        isExiting ? 'translate-x-full opacity-0 scale-90' : 'translate-x-0 opacity-100 scale-100'
+      } mb-3.5 w-[390px]`}
     >
-      <div 
-        className="flex items-center gap-4 px-6 py-4 rounded-xl backdrop-blur-md min-w-[380px] max-w-md relative overflow-hidden"
-        style={{
-          background: colors.background,
-          borderLeft: `5px solid ${colors.border}`,
-          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-        }}
-      >
-        <div className="flex-shrink-0">
-          {toast.type === 'error' ? (
-            <AlertCircle size={24} style={{ color: colors.icon }} />
-          ) : (
-            <CheckCircle size={24} style={{ color: colors.icon }} />
-          )}
+      <div className={`relative rounded-2xl p-[1px] bg-gradient-to-r ${glowColor} shadow-[0_15px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl transition-all hover:scale-[1.02]`}>
+        <div className={`relative overflow-hidden rounded-2xl bg-[#0a0f1d]/90 p-4 border ${borderColor} sidebar-card-pattern`}>
+          {/* Ambient Spotlight */}
+          <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex items-start gap-3.5">
+            {/* Icon circle */}
+            <div className="flex-shrink-0">
+              <div className={`w-11 h-11 rounded-full ${iconBg} flex items-center justify-center`}>
+                {isError ? <AlertCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0 pt-0.5">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className={`text-[10px] font-extrabold tracking-widest px-2 py-0.5 rounded-md border ${badgeBg}`}>
+                  {badgeLabel}
+                </span>
+                <span className="text-[10px] font-semibold text-slate-400 shrink-0">just now</span>
+              </div>
+              <p className="text-xs font-medium text-slate-200 leading-relaxed">{toast.message}</p>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="flex-shrink-0 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* Countdown Progress Bar */}
+          <div className="mt-3.5 h-1 w-full bg-slate-800/80 rounded-full overflow-hidden">
+            <div 
+              className={`h-full bg-gradient-to-r ${barColor} rounded-full`}
+              style={{
+                animation: `toastProgress ${toast.duration || 3500}ms linear forwards`
+              }}
+            />
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="text-base font-semibold" style={{ color: colors.text }}>{toast.message}</p>
-        </div>
-        <button
-          onClick={() => {
-            setIsExiting(true);
-            setTimeout(() => onClose(toast.id), 300);
-          }}
-          className="flex-shrink-0 ml-2 transition-colors hover:opacity-70"
-          style={{ color: colors.text }}
-        >
-          <X size={18} />
-        </button>
       </div>
     </div>
   );
