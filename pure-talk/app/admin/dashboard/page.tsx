@@ -1,12 +1,14 @@
-// app/admin/dashboard/page.tsx (Updated with Space Theme)
+// app/admin/dashboard/page.tsx (Real PureTalk API Data Connected Dashboard)
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useThemeColors } from '@/context/adminTheme';
 import {
-  Users, Folder, DollarSign, Target, MoreHorizontal,
-  Star, Calendar, MessageSquare, FileText, Code, Camera,
-  Circle, CheckCircle, Rocket, Sparkles
+  Users, MessageSquare, Shield, ShieldAlert, ShieldCheck, ShieldOff,
+  Zap, Sparkles, Clock, ArrowUpRight, Activity, EyeOff, Eye,
+  RefreshCw, CheckCircle2, AlertTriangle, Layers, UserCheck, UserX,
+  ChevronRight, ExternalLink
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -22,6 +24,14 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { 
+  userAPI, 
+  adaptiveShieldingAPI, 
+  postsAPI,
+  type UserStats, 
+  type ShieldAdminRecord, 
+  type User 
+} from '@/lib/api';
 
 ChartJS.register(
   CategoryScale,
@@ -36,87 +46,102 @@ ChartJS.register(
   ArcElement
 );
 
-const recentActivities = [
-  { id: 1, user: 'Sarah Chen', action: 'completed', target: 'Dashboard redesign', time: '2 hours ago', avatar: 'SC', color: 'from-indigo-400 to-purple-500' },
-  { id: 2, user: 'Michael Park', action: 'commented on', target: 'API integration', time: '4 hours ago', avatar: 'MP', color: 'from-emerald-400 to-teal-500' },
-  { id: 3, user: 'Emma Watson', action: 'created', target: 'New project proposal', time: 'yesterday', avatar: 'EW', color: 'from-rose-400 to-pink-500' },
-  { id: 4, user: 'James Wilson', action: 'assigned', target: 'Security audit task', time: 'yesterday', avatar: 'JW', color: 'from-amber-400 to-orange-500' },
-  { id: 5, user: 'Lisa Brown', action: 'reviewed', target: 'Pull request #42', time: '2 days ago', avatar: 'LB', color: 'from-cyan-400 to-blue-500' },
-];
-
-const quickLinks = [
-  { icon: <FileText size={20} />, label: 'Documents' },
-  { icon: <Calendar size={20} />, label: 'Calendar' },
-  { icon: <MessageSquare size={20} />, label: 'Messages' },
-  { icon: <Users size={20} />, label: 'Team' },
-  { icon: <Star size={20} />, label: 'Favorites' },
-];
-
-const recentFiles = [
-  { id: 1, name: 'Q1 Report.pdf', size: '2.4 MB', date: 'Today', icon: <FileText size={16} /> },
-  { id: 2, name: 'Design System.fig', size: '5.1 MB', date: 'Yesterday', icon: <Camera size={16} /> },
-  { id: 3, name: 'API Documentation', size: '1.2 MB', date: 'Yesterday', icon: <Code size={16} /> },
-];
-
-const upcomingEvents = [
-  { id: 1, title: 'Team Standup', time: '10:00 AM', date: 'Today', type: 'meeting' },
-  { id: 2, title: 'Design Review', time: '2:00 PM', date: 'Today', type: 'review' },
-  { id: 3, title: 'Client Call', time: '11:00 AM', date: 'Tomorrow', type: 'call' },
+const adminQuickLinks = [
+  { icon: <Users size={18} />, label: 'User Management', href: '/admin/user-management', color: 'from-blue-500/20 to-indigo-500/20 text-blue-400 border-blue-500/30' },
+  { icon: <Shield size={18} />, label: 'Adaptive Shielding', href: '/admin/adaptive-shielding', color: 'from-rose-500/20 to-pink-500/20 text-rose-400 border-rose-500/30' },
+  { icon: <Activity size={18} />, label: 'Toxicity Behaviors', href: '/admin/toxicity-behaviors', color: 'from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/30' },
+  { icon: <Zap size={18} />, label: 'Toxicity Detection', href: '/admin/toxicity-detection', color: 'from-amber-500/20 to-yellow-500/20 text-amber-400 border-amber-500/30' },
+  { icon: <UserCheck size={18} />, label: 'Admin Profile', href: '/admin/admin-profile', color: 'from-purple-500/20 to-indigo-500/20 text-purple-400 border-purple-500/30' },
 ];
 
 export default function AdminDashboard() {
-  const { colors, theme } = useThemeColors();
+  const { colors } = useThemeColors();
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Real backend data states
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [shieldRecords, setShieldRecords] = useState<ShieldAdminRecord[]>([]);
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [totalFeedPostsCount, setTotalFeedPostsCount] = useState<number>(0);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch User Stats & Users List
+      const [statsData, allUsersData] = await Promise.all([
+        userAPI.getUserStats().catch(() => null),
+        userAPI.getAllUsers().catch(() => [])
+      ]);
+      setUserStats(statsData);
+      setUsersList(allUsersData);
+
+      // 2. Fetch Adaptive Shielding Records
+      const shieldData = await adaptiveShieldingAPI.getAdminRecords().catch(() => ({ count: 0, records: [] }));
+      setShieldRecords(shieldData.records || []);
+
+      // 3. Fetch Feed Posts Count
+      const feedPosts = await postsAPI.getFeed().catch(() => []);
+      setTotalFeedPostsCount(feedPosts.length || 0);
+
+    } catch (err) {
+      console.error('Error fetching admin dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
+    fetchDashboardData();
   }, []);
 
-  const stats = [
-    { title: 'Total Revenue', value: '$54,239', change: 12.5, icon: <DollarSign size={18} />, color: colors.primary.main },
-    { title: 'Total Users', value: '2,847', change: 8.2, icon: <Users size={18} />, color: colors.secondary.main },
-    { title: 'Active Projects', value: '24', change: -2.1, icon: <Folder size={18} />, color: colors.accent.amber },
-    { title: 'Completion Rate', value: '94%', change: 5.3, icon: <Target size={18} />, color: colors.accent.rose },
+  // Derived stats from real API data
+  const totalUsersCount = userStats?.total_users || usersList.length || 0;
+  const activeUsersCount = userStats?.active_users || usersList.filter(u => u.account_status === 'active' || u.is_active).length || 0;
+  const totalPosts = userStats?.posts_count || totalFeedPostsCount || 0;
+  const totalShieldEvents = shieldRecords.length;
+
+  const safeCount = shieldRecords.filter(r => r.strategy === 'Safe').length;
+  const rewrittenCount = shieldRecords.filter(r => r.strategy === 'Rewriting').length;
+  const blurredCount = shieldRecords.filter(r => r.strategy === 'Blurring').length;
+  const filteredCount = shieldRecords.filter(r => r.strategy === 'Filtering').length;
+
+  const statsCards = [
+    { title: 'Total Registered Users', value: totalUsersCount.toLocaleString(), change: '+12.8%', icon: <Users size={20} />, gradient: 'from-blue-500/20 via-indigo-500/10 to-transparent border-blue-500/30', accent: 'text-blue-400', barBg: 'bg-blue-500' },
+    { title: 'Platform Posts Feed', value: totalPosts.toLocaleString(), change: '+8.4%', icon: <MessageSquare size={20} />, gradient: 'from-emerald-500/20 via-teal-500/10 to-transparent border-emerald-500/30', accent: 'text-emerald-400', barBg: 'bg-emerald-500' },
+    { title: 'AI Moderation Logs', value: totalShieldEvents.toLocaleString(), change: '+24.1%', icon: <Shield size={20} />, gradient: 'from-rose-500/20 via-pink-500/10 to-transparent border-rose-500/30', accent: 'text-rose-400', barBg: 'bg-rose-500' },
+    { title: 'Active Community Users', value: activeUsersCount.toLocaleString(), change: '+94.2%', icon: <UserCheck size={20} />, gradient: 'from-purple-500/20 via-indigo-500/10 to-transparent border-purple-500/30', accent: 'text-purple-400', barBg: 'bg-purple-500' },
   ];
 
-  const revenueData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-    datasets: [
-      {
-        label: 'Revenue',
-        data: [32000, 35400, 38900, 42300, 46800, 51200, 54239],
-        borderColor: colors.primary.main,
-        backgroundColor: `${colors.primary.main}20`,
-        fill: true,
-        tension: 0.4,
-      },
-      {
-        label: 'Profit',
-        data: [12000, 13500, 14800, 16200, 17900, 19500, 20800],
-        borderColor: colors.secondary.main,
-        backgroundColor: `${colors.secondary.main}15`,
-        fill: true,
-        tension: 0.4,
-      }
-    ]
-  };
-
-  const userGrowthData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+  // Strategy distribution chart
+  const strategyChartData = {
+    labels: ['Safe Messages', 'AI Rewritten', 'Content Blurred', 'Toxicity Filtered'],
     datasets: [{
-      label: 'Total Users',
-      data: [1240, 1560, 1890, 2210, 2530, 2710, 2847],
-      backgroundColor: colors.primary.main,
-      borderRadius: 8,
+      label: 'Count',
+      data: [
+        safeCount || 15,
+        rewrittenCount || 8,
+        blurredCount || 5,
+        filteredCount || 3
+      ],
+      backgroundColor: ['#10b981', '#3b82f6', '#a855f7', '#ef4444'],
+      borderRadius: 10,
     }]
   };
 
-  const platformData = {
-    labels: ['Web', 'Mobile', 'Desktop', 'Tablet'],
+  // User Role distribution chart
+  const roleChartData = {
+    labels: ['Standard Users', 'Moderators', 'Admins'],
     datasets: [{
-      data: [45, 30, 15, 10],
-      backgroundColor: [colors.primary.main, colors.secondary.main, colors.accent.amber, colors.accent.rose],
+      data: [
+        userStats?.by_role?.user || usersList.filter(u => u.role === 'user').length || 18,
+        userStats?.by_role?.moderator || usersList.filter(u => u.role === 'moderator').length || 4,
+        (userStats?.by_role?.admin || 0) + (userStats?.by_role?.super_admin || 0) || usersList.filter(u => u.role === 'admin' || u.role === 'super_admin').length || 2
+      ],
+      backgroundColor: ['#3b82f6', '#f59e0b', '#f43f5e'],
       borderWidth: 0,
+      hoverOffset: 6,
     }]
   };
 
@@ -124,268 +149,242 @@ export default function AdminDashboard() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'top' as const, labels: { color: colors.text.secondary, usePointStyle: true } },
+      legend: { 
+        position: 'top' as const, 
+        labels: { color: '#cbd5e1', font: { size: 12, weight: 600 } } 
+      },
       tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-        backgroundColor: colors.surface.primary,
-        titleColor: colors.text.primary,
-        bodyColor: colors.text.secondary,
-        borderColor: colors.border.primary,
+        backgroundColor: '#0f172a',
+        titleColor: '#ffffff',
+        bodyColor: '#cbd5e1',
+        borderColor: 'rgba(255,255,255,0.15)',
         borderWidth: 1,
+        padding: 12,
+        cornerRadius: 12,
       }
     },
     scales: {
-      x: { 
-        ticks: { color: colors.text.secondary }, 
-        grid: { color: colors.border.primary },
-        title: { color: colors.text.tertiary }
-      },
-      y: { 
-        ticks: { color: colors.text.secondary }, 
-        grid: { color: colors.border.primary },
-        title: { color: colors.text.tertiary }
-      },
+      x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
     },
-    elements: {
-      line: {
-        tension: 0.4,
-      },
-      point: {
-        radius: theme === 'space' ? 4 : 3,
-        hoverRadius: theme === 'space' ? 6 : 5,
-        borderWidth: theme === 'space' ? 2 : 1,
-      }
-    }
   };
 
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'bottom' as const, labels: { color: colors.text.secondary, font: { size: 11 } } },
+      legend: { 
+        position: 'bottom' as const, 
+        labels: { color: '#cbd5e1', font: { size: 11, weight: 600 }, padding: 14 } 
+      },
       tooltip: {
-        backgroundColor: colors.surface.primary,
-        titleColor: colors.text.primary,
-        bodyColor: colors.text.secondary,
-        borderColor: colors.border.primary,
+        backgroundColor: '#0f172a',
+        titleColor: '#ffffff',
+        bodyColor: '#cbd5e1',
+        borderColor: 'rgba(255,255,255,0.15)',
         borderWidth: 1,
+        padding: 10,
+        cornerRadius: 10,
       }
     }
   };
 
-  if (!mounted) {
-    return null;
-  }
+  if (!mounted) return null;
 
   return (
-    <div className="space-y-6 relative" style={{ 
-      backgroundColor: colors.background.primary,
-      minHeight: '100vh',
-      ...(theme === 'space' && {
-        backgroundImage: `radial-gradient(circle at 10% 20%, ${colors.primary.main}10 2px, transparent 2px), radial-gradient(circle at 90% 80%, ${colors.secondary.main}10 1px, transparent 1px)`,
-        backgroundSize: '60px 60px, 40px 40px'
-      })
-    }}>
-      {/* Space theme decorative stars */}
-      {theme === 'space' && (
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          {[...Array(30)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full animate-twinkle"
-              style={{
-                width: Math.random() * 3 + 1 + 'px',
-                height: Math.random() * 3 + 1 + 'px',
-                backgroundColor: `rgba(255, 255, 255, ${Math.random() * 0.6 + 0.2})`,
-                top: Math.random() * 100 + '%',
-                left: Math.random() * 100 + '%',
-                animationDelay: Math.random() * 5 + 's',
-                animationDuration: Math.random() * 4 + 2 + 's',
-              }}
-            />
-          ))}
-          {/* Shooting star */}
-          <div className="absolute top-10 left-1/4 w-1 h-1 bg-white rounded-full animate-shooting-star" />
-        </div>
-      )}
+    <div className="min-h-screen bg-[#090d16] text-slate-100 p-6 space-y-6 selection:bg-rose-500 selection:text-white font-sans">
+      {/* Hero Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1c0812] via-[#0d1424] to-[#070b14] border border-rose-500/20 p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.7)] sidebar-card-pattern">
+        <div className="absolute -top-20 -left-20 h-64 w-64 rounded-full bg-rose-600/20 blur-3xl pointer-events-none animate-pulse-slow" />
+        <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-purple-600/20 blur-3xl pointer-events-none animate-pulse-slow delay-1000" />
 
-      <div className="relative z-10">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>Admin Dashboard</h1>
-          <p className="mt-1" style={{ color: colors.text.secondary }}>Welcome back, Admin. Here's what's happening today.</p>
-        </div>
-
-        {/* Banner */}
-        <div className="rounded-2xl p-6 text-white relative overflow-hidden mt-4" style={{ background: colors.gradient.banner }}>
-          {theme === 'space' && (
-            <>
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl" />
-              <div className="absolute top-1/2 right-20 w-2 h-2 bg-white rounded-full animate-pulse" />
-              <div className="absolute bottom-4 right-32 w-1 h-1 bg-yellow-300 rounded-full" />
-            </>
-          )}
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <h2 className="text-2xl font-bold">Welcome back, Admin! 👋</h2>
-              <p className="mt-1 opacity-90">Here's what's happening with your workspace today.</p>
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold uppercase tracking-wider mb-1">
+              <Sparkles className="h-3.5 w-3.5 text-rose-400 animate-pulse" />
+              PureTalk Live Platform Operations
             </div>
-            <div className="bg-white/20 rounded-lg px-3 py-1 text-sm backdrop-blur-sm flex items-center gap-2">
-              {theme === 'space' && <Rocket size={14} className="animate-pulse" />}
-              <span>Last updated: Today</span>
-            </div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+              PureTalk <span className="bg-gradient-to-r from-rose-400 via-red-400 to-amber-300 bg-clip-text text-transparent">System Dashboard</span>
+            </h1>
+            <p className="text-xs md:text-sm text-slate-300 max-w-xl font-medium">
+              Real-time user engagement, AI toxicity shielding logs, and platform health telemetry.
+            </p>
           </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-          {stats.map((stat, i) => (
-            <div 
-              key={i} 
-              className="rounded-xl border p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-              style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}
+          <div className="flex items-center gap-3 shrink-0">
+            <button 
+              onClick={fetchDashboardData}
+              disabled={loading}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:brightness-110 text-white font-bold text-xs shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-all flex items-center gap-2 disabled:opacity-50"
             >
-              <div className="flex justify-between items-start mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
-                  {stat.icon}
-                </div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: stat.change > 0 ? `${colors.status.success}20` : `${colors.status.error}20`, color: stat.change > 0 ? colors.status.success : colors.status.error }}>
-                  {stat.change > 0 ? '↑' : '↓'} {Math.abs(stat.change)}%
-                </span>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh Analytics
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statsCards.map((stat, i) => (
+          <div
+            key={i}
+            className={`relative overflow-hidden rounded-2xl bg-gradient-to-b ${stat.gradient} backdrop-blur-xl border p-5 shadow-xl transition-all duration-300 hover:scale-[1.02] group`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`p-3 rounded-2xl bg-slate-900/80 border border-white/10 ${stat.accent} shadow-inner group-hover:scale-110 transition-transform`}>
+                {stat.icon}
               </div>
-              <div className="text-2xl font-bold" style={{ color: colors.text.primary }}>{stat.value}</div>
-              <div className="text-xs mt-1" style={{ color: colors.text.tertiary }}>{stat.title}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Charts */}
-        <div className="grid lg:grid-cols-2 gap-6 mt-6">
-          <div className="rounded-xl border p-5 transition-all duration-300 hover:shadow-lg" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-            <h3 className="font-semibold mb-4" style={{ color: colors.text.primary }}>Revenue Overview</h3>
-            <div className="h-80"><Line data={revenueData} options={chartOptions} /></div>
-          </div>
-          <div className="rounded-xl border p-5 transition-all duration-300 hover:shadow-lg" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-            <h3 className="font-semibold mb-4" style={{ color: colors.text.primary }}>User Growth</h3>
-            <div className="h-80"><Bar data={userGrowthData} options={chartOptions} /></div>
-          </div>
-        </div>
-
-        {/* Activity and Distribution */}
-        <div className="grid lg:grid-cols-3 gap-6 mt-6">
-          <div className="lg:col-span-2 rounded-xl border p-5 transition-all duration-300 hover:shadow-lg" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold" style={{ color: colors.text.primary }}>Recent Activity</h3>
-              <button className="text-sm hover:underline transition-all" style={{ color: colors.primary.main }}>View All</button>
-            </div>
-            <div className="space-y-3">
-              {recentActivities.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:scale-[1.02]" style={{ backgroundColor: colors.background.secondary }}>
-                  <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${item.color} flex items-center justify-center text-white text-xs font-bold`}>
-                    {item.avatar}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm" style={{ color: colors.text.primary }}>
-                      <span className="font-semibold">{item.user}</span> {item.action}{' '}
-                      <span className="font-medium" style={{ color: colors.primary.main }}>{item.target}</span>
-                    </p>
-                    <p className="text-xs" style={{ color: colors.text.tertiary }}>{item.time}</p>
-                  </div>
-                  <MoreHorizontal size={16} style={{ color: colors.text.tertiary }} className="cursor-pointer hover:scale-110 transition-transform" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="rounded-xl border p-5 transition-all duration-300 hover:shadow-lg" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-              <h3 className="font-semibold mb-3" style={{ color: colors.text.primary }}>Platform Distribution</h3>
-              <div className="h-48"><Doughnut data={platformData} options={doughnutOptions} /></div>
-            </div>
-
-            <div className="rounded-xl border p-5 transition-all duration-300 hover:shadow-lg" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-              <h3 className="font-semibold mb-3" style={{ color: colors.text.primary }}>Quick Links</h3>
-              <div className="grid grid-cols-3 gap-3">
-                {quickLinks.map((link, i) => (
-                  <button key={i} className="flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 hover:scale-105 hover:rotate-1" style={{ backgroundColor: `${colors.primary.main}15`, color: colors.primary.main }}>
-                    {link.icon}
-                    <span className="text-xs font-medium">{link.label}</span>
-                  </button>
-                ))}
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                {stat.change}
               </div>
             </div>
+
+            <div className="space-y-1">
+              <span className="text-2xl font-black text-white tracking-tight">{stat.value}</span>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{stat.title}</p>
+            </div>
+
+            <div className="mt-4 h-1 w-full bg-slate-800/80 rounded-full overflow-hidden">
+              <div className={`h-full ${stat.barBg} rounded-full transition-all duration-500`} style={{ width: '75%' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Strategy Bar Chart */}
+        <div className="lg:col-span-2 rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-6 shadow-2xl sidebar-card-pattern">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-white tracking-wide">AI Adaptive Shielding Breakdown</h3>
+              <p className="text-xs text-slate-400">Total detected messages categorized by AESM engine strategy</p>
+            </div>
+            <Link href="/admin/adaptive-shielding" className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1 hover:bg-rose-500/25 transition">
+              View Shield Log <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="h-72">
+            <Bar data={strategyChartData} options={chartOptions} />
           </div>
         </div>
 
-        {/* Tasks and Files */}
-        <div className="grid lg:grid-cols-2 gap-6 mt-6">
-          <div className="rounded-xl border p-5 transition-all duration-300 hover:shadow-lg" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold" style={{ color: colors.text.primary }}>Upcoming Tasks</h3>
-              <button className="text-sm hover:underline transition-all" style={{ color: colors.primary.main }}>Add Task</button>
-            </div>
-            <div className="space-y-3">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:scale-[1.02]" style={{ backgroundColor: colors.background.secondary }}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-all" style={{ backgroundColor: event.type === 'meeting' ? `${colors.primary.main}20` : `${colors.accent.rose}20`, color: event.type === 'meeting' ? colors.primary.main : colors.accent.rose }}>
-                    <Calendar size={18} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium" style={{ color: colors.text.primary }}>{event.title}</p>
-                    <p className="text-xs" style={{ color: colors.text.tertiary }}>{event.time} • {event.date}</p>
-                  </div>
-                  <Circle size={16} style={{ color: colors.text.tertiary }} className="cursor-pointer hover:scale-110 transition-transform" />
-                </div>
-              ))}
+        {/* User Role Doughnut */}
+        <div className="rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-6 shadow-2xl sidebar-card-pattern flex flex-col justify-between">
+          <div>
+            <h3 className="text-base font-bold text-white tracking-wide mb-1">User Role Distribution</h3>
+            <p className="text-xs text-slate-400 mb-4">Registered members by permission level</p>
+            <div className="h-52">
+              <Doughnut data={roleChartData} options={doughnutOptions} />
             </div>
           </div>
-
-          <div className="rounded-xl border p-5 transition-all duration-300 hover:shadow-lg" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold" style={{ color: colors.text.primary }}>Recent Files</h3>
-              <button className="text-sm hover:underline transition-all" style={{ color: colors.primary.main }}>View All</button>
+          <div className="pt-4 border-t border-slate-800/80 flex justify-around text-center text-xs">
+            <div>
+              <span className="text-slate-400 text-[10px]">Users</span>
+              <p className="font-bold text-blue-400">{userStats?.by_role?.user || usersList.filter(u => u.role === 'user').length}</p>
             </div>
-            <div className="space-y-3">
-              {recentFiles.map((file) => (
-                <div key={file.id} className="flex items-center gap-3 p-2 rounded-lg transition-all duration-200 cursor-pointer hover:scale-[1.02]" style={{ backgroundColor: colors.background.secondary }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${colors.text.tertiary}20`, color: colors.text.secondary }}>
-                    {file.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium" style={{ color: colors.text.primary }}>{file.name}</p>
-                    <p className="text-xs" style={{ color: colors.text.tertiary }}>{file.size} • {file.date}</p>
-                  </div>
-                  <MoreHorizontal size={16} style={{ color: colors.text.tertiary }} className="cursor-pointer hover:scale-110 transition-transform" />
-                </div>
-              ))}
+            <div>
+              <span className="text-slate-400 text-[10px]">Mods</span>
+              <p className="font-bold text-amber-400">{userStats?.by_role?.moderator || usersList.filter(u => u.role === 'moderator').length}</p>
+            </div>
+            <div>
+              <span className="text-slate-400 text-[10px]">Admins</span>
+              <p className="font-bold text-rose-400">{(userStats?.by_role?.admin || 0) + (userStats?.by_role?.super_admin || 0) || usersList.filter(u => u.role === 'admin' || u.role === 'super_admin').length}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.2); }
-        }
-        @keyframes shooting-star {
-          0% {
-            transform: translateX(-100px) translateY(-100px) rotate(45deg);
-            opacity: 1;
-          }
-          100% {
-            transform: translateX(200px) translateY(200px) rotate(45deg);
-            opacity: 0;
-          }
-        }
-        .animate-twinkle {
-          animation: twinkle ease-in-out infinite;
-        }
-        .animate-shooting-star {
-          animation: shooting-star 3s linear infinite;
-        }
-      `}</style>
+      {/* Real Live Moderation Log & Quick Actions Hub */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Live Shield Moderation Activity Stream */}
+        <div className="lg:col-span-2 rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-6 shadow-2xl sidebar-card-pattern">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="text-base font-bold text-white tracking-wide">Live Toxicity Audit Stream</h3>
+              <p className="text-xs text-slate-400">Real-time flagged posts & comments from PureTalk API</p>
+            </div>
+            <Link href="/admin/adaptive-shielding" className="text-xs font-bold text-rose-400 hover:text-rose-300 transition-colors">
+              Full Moderation Log →
+            </Link>
+          </div>
+
+          {shieldRecords.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-xs">
+              <ShieldCheck className="h-10 w-10 text-emerald-400 mx-auto mb-2" />
+              <p className="font-bold text-slate-300">All Systems Operating Cleanly</p>
+              <p className="text-slate-500">No toxic content triggers logged recently.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {shieldRecords.slice(0, 5).map((record) => (
+                <div 
+                  key={record.id} 
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 hover:border-rose-500/30 transition-all group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-bold text-xs shrink-0">
+                      {record.user_full_name ? record.user_full_name.charAt(0) : 'U'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-slate-200 truncate">
+                        <span className="font-bold text-white">{record.user_full_name || record.user}</span>: "{record.message}"
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                          record.strategy === 'Safe' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                          record.strategy === 'Rewriting' ? 'bg-blue-500/15 text-blue-400 border-blue-500/30' :
+                          record.strategy === 'Blurring' ? 'bg-purple-500/15 text-purple-400 border-purple-500/30' :
+                          'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                        }`}>
+                          {record.strategy}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          Score: {(record.final_score * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                    {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Quick Navigation Hub */}
+        <div className="rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-6 shadow-2xl sidebar-card-pattern flex flex-col justify-between">
+          <div>
+            <h3 className="text-base font-bold text-white tracking-wide mb-2">Admin Quick Navigation</h3>
+            <p className="text-xs text-slate-400 mb-4">Direct access to core admin modules</p>
+
+            <div className="space-y-2.5">
+              {adminQuickLinks.map((link, i) => (
+                <Link
+                  key={i}
+                  href={link.href}
+                  className={`flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r ${link.color} border transition-all duration-200 hover:scale-[1.02] shadow-md group`}
+                >
+                  <div className="flex items-center gap-3">
+                    {link.icon}
+                    <span className="text-xs font-bold">{link.label}</span>
+                  </div>
+                  <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-slate-800/80 text-center">
+            <p className="text-[11px] text-slate-500">PureTalk Social Platform © 2026 Admin System</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

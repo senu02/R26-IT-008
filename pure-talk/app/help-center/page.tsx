@@ -3,577 +3,607 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
-  HelpCircle, 
   Shield, 
   AlertTriangle, 
   MessageSquare, 
   FileText, 
   ChevronDown,
   Send,
-  CheckCircle,
+  CheckCircle2,
   ExternalLink,
-  Home,
   BookOpen,
   Mail,
   Phone,
   Flag,
   Ban,
   UserX,
-  Eye,
   Clock,
   ShieldCheck,
-  Zap
+  Zap,
+  LifeBuoy,
+  Sparkles,
+  MessageCircle,
+  ArrowRight,
+  Lock,
+  ThumbsUp,
+  HelpCircle,
+  UploadCloud,
+  Check
 } from 'lucide-react';
-import { getTheme, getWaveColors } from '@/context/theme';
 import Sidebar from '@/components/User/Sidebar';
 import RightSidebar from '@/components/Home/RightSidebar';
 
-// --- TypeScript Interfaces ---
+// TypeScript Interfaces
 interface FAQItem {
   id: string;
   question: string;
   answer: string;
-  category: 'general' | 'safety' | 'reporting' | 'account' | 'detection';
+  category: 'detection' | 'safety' | 'reporting' | 'account';
+  tags: string[];
 }
 
-interface ReportType {
+interface CategoryCard {
   id: string;
-  label: string;
+  title: string;
+  description: string;
   icon: React.ReactNode;
+  count: number;
+  gradient: string;
 }
 
-// --- Sample Data ---
-const faqData: FAQItem[] = [
+// Sample Data
+const categories: CategoryCard[] = [
   {
-    id: '1',
-    question: 'How does the toxic message detection system work?',
-    answer: 'Our AI-powered system uses advanced natural language processing (NLP) to analyze messages in real-time. It scans for harmful content like hate speech, cyberbullying, harassment, and offensive language. When detected, the message is automatically flagged, hidden from public view, and sent to our moderation team for review.',
-    category: 'detection'
+    id: 'detection',
+    title: 'AI Shield & Toxicity',
+    description: 'How real-time NLP analysis, blurring & auto-rewriting work',
+    icon: <Zap className="h-6 w-6 text-amber-400" />,
+    count: 3,
+    gradient: 'from-amber-500/20 via-rose-500/10 to-transparent border-amber-500/30'
   },
   {
-    id: '2',
-    question: 'What happens when a toxic message is detected?',
-    answer: 'When our system detects toxic content, the message is immediately quarantined. The sender receives a warning notification explaining why their message was blocked. The recipient is informed that a message was filtered for their safety. Our moderation team reviews the flagged content within 24 hours and takes appropriate action.',
-    category: 'reporting'
+    id: 'safety',
+    title: 'Safety & Privacy',
+    description: 'Encryption, user blocking & data protection guidelines',
+    icon: <ShieldCheck className="h-6 w-6 text-emerald-400" />,
+    count: 2,
+    gradient: 'from-emerald-500/20 via-teal-500/10 to-transparent border-emerald-500/30'
   },
   {
-    id: '3',
-    question: 'Can I appeal a detection decision?',
-    answer: 'Yes! If you believe your message was incorrectly flagged as toxic, you can submit an appeal through the Report Center. Our human moderation team will manually review the content and context within 48 hours. You\'ll receive a notification with the final decision and reasoning.',
-    category: 'account'
+    id: 'reporting',
+    title: 'Reports & Appeals',
+    description: 'Filing toxic content reports and tracking appeal status',
+    icon: <Flag className="h-6 w-6 text-rose-400" />,
+    count: 2,
+    gradient: 'from-rose-500/20 via-red-500/10 to-transparent border-rose-500/30'
   },
   {
-    id: '4',
-    question: 'How do I report a user for toxic behavior?',
-    answer: 'To report a user, click the three-dot menu (⋮) on any message or profile. Select "Report" and choose the appropriate reason from the options. You can also use the report form in our Help Center to provide additional context, screenshots, or details about the incident.',
-    category: 'reporting'
-  },
-  {
-    id: '5',
-    question: 'Is my data secure with the toxicity detection?',
-    answer: 'Absolutely! All messages are processed with end-to-end encryption. Our AI scans message content for patterns and metadata without permanently storing the actual content. We comply with international data protection regulations and never share your personal information with third parties.',
-    category: 'safety'
-  },
-  {
-    id: '6',
-    question: 'What types of toxic content does the system detect?',
-    answer: 'Our system detects multiple categories of harmful content including: hate speech and discrimination, cyberbullying and harassment, personal attacks and threats, explicit or inappropriate language, spam and misinformation, and content that promotes violence or self-harm. The system is continuously updated to identify new forms of toxic behavior.',
-    category: 'detection'
-  },
-  {
-    id: '7',
-    question: 'How accurate is the toxicity detection?',
-    answer: 'Our AI model has been trained on over 1 million messages and achieves 94% accuracy in detecting toxic content. We continuously improve the model with new data and feedback. False positives are rare, and we have an appeal process in place to handle any incorrect flags.',
-    category: 'detection'
-  },
-  {
-    id: '8',
-    question: 'How do I protect myself from toxic users?',
-    answer: 'You can protect yourself by using our safety features: block users who harass you, report toxic content immediately, adjust your privacy settings to limit who can contact you, and use our content filters to automatically hide potentially harmful messages.',
-    category: 'safety'
+    id: 'account',
+    title: 'Account & Settings',
+    description: 'Role permissions, suspensions & profile security',
+    icon: <Lock className="h-6 w-6 text-indigo-400" />,
+    count: 1,
+    gradient: 'from-indigo-500/20 via-purple-500/10 to-transparent border-indigo-500/30'
   }
 ];
 
-// --- Background Component with Fixed Stars ---
-const Background = ({ isDark }: { isDark: boolean }) => {
-  const [stars, setStars] = useState<Array<{ id: number; style: React.CSSProperties }>>([]);
-  const [brightStars, setBrightStars] = useState<Array<{ id: number; style: React.CSSProperties }>>([]);
-
-  useEffect(() => {
-    if (isDark) {
-      const newStars = Array.from({ length: 80 }, (_, i) => ({
-        id: i,
-        style: {
-          width: `${Math.random() * 2.5 + 0.5}px`,
-          height: `${Math.random() * 2.5 + 0.5}px`,
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          animationDelay: `${Math.random() * 5}s`,
-          animationDuration: `${Math.random() * 3 + 2}s`,
-          opacity: Math.random() * 0.8 + 0.2,
-        }
-      }));
-
-      const newBrightStars = Array.from({ length: 20 }, (_, i) => ({
-        id: i,
-        style: {
-          width: `${Math.random() * 4 + 1.5}px`,
-          height: `${Math.random() * 4 + 1.5}px`,
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          animationDelay: `${Math.random() * 8}s`,
-          animationDuration: `${Math.random() * 4 + 2}s`,
-          opacity: Math.random() * 0.6 + 0.3,
-          boxShadow: `0 0 ${Math.random() * 8 + 3}px rgba(255,255,255,0.6)`,
-        }
-      }));
-
-      setStars(newStars);
-      setBrightStars(newBrightStars);
-    }
-  }, [isDark]);
-
-  if (!isDark) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-br from-[#f0f5ff] via-[#e4efff] to-[#f0f8ff]"></div>
-    );
+const faqData: FAQItem[] = [
+  {
+    id: '1',
+    question: 'How does the PureTalk AI Toxicity Shield analyze messages?',
+    answer: 'Our AI-powered system uses advanced real-time Natural Language Processing (NLP) models. When you send a post or message, it evaluates toxicity levels instantaneously. Depending on severity, content is either automatically filtered, rewritten to stay respectful, or blurred to protect community safety.',
+    category: 'detection',
+    tags: ['AI Detection', 'NLP', 'Real-time']
+  },
+  {
+    id: '2',
+    question: 'What happens when a message is flagged or blocked?',
+    answer: 'When a message triggers high toxicity thresholds, it is immediately quarantined. The sender receives an inline notification explaining the policy. The recipient is notified that a message was filtered. All flagged instances undergo secondary audit by our moderation team within 24 hours.',
+    category: 'reporting',
+    tags: ['Quarantine', 'Moderation', 'Safety']
+  },
+  {
+    id: '3',
+    question: 'How can I appeal if my post or comment was incorrectly flagged?',
+    answer: 'If you believe your message was incorrectly flagged, click "Appeal Decision" in the notification or submit an appeal form under the Reports tab. Our human moderation team re-examines context and responds with an update within 48 hours.',
+    category: 'account',
+    tags: ['Appeal', 'Review', 'Support']
+  },
+  {
+    id: '4',
+    question: 'How do I report a toxic user or harassment?',
+    answer: 'You can click the action menu on any post, comment, or user profile and select "Report User". Alternatively, use the "Report Toxic Content" tab on this Help Center page to upload screenshots and detail the incident directly.',
+    category: 'reporting',
+    tags: ['Report', 'User Blocking', 'Harassment']
+  },
+  {
+    id: '5',
+    question: 'Is my personal data encrypted during AI scanning?',
+    answer: 'Yes! All message analysis happens in encrypted memory pipelines. We do not permanently store clean private messages, and all data processing strictly adheres to international data protection and privacy standards.',
+    category: 'safety',
+    tags: ['Encryption', 'Privacy', 'Security']
+  },
+  {
+    id: '6',
+    question: 'What categories of toxic speech are automatically detected?',
+    answer: 'Our system identifies hate speech, targeted harassment, explicit insults, violent threats, spam, and severe profanity. The AI model is regularly retrained to adapt to modern online vernacular.',
+    category: 'detection',
+    tags: ['Hate Speech', 'Harassment', 'Profanity']
+  },
+  {
+    id: '7',
+    question: 'How accurate is the toxicity model?',
+    answer: 'Our state-of-the-art model maintains a 94%+ precision rating across multiple languages. Continuous fine-tuning prevents false positives while keeping conversations clean.',
+    category: 'detection',
+    tags: ['Accuracy', 'AI Model', 'Metrics']
+  },
+  {
+    id: '8',
+    question: 'How can I block or restrict toxic users directly?',
+    answer: 'Visit any user profile, click the settings menu (⋮), and choose "Block User". Blocked users will not be able to view your posts, send you direct messages, or interact with your comments.',
+    category: 'safety',
+    tags: ['Block', 'Privacy Settings', 'Control']
   }
+];
 
-  return (
-    <div className="fixed inset-0 bg-black">
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0a0a0a] to-[#050510]"></div>
-      <div className="absolute inset-0 overflow-hidden">
-        {stars.map((star) => (
-          <div
-            key={star.id}
-            className="absolute rounded-full bg-white animate-twinkle"
-            style={star.style}
-          />
-        ))}
-        {brightStars.map((star) => (
-          <div
-            key={`bright-${star.id}`}
-            className="absolute rounded-full bg-white animate-pulse-glow"
-            style={star.style}
-          />
-        ))}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/5 blur-3xl animate-pulse-slow"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-blue-600/5 blur-3xl animate-pulse-slow delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 w-120 h-120 rounded-full bg-indigo-500/3 blur-3xl animate-pulse-slow delay-2000"></div>
-      </div>
-      
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.3); }
-        }
-        
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.3; transform: scale(1); box-shadow: 0 0 4px rgba(255,255,255,0.4); }
-          50% { opacity: 0.9; transform: scale(1.15); box-shadow: 0 0 15px rgba(255,255,255,0.9); }
-        }
-        
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(1.05); }
-        }
-        
-        .animate-twinkle {
-          animation: twinkle ease-in-out infinite;
-        }
-        
-        .animate-pulse-glow {
-          animation: pulse-glow ease-in-out infinite;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-        
-        .delay-1000 {
-          animation-delay: 1s;
-        }
-        
-        .delay-2000 {
-          animation-delay: 2s;
-        }
-      `}} />
-    </div>
-  );
-};
-
-// --- Main Help Center Component ---
-const HelpCenterPage: React.FC = () => {
-  const [isDark, setIsDark] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
-  const [reportType, setReportType] = useState<string>('toxic_message');
-  const [reportDescription, setReportDescription] = useState<string>('');
-  const [reportSubmitted, setReportSubmitted] = useState<boolean>(false);
+export default function HelpCenterPage() {
+  const [mounted, setMounted] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [expandedFaq, setExpandedFaq] = useState<string | null>('1');
   const [activeTab, setActiveTab] = useState<'faq' | 'report' | 'resources'>('faq');
-  const [mounted, setMounted] = useState<boolean>(false);
+  const [helpfulVotes, setHelpfulVotes] = useState<Record<string, boolean>>({});
 
-  const theme = getTheme(isDark);
+  // Form states
+  const [reportType, setReportType] = useState('toxic_message');
+  const [reportDescription, setReportDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
-  // Report types specific to toxic content
-  const reportTypes: ReportType[] = [
-    { id: 'toxic_message', label: 'Toxic / Hateful Message', icon: <AlertTriangle className="h-4 w-4" /> },
-    { id: 'harassment', label: 'Harassment or Bullying', icon: <UserX className="h-4 w-4" /> },
-    { id: 'hate_speech', label: 'Hate Speech', icon: <Ban className="h-4 w-4" /> },
-    { id: 'spam', label: 'Spam or Misinformation', icon: <MessageSquare className="h-4 w-4" /> },
-    { id: 'threats', label: 'Threats or Violence', icon: <AlertTriangle className="h-4 w-4" /> },
-    { id: 'other', label: 'Other', icon: <HelpCircle className="h-4 w-4" /> }
-  ];
-
-  // Load theme preference from localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDark(false);
-    } else if (savedTheme === 'dark') {
-      setIsDark(true);
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDark(prefersDark);
-    }
     setMounted(true);
   }, []);
 
-  // Filter FAQs based on search
-  const filteredFaqs = faqData.filter((faq) =>
-    faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    faq.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    faq.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleVote = (id: string, isHelpful: boolean) => {
+    setHelpfulVotes(prev => ({ ...prev, [id]: isHelpful }));
+  };
 
-  // Handle report submission
   const handleReportSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (reportDescription.trim().length > 10) {
+    if (!reportDescription.trim()) return;
+
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
       setReportSubmitted(true);
-      console.log('Report submitted:', { type: reportType, description: reportDescription });
-      setTimeout(() => setReportSubmitted(false), 4000);
       setReportDescription('');
+      setAttachedFiles([]);
+      setTimeout(() => setReportSubmitted(false), 5000);
+    }, 1200);
+  };
+
+  const handleFileDrop = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachedFiles(Array.from(e.target.files));
     }
   };
 
-  // Prevent hydration mismatch by not rendering until mounted
-  if (!mounted) {
-    return null;
-  }
+  const filteredFaqs = faqData.filter((faq) => {
+    const matchesSearch = 
+      faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      faq.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      faq.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesCategory = selectedCategory ? faq.category === selectedCategory : true;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  if (!mounted) return null;
 
   return (
-    <>
-      <Background isDark={isDark} />
-      <div className="relative z-10 min-h-screen">
-        {/* Left Sidebar - Fixed */}
-        <Sidebar />
+    <div className="flex bg-[#090d16] min-h-screen font-sans text-slate-100 selection:bg-rose-500 selection:text-white">
+      {/* Left Navigation Sidebar */}
+      <Sidebar />
 
-        {/* Main Content - Properly spaced between sidebars */}
-        <div className="ml-[72px] lg:ml-[245px] mr-0 lg:mr-[320px] min-h-screen">
-          {/* Hero Section */}
-          <section className={`${theme.surface.glass} ${theme.surface.border} backdrop-blur-xl mx-4 sm:mx-6 lg:mx-8 mt-8 rounded-2xl`}>
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Shield className={`h-10 w-10 ${theme.accent.primary}`} />
-                <h1 className={`text-3xl md:text-4xl font-extrabold ${theme.text.primary}`}>
-                  Toxic Message <span className={theme.accent.primary}>Help Center</span>
-                </h1>
+      {/* Main Content Area */}
+      <div className="flex-1 lg:ml-[245px] xl:mr-[320px] min-h-screen pb-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          
+          {/* Hero Banner with Modern Dark Mesh & Pattern */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1c0812] via-[#0d1424] to-[#070b14] border border-rose-500/20 p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.7)] sidebar-card-pattern mb-8">
+            {/* Ambient Background Spotlights */}
+            <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-rose-600/20 blur-3xl pointer-events-none animate-pulse-slow" />
+            <div className="absolute top-1/2 -right-24 h-72 w-72 rounded-full bg-purple-600/20 blur-3xl pointer-events-none animate-pulse-slow delay-1000" />
+            <div className="absolute -bottom-24 left-1/3 h-60 w-60 rounded-full bg-red-900/25 blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 text-center max-w-3xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold uppercase tracking-wider mb-4 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+                <Sparkles className="h-3.5 w-3.5 text-rose-400 animate-pulse" />
+                PureTalk Support Hub
               </div>
-              <h2 className={`text-2xl md:text-3xl font-bold ${theme.text.secondary} mb-4`}>
-                Your Safety is Our Priority
-              </h2>
-              <p className={`text-lg ${theme.text.tertiary} max-w-2xl mx-auto`}>
-                Learn how our AI-powered toxicity detection keeps your conversations safe.
-                Get answers, report issues, and help us build a respectful community.
+
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white mb-4 drop-shadow-md">
+                How can we <span className="bg-gradient-to-r from-rose-400 via-red-400 to-amber-300 bg-clip-text text-transparent">help you</span> today?
+              </h1>
+              
+              <p className="text-sm md:text-base text-slate-300 max-w-xl mx-auto mb-8 font-medium leading-relaxed">
+                Explore real-time AI toxicity shield guides, search FAQs, or submit a confidential report to our moderation team.
               </p>
-              <div className="mt-8 max-w-xl mx-auto relative">
-                <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 ${theme.text.muted} h-5 w-5`} />
+
+              {/* Glassmorphic Search Bar */}
+              <div className="relative max-w-xl mx-auto">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-rose-400" />
+                </div>
                 <input
                   type="text"
-                  placeholder="Search for topics like 'toxicity detection', 'report', 'appeal'..."
-                  className={`w-full pl-12 pr-4 py-3 ${theme.surface.glass} ${theme.surface.border} rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${theme.text.primary} placeholder:${theme.text.muted} backdrop-blur-sm transition`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search toxicity detection, appeals, blocking users..."
+                  className="w-full pl-12 pr-10 py-4 rounded-2xl bg-slate-900/90 border border-rose-500/30 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-400 backdrop-blur-xl shadow-2xl text-sm transition-all"
                 />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-bold text-slate-400 hover:text-white"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
-              
-              <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
-                <div className={`${theme.surface.glass} px-4 py-2 rounded-full flex items-center gap-2 ${theme.surface.border}`}>
-                  <Zap className="h-4 w-4 text-yellow-500" />
-                  <span className={theme.text.secondary}>Real-time detection</span>
-                </div>
-                <div className={`${theme.surface.glass} px-4 py-2 rounded-full flex items-center gap-2 ${theme.surface.border}`}>
-                  <ShieldCheck className="h-4 w-4 text-green-500" />
-                  <span className={theme.text.secondary}>94% accuracy</span>
-                </div>
-                <div className={`${theme.surface.glass} px-4 py-2 rounded-full flex items-center gap-2 ${theme.surface.border}`}>
-                  <Clock className="h-4 w-4 text-blue-500" />
-                  <span className={theme.text.secondary}>24/7 monitoring</span>
-                </div>
+
+              {/* Status Badges */}
+              <div className="mt-6 flex flex-wrap justify-center gap-3 text-xs font-semibold">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 backdrop-blur-md">
+                  <Zap className="h-3.5 w-3.5 text-amber-400" /> Real-time AI Shield
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 backdrop-blur-md">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> 94%+ Model Precision
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 backdrop-blur-md">
+                  <Clock className="h-3.5 w-3.5 text-rose-400" /> 24/7 Moderation Audit
+                </span>
               </div>
-            </div>
-          </section>
-
-          {/* Tab Navigation */}
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className={`flex flex-wrap gap-2 border-b ${isDark ? 'border-white/10' : 'border-slate-200'} pb-4`}>
-              <button
-                onClick={() => setActiveTab('faq')}
-                className={`px-5 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                  activeTab === 'faq'
-                    ? `bg-blue-500/20 ${theme.text.primary} shadow-sm`
-                    : `${theme.text.secondary} ${theme.surface.glassHover}`
-                }`}
-              >
-                <HelpCircle className="h-4 w-4" /> FAQs
-              </button>
-              <button
-                onClick={() => setActiveTab('report')}
-                className={`px-5 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                  activeTab === 'report'
-                    ? `bg-red-500/20 ${theme.text.primary} shadow-sm`
-                    : `${theme.text.secondary} ${theme.surface.glassHover}`
-                }`}
-              >
-                <Flag className="h-4 w-4" /> Report Toxic Content
-              </button>
-              <button
-                onClick={() => setActiveTab('resources')}
-                className={`px-5 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                  activeTab === 'resources'
-                    ? `bg-green-500/20 ${theme.text.primary} shadow-sm`
-                    : `${theme.text.secondary} ${theme.surface.glassHover}`
-                }`}
-              >
-                <BookOpen className="h-4 w-4" /> Resources
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="mt-8">
-              {/* FAQ Tab */}
-              {activeTab === 'faq' && (
-                <div className="space-y-4">
-                  {filteredFaqs.length === 0 ? (
-                    <div className={`text-center py-10 ${theme.text.muted}`}>
-                      <HelpCircle className={`h-12 w-12 mx-auto ${theme.text.muted} mb-3`} />
-                      <p className="text-lg">No results found for "{searchTerm}"</p>
-                      <p className="text-sm">Try different keywords or browse the categories below.</p>
-                    </div>
-                  ) : (
-                    filteredFaqs.map((faq) => (
-                      <div
-                        key={faq.id}
-                        className={`${theme.surface.glass} ${theme.surface.border} rounded-xl shadow-sm overflow-hidden transition-all backdrop-blur-sm`}
-                      >
-                        <button
-                          onClick={() => setExpandedFaq(expandedFaq === faq.id ? null : faq.id)}
-                          className={`w-full px-6 py-4 text-left flex justify-between items-center ${theme.surface.glassHover} transition`}
-                        >
-                          <span className={`font-semibold ${theme.text.primary}`}>{faq.question}</span>
-                          <ChevronDown
-                            className={`h-5 w-5 ${theme.text.muted} transition-transform ${
-                              expandedFaq === faq.id ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </button>
-                        {expandedFaq === faq.id && (
-                          <div className={`px-6 pb-5 ${theme.text.secondary} border-t ${isDark ? 'border-white/10' : 'border-slate-200'} pt-3`}>
-                            {faq.answer}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {/* Report Tab */}
-              {activeTab === 'report' && (
-                <div className={`${theme.surface.glass} ${theme.surface.border} rounded-xl shadow-sm p-6 md:p-8 backdrop-blur-sm`}>
-                  <div className="flex items-center gap-3 mb-6">
-                    <Flag className="h-6 w-6 text-red-500" />
-                    <h3 className={`text-xl font-bold ${theme.text.primary}`}>Report Toxic Content</h3>
-                  </div>
-                  <p className={`${theme.text.secondary} mb-6`}>
-                    Help us keep our community safe by reporting toxic messages, harassment, or any content that violates 
-                    our community guidelines. Your report is confidential and will be reviewed within 24 hours.
-                  </p>
-
-                  {reportSubmitted ? (
-                    <div className={`${theme.status.error.bg} ${theme.status.error.border} rounded-lg p-4 flex items-start gap-3`}>
-                      <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className={`font-semibold ${theme.text.primary}`}>Report Submitted!</h4>
-                        <p className={`${theme.text.secondary} text-sm`}>
-                          Thank you for helping keep our community safe from toxic content. 
-                          Our moderation team will review your report and take appropriate action.
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleReportSubmit} className="space-y-5">
-                      <div>
-                        <label className={`block text-sm font-medium ${theme.text.secondary} mb-1`}>
-                          Type of Toxic Content
-                        </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {reportTypes.map((type) => (
-                            <label
-                              key={type.id}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition ${
-                                reportType === type.id
-                                  ? `bg-red-500/20 border border-red-500/50 ${theme.text.primary}`
-                                  : `${theme.surface.glass} ${theme.surface.border} ${theme.text.secondary} hover:${theme.surface.glassHover}`
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="reportType"
-                                value={type.id}
-                                checked={reportType === type.id}
-                                onChange={(e) => setReportType(e.target.value)}
-                                className="sr-only"
-                              />
-                              {type.icon}
-                              <span className="text-sm">{type.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label className={`block text-sm font-medium ${theme.text.secondary} mb-1`}>
-                          Description of the Incident <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          rows={5}
-                          value={reportDescription}
-                          onChange={(e) => setReportDescription(e.target.value)}
-                          placeholder="Please describe what happened in detail. Include usernames, what was said, and how it affected you..."
-                          className={`w-full px-4 py-2 ${theme.surface.glass} ${theme.surface.border} rounded-lg shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 ${theme.text.primary} placeholder:${theme.text.muted} resize-none backdrop-blur-sm`}
-                          required
-                        />
-                        <p className={`text-xs ${theme.text.muted} mt-1`}>
-                          Minimum 10 characters. The more detail you provide, the better we can investigate.
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <label className={`block text-sm font-medium ${theme.text.secondary} mb-1`}>
-                          Screenshot Evidence (Optional)
-                        </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className={`w-full text-sm ${theme.text.muted} file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-500/20 file:text-red-500 hover:file:bg-red-500/30`}
-                        />
-                        <p className={`text-xs ${theme.text.muted} mt-1`}>
-                          Upload screenshots of the toxic messages (max 5 files, 5MB each)
-                        </p>
-                      </div>
-                      
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition shadow-sm"
-                      >
-                        <Send className="h-4 w-4" /> Submit Report
-                      </button>
-                    </form>
-                  )}
-                </div>
-              )}
-
-              {/* Resources Tab */}
-              {activeTab === 'resources' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className={`${theme.surface.glass} ${theme.surface.border} rounded-xl shadow-sm p-6 backdrop-blur-sm`}>
-                    <div className="flex items-center gap-3 mb-4">
-                      <Shield className={`h-6 w-6 ${theme.accent.primary}`} />
-                      <h3 className={`font-bold ${theme.text.primary}`}>Safety Guidelines</h3>
-                    </div>
-                    <ul className={`space-y-3 ${theme.text.secondary} text-sm`}>
-                      <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" /> Treat others with respect in all conversations.</li>
-                      <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" /> Think before you post - words can have a lasting impact.</li>
-                      <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" /> Report toxic content immediately using the report form.</li>
-                      <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" /> Block users who engage in harassment or bullying.</li>
-                      <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" /> Don't engage with toxic users - let our system handle it.</li>
-                    </ul>
-                  </div>
-
-                  <div className={`${theme.surface.glass} ${theme.surface.border} rounded-xl shadow-sm p-6 backdrop-blur-sm`}>
-                    <div className="flex items-center gap-3 mb-4">
-                      <MessageSquare className={`h-6 w-6 ${theme.accent.primary}`} />
-                      <h3 className={`font-bold ${theme.text.primary}`}>Community Support</h3>
-                    </div>
-                    <ul className={`space-y-3 ${theme.text.secondary} text-sm`}>
-                      <li className="flex items-start gap-2"><Mail className={`h-4 w-4 ${theme.text.muted} mt-0.5 flex-shrink-0`} /> support@toxicdetection.com</li>
-                      <li className="flex items-start gap-2"><Phone className={`h-4 w-4 ${theme.text.muted} mt-0.5 flex-shrink-0`} /> +94 11 234 5678 (24/7 Support)</li>
-                      <li className="flex items-start gap-2"><ExternalLink className={`h-4 w-4 ${theme.text.muted} mt-0.5 flex-shrink-0`} /> Community Reporting Portal</li>
-                      <li className="flex items-start gap-2"><Shield className={`h-4 w-4 ${theme.text.muted} mt-0.5 flex-shrink-0`} /> Crisis Support Hotline</li>
-                    </ul>
-                    <button className={`mt-4 text-sm font-medium ${theme.accent.primary} hover:underline flex items-center gap-1`}>
-                      <Home className="h-4 w-4" /> Return to Main Platform
-                    </button>
-                  </div>
-
-                  <div className={`md:col-span-2 ${theme.surface.glass} ${theme.surface.border} rounded-xl p-6 backdrop-blur-sm`}>
-                    <div className="flex items-start gap-4">
-                      <Shield className={`h-8 w-8 ${theme.accent.primary} flex-shrink-0`} />
-                      <div>
-                        <h3 className={`font-bold ${theme.text.primary}`}>Understanding Our Toxicity Detection System</h3>
-                        <p className={`text-sm ${theme.text.secondary} mt-2`}>
-                          Our AI-powered toxicity detection uses cutting-edge natural language processing to identify harmful 
-                          content in real-time. The system is trained on diverse datasets to ensure fair and accurate detection 
-                          across different languages and contexts. We maintain transparency by providing clear feedback on why 
-                          content was flagged and offering a straightforward appeal process for any false positives.
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-3">
-                          <span className={`px-3 py-1 ${theme.surface.glass} ${theme.surface.border} rounded-full text-xs ${theme.text.secondary}`}>
-                            🤖 AI-Powered Detection
-                          </span>
-                          <span className={`px-3 py-1 ${theme.surface.glass} ${theme.surface.border} rounded-full text-xs ${theme.text.secondary}`}>
-                            🌍 Multi-Language Support
-                          </span>
-                          <span className={`px-3 py-1 ${theme.surface.glass} ${theme.surface.border} rounded-full text-xs ${theme.text.secondary}`}>
-                            🔒 Privacy-First Approach
-                          </span>
-                          <span className={`px-3 py-1 ${theme.surface.glass} ${theme.surface.border} rounded-full text-xs ${theme.text.secondary}`}>
-                            📊 94% Accuracy Rate
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Footer */}
-          <footer className={`${theme.surface.glass} ${theme.surface.border} backdrop-blur-xl mt-12 mx-4 sm:mx-6 lg:mx-8`}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-sm ${theme.text.muted}">
-              <p className={theme.text.muted}>© 2026 Toxic Message Detection System. All rights reserved.</p>
-              <p className={`mt-1 ${theme.text.muted}`}>Building safer online communities through advanced AI technology.</p>
-              <div className="mt-4 flex justify-center gap-6 text-xs">
-                <a href="#" className={`${theme.text.muted} hover:${theme.text.primary}`}>Privacy Policy</a>
-                <a href="#" className={`${theme.text.muted} hover:${theme.text.primary}`}>Terms of Service</a>
-                <a href="#" className={`${theme.text.muted} hover:${theme.text.primary}`}>Cookie Policy</a>
-                <a href="#" className={`${theme.text.muted} hover:${theme.text.primary}`}>Accessibility</a>
+          {/* Quick Access Categories Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {categories.map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(isSelected ? null : cat.id)}
+                  className={`text-left p-5 rounded-2xl bg-gradient-to-b ${cat.gradient} backdrop-blur-xl border transition-all duration-300 hover:scale-[1.03] shadow-lg group relative overflow-hidden ${
+                    isSelected ? 'ring-2 ring-rose-500 border-rose-400' : 'border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-white/10 group-hover:scale-110 transition-transform">
+                      {cat.icon}
+                    </div>
+                    <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-slate-900/60 text-slate-400 border border-slate-800">
+                      {cat.count} articles
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-white text-base mb-1 group-hover:text-rose-300 transition-colors">
+                    {cat.title}
+                  </h3>
+                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                    {cat.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Main Tabs Navigation */}
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-4 mb-8">
+            <button
+              onClick={() => setActiveTab('faq')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'faq'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+              }`}
+            >
+              <HelpCircle className="h-4 w-4 text-rose-400" />
+              Frequently Asked Questions
+            </button>
+            <button
+              onClick={() => setActiveTab('report')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'report'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+              }`}
+            >
+              <Flag className="h-4 w-4 text-rose-400" />
+              Report Toxic Content
+            </button>
+            <button
+              onClick={() => setActiveTab('resources')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'resources'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="h-4 w-4 text-rose-400" />
+              Safety & Resources
+            </button>
+          </div>
+
+          {/* TAB 1: FAQ Accordions */}
+          {activeTab === 'faq' && (
+            <div className="space-y-4">
+              {selectedCategory && (
+                <div className="flex items-center justify-between px-2 py-1 mb-2">
+                  <span className="text-xs font-semibold text-slate-400">
+                    Showing category: <span className="text-rose-400 capitalize">{selectedCategory}</span>
+                  </span>
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className="text-xs font-bold text-rose-400 hover:underline"
+                  >
+                    View All Categories
+                  </button>
+                </div>
+              )}
+
+              {filteredFaqs.length === 0 ? (
+                <div className="rounded-3xl bg-slate-900/60 border border-slate-800/80 p-12 text-center">
+                  <HelpCircle className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                  <h3 className="text-lg font-bold text-white mb-1">No matching articles found</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
+                    Try searching with different keywords like 'AI', 'report', or 'block'.
+                  </p>
+                  <button
+                    onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}
+                    className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              ) : (
+                filteredFaqs.map((faq) => {
+                  const isOpen = expandedFaq === faq.id;
+                  return (
+                    <div
+                      key={faq.id}
+                      className="rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 overflow-hidden shadow-lg transition-all duration-200 hover:border-slate-700"
+                    >
+                      <button
+                        onClick={() => setExpandedFaq(isOpen ? null : faq.id)}
+                        className="w-full p-5 text-left flex justify-between items-center gap-4 hover:bg-slate-800/40 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl border ${isOpen ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <span className="font-bold text-white text-base">{faq.question}</span>
+                        </div>
+                        <ChevronDown className={`h-5 w-5 text-slate-400 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-rose-400' : ''}`} />
+                      </button>
+
+                      {isOpen && (
+                        <div className="px-6 pb-6 pt-2 border-t border-slate-800/80 text-slate-300 text-sm leading-relaxed">
+                          <p className="mb-4">{faq.answer}</p>
+                          
+                          <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-800/60">
+                            {/* Tags */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {faq.tags.map(t => (
+                                <span key={t} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700">
+                                  #{t}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Vote Buttons */}
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-slate-500">Was this helpful?</span>
+                              <button
+                                onClick={() => handleVote(faq.id, true)}
+                                className={`p-1.5 rounded-lg border transition-all ${helpfulVotes[faq.id] === true ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                              >
+                                <ThumbsUp className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: Report Form */}
+          {activeTab === 'report' && (
+            <div className="rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-6 md:p-8 shadow-2xl relative overflow-hidden sidebar-card-pattern">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400">
+                  <Flag className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-wide">Report Toxic Content</h2>
+                  <p className="text-xs text-slate-400">Confidential submission analyzed by AI & reviewed by staff</p>
+                </div>
+              </div>
+
+              {reportSubmitted ? (
+                <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-4 animate-fade-in">
+                  <CheckCircle2 className="h-7 w-7 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-emerald-300 text-base mb-1">Report Submitted Successfully</h4>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Thank you for keeping PureTalk safe. Your ticket has been logged and forwarded to our moderation team. You can track the status under your notification inbox.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleReportSubmit} className="space-y-6">
+                  {/* Select Report Type */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
+                      Select Issue Type
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { id: 'toxic_message', label: 'Toxic / Hateful Post', icon: <AlertTriangle className="h-4 w-4 text-rose-400" /> },
+                        { id: 'harassment', label: 'Bullying & Harassment', icon: <UserX className="h-4 w-4 text-purple-400" /> },
+                        { id: 'hate_speech', label: 'Hate Speech & Racism', icon: <Ban className="h-4 w-4 text-red-500" /> },
+                        { id: 'threats', label: 'Violence or Threats', icon: <Shield className="h-4 w-4 text-amber-400" /> },
+                        { id: 'spam', label: 'Spam / Misinformation', icon: <MessageSquare className="h-4 w-4 text-blue-400" /> },
+                        { id: 'other', label: 'Other Guidelines Breach', icon: <HelpCircle className="h-4 w-4 text-slate-400" /> }
+                      ].map((item) => {
+                        const selected = reportType === item.id;
+                        return (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onClick={() => setReportType(item.id)}
+                            className={`flex items-center gap-3 p-3.5 rounded-xl text-xs font-bold border transition-all text-left ${
+                              selected
+                                ? 'bg-rose-500/20 border-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                            }`}
+                          >
+                            {item.icon}
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Incident Description */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                      Description & Details <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={reportDescription}
+                      onChange={(e) => setReportDescription(e.target.value)}
+                      placeholder="Please describe what happened, including usernames, context, or links..."
+                      className="w-full p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 text-sm transition-all"
+                      required
+                    />
+                    <div className="flex justify-between items-center mt-1 text-[11px] text-slate-500">
+                      <span>Minimum 10 characters required</span>
+                      <span>{reportDescription.length} chars</span>
+                    </div>
+                  </div>
+
+                  {/* Evidence Upload */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                      Attach Screenshot Evidence (Optional)
+                    </label>
+                    <div className="relative border-2 border-dashed border-slate-800 rounded-2xl p-6 text-center hover:border-rose-500/40 transition-colors bg-slate-900/40">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileDrop}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <UploadCloud className="h-8 w-8 text-rose-400 mx-auto mb-2" />
+                      <p className="text-xs font-semibold text-slate-300">Click or drag images to upload screenshot</p>
+                      <p className="text-[10px] text-slate-500 mt-1">PNG, JPG up to 5MB each</p>
+                      {attachedFiles.length > 0 && (
+                        <div className="mt-3 flex flex-wrap justify-center gap-2">
+                          {attachedFiles.map((f, idx) => (
+                            <span key={idx} className="text-[10px] font-bold px-2 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                              {f.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !reportDescription.trim()}
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white font-bold text-sm shadow-[0_0_20px_rgba(244,63,94,0.4)] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" /> Submit Report Confidentiality
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: Resources & Community */}
+          {activeTab === 'resources' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 1: Community Guidelines */}
+              <div className="rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-6 shadow-xl relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Community Guidelines</h3>
+                </div>
+                <ul className="space-y-3 text-xs text-slate-300">
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Engage in constructive discussions without personal attacks or hate speech.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Respect privacy — do not post personal contact information (doxxing).</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Report toxic content immediately to help keep PureTalk safe for all users.</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Card 2: Support Channels */}
+              <div className="rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-6 shadow-xl relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                    <LifeBuoy className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Direct Support Hub</h3>
+                </div>
+                <div className="space-y-3 text-xs text-slate-300">
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <Mail className="h-4 w-4 text-rose-400" />
+                    <span>support@puretalk.com (24h response time)</span>
+                  </div>
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <Phone className="h-4 w-4 text-emerald-400" />
+                    <span>+94 11 234 5678 (24/7 Hotline)</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </footer>
-        </div>
+          )}
 
-        {/* Right Sidebar - Fixed */}
-        <div className="fixed right-0 top-0 h-screen w-[320px] hidden lg:block overflow-y-auto py-8 pr-4">
-          <RightSidebar />
         </div>
       </div>
-    </>
-  );
-};
 
-export default HelpCenterPage;
+      {/* Right Pinned Sidebar Container */}
+      <div className="fixed right-0 top-0 h-screen w-[320px] hidden xl:block overflow-y-auto py-6 pr-6 scrollbar-none" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+        <RightSidebar />
+      </div>
+    </div>
+  );
+}
