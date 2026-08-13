@@ -135,9 +135,21 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
     return (
       <aside className="fixed lg:relative z-50 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full">
         <div className="flex items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600" />
-            <span className="font-bold text-lg text-slate-800 dark:text-white">PURE TALK</span>
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_15px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 overflow-hidden shrink-0">
+              <div className="flex h-full w-full items-center justify-center rounded-[14px] bg-[#0f172a] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
+                <span className="font-black text-base tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                  PT
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-lg tracking-wider uppercase text-slate-800 dark:text-white leading-none">PURE TALK</span>
+              <span className="text-[9px] tracking-[0.2em] text-red-500 uppercase font-extrabold mt-1 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                ADMIN
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto py-4 px-3" />
@@ -236,13 +248,25 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
         <div className="flex items-center justify-between px-4 py-4 border-b relative z-10" style={{ borderBottomColor: colors.border.primary }}>
           <Link 
             href="/admin/dashboard" 
-            className="flex items-center gap-2.5 group"
+            className="flex items-center gap-3 group cursor-pointer py-1"
             onClick={handleNavigation}
           >
-            <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${getLogoGradient()} flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:scale-105`}>
-              {getLogoIcon()}
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-rose-600 to-red-900 p-[1px] shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-1 ring-red-500/40 transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_25px_rgba(239,68,68,0.7)] group-hover:ring-red-400/60 overflow-hidden shrink-0">
+              <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#0f172a] bg-gradient-to-br from-[#1c0d12] to-[#0f172a]">
+                <span className="font-black text-lg tracking-tighter bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                  PT
+                </span>
+              </div>
             </div>
-            <span className="font-bold text-xl tracking-tight" style={{ color: colors.text.primary }}>PURE TALK</span>
+            <div className="flex flex-col">
+              <span className="font-black text-xl tracking-widest uppercase bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent drop-shadow-sm leading-none" style={{ color: colors.text.primary }}>
+                PURE TALK
+              </span>
+              <span className="text-[10px] tracking-[0.25em] text-red-500 uppercase font-bold mt-1.5 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                ADMIN
+              </span>
+            </div>
           </Link>
           <button 
             onClick={() => setSidebarOpen(false)} 
