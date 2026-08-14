@@ -24,6 +24,7 @@ interface PostSectionProps {
   onlyMyPosts?: boolean;
   onlyImages?: boolean;
   hideFilterTabs?: boolean;
+  searchQuery?: string;
 }
 
 // Fallback avatar used if getCurrentUserAvatar() returns null/empty
@@ -35,9 +36,19 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
   defaultFilter,
   onlyMyPosts = false,
   onlyImages = false,
-  hideFilterTabs = false
+  hideFilterTabs = false,
+  searchQuery = ''
 }) => {
   const [posts, setPosts] = useState<PostData[]>([]);
+
+  const displayedPosts = posts.filter(post => {
+    if (!searchQuery || searchQuery.trim() === '') return true;
+    const q = searchQuery.toLowerCase();
+    const contentMatch = post.content?.toLowerCase().includes(q);
+    const authorName = post.author?.name || '';
+    const authorUsername = post.author?.username || '';
+    return contentMatch || authorName.toLowerCase().includes(q) || authorUsername.toLowerCase().includes(q);
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState(defaultFilter || (onlyMyPosts ? 'My Posts' : 'For You'));
@@ -501,7 +512,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
 
       {!loading && !error && (
         <div className="space-y-4">
-          {posts.length === 0 ? (
+          {displayedPosts.length === 0 ? (
             <div className={`${theme.surface.glass} ${theme.surface.border} rounded-2xl p-6 text-center`}>
               <div className="flex flex-col items-center space-y-3">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b]/20 flex items-center justify-center">
@@ -509,10 +520,12 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
                 </div>
                 <div>
                   <p className={`${theme.text.primary} font-medium mb-1`}>
-                    {onlyImages ? "No photo posts yet" : "No posts yet"}
+                    {searchQuery ? `No results for "${searchQuery}"` : (onlyImages ? "No photo posts yet" : "No posts yet")}
                   </p>
                   <p className={`${theme.text.muted} text-sm`}>
-                    {onlyImages 
+                    {searchQuery
+                      ? "Try searching for a different keyword or username."
+                      : onlyImages 
                       ? "You haven't uploaded any photo posts yet. Create a post with an image to showcase it on your profile!" 
                       : activeFilter === 'My Posts' 
                       ? "You haven't created any posts yet. Share something with the community!" 
@@ -524,7 +537,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
               </div>
             </div>
           ) : (
-            posts.map((post) => (
+            displayedPosts.map((post) => (
               <div key={post.id}>
                 <PostCard
                   post={post}

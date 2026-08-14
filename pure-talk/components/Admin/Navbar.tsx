@@ -8,7 +8,14 @@ import {
 } from 'lucide-react';
 import { useThemeColors, type ThemeMode } from '@/context/adminTheme';
 
-const Navbar: React.FC = () => {
+import { Menu } from 'lucide-react';
+
+interface NavbarProps {
+  sidebarOpen?: boolean;
+  setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const { theme, colors, toggleTheme, setTheme } = useThemeColors();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
@@ -60,8 +67,16 @@ const Navbar: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          
-      
+          {/* Mobile menu button */}
+          {setSidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(prev => !prev)}
+              className="lg:hidden p-2 rounded-lg transition-colors"
+              style={{ color: colors.text.secondary }}
+            >
+              <Menu size={20} />
+            </button>
+          )}
 
           {/* Search Bar - Facebook Style */}
           <div className="hidden md:flex flex-1 max-w-md mx-8">
