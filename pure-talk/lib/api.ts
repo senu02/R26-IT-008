@@ -77,6 +77,7 @@ export interface UpdateProfileData {
   bio?: string;
   profile_picture?: File | string | null;
   cover_image?: File | string | null;
+  notification_settings?: any;
 }
 
 export interface ChangePasswordData {

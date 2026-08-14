@@ -1,7 +1,7 @@
 // app/users/user-settings/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/User/UserProfile/Sidebar';
 import { BackgroundWrapper } from '@/context/theme';
@@ -68,7 +68,13 @@ const IG_BLUE = '#0095F6';
 export default function UserSettingsPage() {
   return (
     <ToastProvider>
-      <UserSettingsContent />
+      <Suspense fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center text-white">
+          Loading settings...
+        </div>
+      }>
+        <UserSettingsContent />
+      </Suspense>
     </ToastProvider>
   );
 }

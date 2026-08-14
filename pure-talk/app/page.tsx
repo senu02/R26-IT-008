@@ -75,7 +75,7 @@ export default function Home() {
               <Link href="/home" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Feed</Link>
               <Link href="/users/friends" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Friends</Link>
               <Link href="/users/posts" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Posts</Link>
-              <Link href="http://localhost:3000/auth/login" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
+              <Link href="/auth/login" className="hover:text-red-500 transition-colors" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
             </nav>
           </motion.div>
         )}
