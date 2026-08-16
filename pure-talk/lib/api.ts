@@ -77,6 +77,7 @@ export interface UpdateProfileData {
   bio?: string;
   profile_picture?: File | string | null;
   cover_image?: File | string | null;
+  notification_settings?: any;
 }
 
 export interface ChangePasswordData {
@@ -311,6 +312,13 @@ export const userAPI = {
     });
   },
 
+  // FIXED: DELETE user using the standard /users/{id}/ endpoint
+  deleteUser: async (userId: number): Promise<{ message: string }> => {
+    return await apiCall<{ message: string }>(`/users/${userId}/`, {
+      method: 'DELETE',
+    });
+  },
+
   getUserStats: async (): Promise<UserStats | null> => {
     try {
       return await apiCall<UserStats>('/users/stats/');
@@ -327,7 +335,6 @@ export const userAPI = {
     try {
       return await apiCall<{ posts_count: number; friends_count: number }>('/users/me/stats/');
     } catch (error: any) {
-      // If endpoint doesn't exist, return default values
       if (error.status === 404) {
         console.info('Personal stats endpoint not available yet');
         return { posts_count: 0, friends_count: 0 };
@@ -375,10 +382,7 @@ export const canManageUsers = (): boolean => {
   return role === 'admin' || role === 'super_admin';
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Adaptive Shielding (AESM) Types & API
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface AnalyzeResult {
   strategy: 'Safe' | 'Warning' | 'Blurring' | 'Filtering' | 'Rewriting';
   output: string;
@@ -414,39 +418,23 @@ export interface ShieldAdminRecord {
 }
 
 export const adaptiveShieldingAPI = {
-  /**
-   * POST /api/shield/analyze/
-   * Analyze a message for toxicity and get AESM strategy result.
-   */
-  analyzeMessage: async (text: string): Promise<AnalyzeResult> => {
+  analyzeMessage: async (text: string, contentType: 'post' | 'comment' = 'post'): Promise<AnalyzeResult> => {
     return await apiCall<AnalyzeResult>('/api/shield/analyze/', {
       method: 'POST',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, content_type: contentType }),
     });
   },
 
-  /**
-   * GET /api/shield/history/
-   * Fetch the current user's toxicity record history.
-   */
   getHistory: async (): Promise<ToxicityRecord[]> => {
     return await apiCall<ToxicityRecord[]>('/api/shield/history/');
   },
 
-  /**
-   * GET /api/shield/behavior-score/
-   * Fetch the current user's averaged behavior score.
-   */
   getBehaviorScore: async (): Promise<{ behavior_score: number; based_on_messages: number }> => {
     return await apiCall<{ behavior_score: number; based_on_messages: number }>(
       '/api/shield/behavior-score/'
     );
   },
 
-  /**
-   * GET /api/shield/admin-records/
-   * Fetch all toxicity records (admin/moderator only).
-   */
   getAdminRecords: async (): Promise<{ count: number; records: ShieldAdminRecord[] }> => {
     return await apiCall<{ count: number; records: ShieldAdminRecord[] }>(
       '/api/shield/admin-records/'
@@ -454,10 +442,7 @@ export const adaptiveShieldingAPI = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Posts API
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface FeedPost {
   id: number;
   user: number;
@@ -531,4 +516,4 @@ export default {
   isModerator,
   canManageUsers,
   getImageUrl
-};
+};

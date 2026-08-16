@@ -253,7 +253,7 @@ export const useProfile = () => {
         throw new Error('Invalid user ID');
       }
       
-      const response = await userAPI.changePassword(numericUserId, {
+      const response = await authAPI.changePassword(numericUserId, {
         old_password: oldPassword,
         new_password: newPassword,
         confirm_password: confirmPassword

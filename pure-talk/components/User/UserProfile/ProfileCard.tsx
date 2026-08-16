@@ -32,7 +32,7 @@ export function ProfileCard() {
   return (
     <div className={`overflow-hidden rounded-2xl shadow-xl transition-all duration-200 ${theme.surface.glass} ${theme.surface.border}`}>
       {/* Cover gradient - Wider and fixed size */}
-      <div className="relative h-48 w-full bg-gradient-to-r from-[#fd297b] via-[#ff4d6d] to-[#ff655b]"></div>
+      <div className="relative h-48 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600"></div>
 
       {/* Avatar - positioned to overlap cover */}
       <div className="relative px-6 -mt-16">
@@ -40,7 +40,7 @@ export function ProfileCard() {
           <div className="h-28 w-28 overflow-hidden rounded-full md:h-32 md:w-32">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://ui-avatars.com/api/?background=fd297b&color=fff&size=128&name=Nathan+Garcia"
+              src="https://ui-avatars.com/api/?background=3b82f6&color=fff&size=128&name=Nathan+Garcia"
               alt="Nathan Garcia"
               className="h-full w-full object-cover"
             />
@@ -88,7 +88,7 @@ export function ProfileCard() {
                   ? `border-b-2 ${theme.accent.primary}`
                   : theme.text.muted
               }`}
-              style={activeTab === tab.key ? { borderBottomColor: '#fd297b' } : {}}
+              style={activeTab === tab.key ? { borderBottomColor: '#3b82f6' } : {}}
             >
               <tab.icon className="h-4 w-4" />
               {tab.name}
@@ -161,7 +161,7 @@ export function ProfileCard() {
                 <span className={theme.text.muted}>2.4 GB / 10 GB</span>
               </div>
               <div className="h-2 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b]" style={{ width: '24%' }}></div>
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500" style={{ width: '24%' }}></div>
               </div>
             </div>
             

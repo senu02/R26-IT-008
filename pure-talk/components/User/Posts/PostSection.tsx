@@ -1,4 +1,3 @@
-// components/User/Posts/PostSection.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,17 +15,43 @@ import {
 } from '@/app/services/posts/actions';
 import { adaptiveShieldingAPI } from '@/lib/api';
 import { Lock, SendHorizontal, Loader2, PlusCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ToastProvider, useToast } from '@/context/userToast';
 
 interface PostSectionProps {
   theme: ThemeColors;
   isDark: boolean;
+  defaultFilter?: string;
+  onlyMyPosts?: boolean;
+  onlyImages?: boolean;
+  hideFilterTabs?: boolean;
+  searchQuery?: string;
 }
 
-const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
+// Fallback avatar used if getCurrentUserAvatar() returns null/empty
+const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=fd297b&color=fff';
+
+const PostSectionContent: React.FC<PostSectionProps> = ({ 
+  theme, 
+  isDark, 
+  defaultFilter,
+  onlyMyPosts = false,
+  onlyImages = false,
+  hideFilterTabs = false,
+  searchQuery = ''
+}) => {
   const [posts, setPosts] = useState<PostData[]>([]);
+
+  const displayedPosts = posts.filter(post => {
+    if (!searchQuery || searchQuery.trim() === '') return true;
+    const q = searchQuery.toLowerCase();
+    const contentMatch = post.content?.toLowerCase().includes(q);
+    const authorName = post.author?.name || '';
+    const authorUsername = post.author?.username || '';
+    return contentMatch || authorName.toLowerCase().includes(q) || authorUsername.toLowerCase().includes(q);
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState('For You');
+  const [activeFilter, setActiveFilter] = useState(defaultFilter || (onlyMyPosts ? 'My Posts' : 'For You'));
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [commentText, setCommentText] = useState<{ [key: string]: string }>({});
   const [submittingComment, setSubmittingComment] = useState<{ [key: string]: boolean }>({});
@@ -35,7 +60,20 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   const [showCommentsForPost, setShowCommentsForPost] = useState<{ [key: string]: boolean }>({});
   const [shieldAlert, setShieldAlert] = useState<{ [key: string]: { type: string; message: string } | null }>({});
 
+  const toast = useToast();
+
   const filterOptions = ['For You', 'My Posts', 'Saved'];
+
+  // Helpers for the current user's avatar/name (used in Instagram-style toasts)
+  const getMyAvatar = (): string => {
+    const avatar = getCurrentUserAvatar();
+    return avatar && avatar.trim() !== '' ? avatar : DEFAULT_AVATAR;
+  };
+
+  const getMyName = (): string => {
+    const userData = getCurrentUserData();
+    return userData?.full_name || 'You';
+  };
 
   useEffect(() => {
     const checkAuth = () => {
@@ -63,7 +101,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     setError(null);
     try {
       let data: PostData[] = [];
-      if (activeFilter === 'My Posts') {
+      if (onlyMyPosts || activeFilter === 'My Posts') {
         data = await postAPI.getMyPosts();
       } else if (activeFilter === 'Saved') {
         data = await postAPI.getSavedPosts();
@@ -72,6 +110,9 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
       }
       
       if (Array.isArray(data)) {
+        if (onlyImages) {
+          data = data.filter(p => !!p.image && p.image.trim() !== '');
+        }
         setPosts(data);
       } else {
         console.error('Expected array but got:', data);
@@ -129,23 +170,52 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleNewPost = async (content: string, image?: File) => {
     if (!isLoggedIn) {
-      alert('Please login to create a post');
+      toast.showError('Please login to create a post');
       return;
     }
 
     try {
-      const newPost = await postAPI.createPost({ content, image });
-      if (newPost) {
-        setPosts([newPost, ...posts]);
+      let finalContent = content;
+
+      if (content.trim()) {
+        try {
+          const shield = await adaptiveShieldingAPI.analyzeMessage(content);
+          if (shield.strategy === 'Filtering') {
+            toast.showError('🚫 Post blocked: your message contains highly toxic content.');
+            return;
+          } else if (shield.strategy === 'Rewriting') {
+            finalContent = shield.output;
+            toast.showInfo('✏️ Your post was auto-rewritten to keep things positive.');
+          } else if (shield.strategy === 'Blurring') {
+            finalContent = shield.output;
+            toast.showInfo('🌫️ Some words in your post have been blurred.');
+          }
+        } catch (shieldErr) {
+          console.warn('Shield check skipped:', shieldErr);
+        }
       }
+
+      const newPost = await postAPI.createPost({ content: finalContent, image });
+
+      if (newPost) {
+        setPosts(prev => [newPost, ...prev]);
+      }
+
+      toast.showInstagramToast(
+        'created a new post 🎉',
+        getMyName(),
+        getMyAvatar(),
+        'like'
+      );
+
     } catch (err: any) {
       if (err.message?.includes('flagged')) {
-        alert(err.message);
+        toast.showError(err.message);
       } else if (err.message?.includes('login')) {
-        alert('Please login to create a post');
+        toast.showError('Please login to create a post');
         setIsLoggedIn(false);
       } else {
-        alert('Failed to create post. Please try again.');
+        toast.showError('Failed to create post. Please try again.');
       }
       console.error('Error creating post:', err);
     }
@@ -153,7 +223,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleLike = async (id: string) => {
     if (!isLoggedIn) {
-      alert('Please login to like posts');
+      toast.showError('Please login to like posts');
       return;
     }
 
@@ -175,18 +245,18 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
       ));
     } catch (err: any) {
       if (err.message?.includes('login')) {
-        alert('Please login to like posts');
+        toast.showError('Please login to like posts');
         setIsLoggedIn(false);
       } else {
         console.error('Like/unlike failed:', err);
-        alert('Failed to like/unlike post. Please try again.');
+        toast.showError('Failed to like/unlike post. Please try again.');
       }
     }
   };
 
   const handleComment = async (postId: string) => {
     if (!isLoggedIn) {
-      alert('Please login to comment');
+      toast.showError('Please login to comment');
       return;
     }
 
@@ -194,14 +264,12 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     if (!content || !content.trim()) return;
 
     setSubmittingComment(prev => ({ ...prev, [postId]: true }));
-    // Clear any previous shield alert for this post
     setShieldAlert(prev => ({ ...prev, [postId]: null }));
 
     try {
-      // ── Adaptive Shielding Check ──────────────────────────────────
       let finalContent = content;
       try {
-        const shield = await adaptiveShieldingAPI.analyzeMessage(content);
+        const shield = await adaptiveShieldingAPI.analyzeMessage(content, 'comment');
         if (shield.strategy === 'Filtering') {
           setShieldAlert(prev => ({
             ...prev,
@@ -215,11 +283,6 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
             ...prev,
             [postId]: { type: 'rewrite', message: '✏️ Your comment was auto-rewritten to keep things positive.' }
           }));
-        } else if (shield.strategy === 'Warning') {
-          setShieldAlert(prev => ({
-            ...prev,
-            [postId]: { type: 'warn', message: '⚠️ Your comment contains potentially harmful language.' }
-          }));
         } else if (shield.strategy === 'Blurring') {
           setShieldAlert(prev => ({
             ...prev,
@@ -228,10 +291,8 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
           finalContent = shield.output;
         }
       } catch (shieldErr) {
-        // Shield unavailable — allow comment to pass through silently
         console.warn('Shield check skipped:', shieldErr);
       }
-      // ─────────────────────────────────────────────────────────────
 
       const newComment = await postAPI.createComment(postId, finalContent);
       if (newComment) {
@@ -247,12 +308,12 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     } catch (err: any) {
       console.error('Comment failed:', err);
       if (err.message?.includes('flagged')) {
-        alert(err.message);
+        toast.showError(err.message);
       } else if (err.message?.includes('login')) {
-        alert('Please login to comment');
+        toast.showError('Please login to comment');
         setIsLoggedIn(false);
       } else {
-        alert('Failed to add comment. Please try again.');
+        toast.showError('Failed to add comment. Please try again.');
       }
     } finally {
       setSubmittingComment(prev => ({ ...prev, [postId]: false }));
@@ -261,7 +322,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleEditComment = async (commentId: string, newContent: string) => {
     if (!isLoggedIn) {
-      alert('Please login to edit comments');
+      toast.showError('Please login to edit comments');
       return;
     }
 
@@ -282,9 +343,9 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
     } catch (err: any) {
       console.error('Edit comment failed:', err);
       if (err.message?.includes('flagged')) {
-        alert(err.message);
+        toast.showError(err.message);
       } else {
-        alert('Failed to update comment. Please try again.');
+        toast.showError('Failed to update comment. Please try again.');
       }
       throw err;
     }
@@ -292,7 +353,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   const handleDeleteComment = async (postId: string, commentId: string) => {
     if (!isLoggedIn) {
-      alert('Please login to delete comments');
+      toast.showError('Please login to delete comments');
       return;
     }
 
@@ -306,13 +367,13 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
       ));
     } catch (err) {
       console.error('Delete comment failed:', err);
-      alert('Failed to delete comment');
+      toast.showError('Failed to delete comment');
     }
   };
 
   const handleRepost = async (id: string) => {
     if (!isLoggedIn) {
-      alert('Please login to share posts');
+      toast.showError('Please login to share posts');
       return;
     }
 
@@ -329,32 +390,43 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
             ? { ...p, reposts: (p.reposts || 0) + 1 }
             : p
         ));
-        alert('Post shared successfully!');
+        toast.showInstagramToast(
+          'shared a post 🔁',
+          getMyName(),
+          getMyAvatar(),
+          'like'
+        );
       }
     } catch (err: any) {
       if (err.message?.includes('login')) {
-        alert('Please login to share posts');
+        toast.showError('Please login to share posts');
         setIsLoggedIn(false);
       } else {
         console.error('Repost failed:', err);
-        alert('Failed to share post');
+        toast.showError('Failed to share post');
       }
     }
   };
 
   const handleDelete = async (id: string): Promise<void> => {
     if (!isLoggedIn) {
-      alert('Please login to delete posts');
+      toast.showError('Please login to delete posts');
       return Promise.reject('Not logged in');
     }
 
     try {
       await postAPI.deletePost(id);
-      setPosts(posts.filter(p => p.id !== id));
+      setPosts(prev => prev.filter(p => p.id !== id));
+      toast.showInstagramToast(
+        'deleted a post 🗑️',
+        getMyName(),
+        getMyAvatar(),
+        'like'
+      );
       return Promise.resolve();
     } catch (err: any) {
       console.error('Error deleting post:', err);
-      alert('Failed to delete post. Please try again.');
+      toast.showError('Failed to delete post. Please try again.');
       return Promise.reject(err);
     }
   };
@@ -372,7 +444,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
   if (!isLoggedIn) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <div className={`${theme.surface.glass} ${theme.surface.border} rounded-2xl p-8 text-center`}>
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b] flex items-center justify-center">
             <Lock className="w-10 h-10 text-white" />
@@ -391,26 +463,28 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="w-full">
       {/* Filter Tabs - Instagram style */}
-      <div className="flex border-b border-white/10 mb-6">
-        {filterOptions.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => setActiveFilter(filter)}
-            className={`flex-1 py-3 text-center font-semibold text-sm transition-all duration-200 relative ${
-              activeFilter === filter
-                ? theme.text.primary
-                : theme.text.muted
-            }`}
-          >
-            {filter}
-            {activeFilter === filter && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-full" />
-            )}
-          </button>
-        ))}
-      </div>
+      {!hideFilterTabs && (
+        <div className="flex border-b border-white/10 mb-6">
+          {filterOptions.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`flex-1 py-3 text-center font-semibold text-sm transition-all duration-200 relative ${
+                activeFilter === filter
+                  ? theme.text.primary
+                  : theme.text.muted
+              }`}
+            >
+              {filter}
+              {activeFilter === filter && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#fd297b] to-[#ff655b] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       <CreatePost theme={theme} isDark={isDark} onPost={handleNewPost} />
 
@@ -438,16 +512,22 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
 
       {!loading && !error && (
         <div className="space-y-4">
-          {posts.length === 0 ? (
+          {displayedPosts.length === 0 ? (
             <div className={`${theme.surface.glass} ${theme.surface.border} rounded-2xl p-6 text-center`}>
               <div className="flex flex-col items-center space-y-3">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#fd297b] to-[#ff655b]/20 flex items-center justify-center">
                   <PlusCircle className="w-8 h-8 text-[#fd297b]" />
                 </div>
                 <div>
-                  <p className={`${theme.text.primary} font-medium mb-1`}>No posts yet</p>
+                  <p className={`${theme.text.primary} font-medium mb-1`}>
+                    {searchQuery ? `No results for "${searchQuery}"` : (onlyImages ? "No photo posts yet" : "No posts yet")}
+                  </p>
                   <p className={`${theme.text.muted} text-sm`}>
-                    {activeFilter === 'My Posts' 
+                    {searchQuery
+                      ? "Try searching for a different keyword or username."
+                      : onlyImages 
+                      ? "You haven't uploaded any photo posts yet. Create a post with an image to showcase it on your profile!" 
+                      : activeFilter === 'My Posts' 
                       ? "You haven't created any posts yet. Share something with the community!" 
                       : activeFilter === 'Saved'
                       ? "You haven't saved any posts yet. Save posts to read them later!"
@@ -457,7 +537,7 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
               </div>
             </div>
           ) : (
-            posts.map((post) => (
+            displayedPosts.map((post) => (
               <div key={post.id}>
                 <PostCard
                   post={post}
@@ -545,13 +625,10 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
                             className={`w-full ${theme.surface.glassHover} rounded-xl px-4 py-2 text-sm ${theme.text.primary} placeholder:${theme.text.muted} outline-none resize-none transition-all duration-200`}
                             rows={2}
                           />
-                          {/* Shield Alert Banner */}
                           {shieldAlert[post.id] && (
                             <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
                               shieldAlert[post.id]?.type === 'block'
                                 ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                                : shieldAlert[post.id]?.type === 'warn'
-                                ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30'
                                 : shieldAlert[post.id]?.type === 'rewrite'
                                 ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
                                 : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
@@ -598,6 +675,14 @@ const PostSection: React.FC<PostSectionProps> = ({ theme, isDark }) => {
         </div>
       )}
     </div>
+  );
+};
+
+const PostSection: React.FC<PostSectionProps> = (props) => {
+  return (
+    <ToastProvider>
+      <PostSectionContent {...props} />
+    </ToastProvider>
   );
 };
 

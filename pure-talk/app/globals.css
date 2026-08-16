@@ -28,3 +28,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Modern Dark Sidebar Pattern Utilities */
+.bg-sidebar-dark-pattern {
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(244, 63, 94, 0.12) 1px, transparent 1.5px),
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.04) 1px, transparent 1.5px);
+  background-size: 24px 24px, 12px 12px;
+  background-position: 0 0, 6px 6px;
+}
+
+.bg-sidebar-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.sidebar-glow-line {
+  background: linear-gradient(180deg, rgba(244,63,94,0.4) 0%, rgba(225,29,72,0.15) 50%, transparent 100%);
+}
+
+.sidebar-card-pattern {
+  background-image: 
+    radial-gradient(rgba(244, 63, 94, 0.1) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 16px 16px, 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+

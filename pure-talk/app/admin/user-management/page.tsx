@@ -213,8 +213,17 @@ export default function UserManagement() {
     setShowModal(true);
   };
   
+  // FIXED: Delete user using the correct endpoint
   const handleDelete = async (user: User) => {
-    // Delete functionality requires backend implementation. Use ban/suspend instead.
+    try {
+      const userId = parseInt(user.id);
+      await userAPI.deleteUser(userId);
+      // Refresh users list after deletion
+      await fetchUsers();
+      await fetchStats();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete user');
+    }
   };
   
   const handleToggleStatus = async (user: User) => {
@@ -225,10 +234,10 @@ export default function UserManagement() {
       } else if (user.status === 'suspended') {
         await userAPI.unsuspendUser(userId);
       }
-      fetchUsers();
-      fetchStats();
+      await fetchUsers();
+      await fetchStats();
     } catch (err: any) {
-      // Error handling without console logs
+      setError(err.message || 'Failed to update user status');
     }
   };
   
@@ -245,9 +254,10 @@ export default function UserManagement() {
       }
       setShowModal(false);
       setEditingUser(null);
-      fetchUsers();
+      await fetchUsers();
+      await fetchStats();
     } catch (err: any) {
-      // Error handling without console logs
+      setError(err.message || 'Failed to save user');
     }
   };
   

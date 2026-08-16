@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -10,6 +12,25 @@ from .serializers import (
     AnalyzeResponseSerializer,
     ToxicityRecordSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _aesm_result_to_toxicity_result(result: dict) -> dict:
+    """
+    Adapt an AESM engine result (strategy/toxicity/behavior/final_score)
+    into the {is_toxic, max_score, labels, flagged_labels} shape that
+    toxicity_behavior.services.enforce_behavior() expects, so both
+    detection pipelines can feed the same UserBehaviorProfile.
+    """
+    score = float(result.get("final_score", 0.0))
+    strategy = result.get("strategy", "Safe")
+    return {
+        "is_toxic": strategy != "Safe",
+        "max_score": score,
+        "labels": {"toxic": score},
+        "flagged_labels": [strategy.lower()],
+    }
 
 
 class AnalyzeMessageView(APIView):
@@ -28,6 +49,7 @@ class AnalyzeMessageView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         text = serializer.validated_data["text"]
+        content_type = serializer.validated_data.get("content_type", "post")
 
         # ── Fetch user's recent toxicity history (last 20 messages) ──
         recent_records = ToxicityRecord.objects.filter(
@@ -49,6 +71,32 @@ class AnalyzeMessageView(APIView):
             final_score=result["final_score"],
             processed_output=result["output"],
         )
+
+        # ── Profile-based enforcement (IT22169594) ──────────────────────
+        # "Filtering" is the one AESM strategy that the frontend treats as
+        # a hard block: PostSection.tsx shows the toast and returns WITHOUT
+        # ever calling postAPI.createPost(). That means posts/views.py's
+        # _run_toxicity_check() — the only other place enforce_behavior()
+        # is called — never runs for these messages, so UserBehaviorProfile
+        # (toxic_count / severity_score / admin dashboard) silently never
+        # updates for a user's most toxic messages.
+        #
+        # Every other strategy (Rewriting/Blurring/Warning/Safe) still lets
+        # the (possibly modified) content through to postAPI.createPost(),
+        # which already triggers enforce_behavior() on the backend — so we
+        # deliberately do NOT call it here for those cases, to avoid
+        # double-counting the same message twice.
+        if result["strategy"] == "Filtering":
+            try:
+                from toxicity_behavior.services import enforce_behavior
+                enforce_behavior(
+                    user=request.user,
+                    text=text,
+                    toxicity_result=_aesm_result_to_toxicity_result(result),
+                    content_type=content_type,
+                )
+            except Exception as exc:
+                logger.error(f"Behaviour enforcement failed (AESM path): {exc}")
 
         return Response(result, status=status.HTTP_200_OK)
 
@@ -119,4 +167,4 @@ class AdminAllRecordsView(APIView):
                 "processed_output": r.processed_output,
                 "created_at": r.created_at.isoformat(),
             })
-        return Response({"count": len(data), "records": data}, status=status.HTTP_200_OK)
+        return Response({"count": len(data), "records": data}, status=status.HTTP_200_OK)

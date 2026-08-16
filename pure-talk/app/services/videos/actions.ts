@@ -592,8 +592,13 @@ export const formatViewCount = (views: number): string => {
   return views.toString();
 };
 
-export const formatDate = (dateString: string): string => {
+// FIXED: formatDate now accepts string | null | undefined
+export const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return 'N/A';
+  
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Invalid date';
+  
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   const diffInMinutes = Math.floor(diffInSeconds / 60);
@@ -619,14 +624,18 @@ export const formatDate = (dateString: string): string => {
   return date.toLocaleDateString();
 };
 
+// Fix for canModerate to properly handle null/undefined
 export const canModerate = (): boolean => {
   const user = getCurrentUserData();
-  return user && ['moderator', 'admin', 'super_admin'].includes(user.role);
+  if (!user) return false;
+  return ['moderator', 'admin', 'super_admin'].includes(user.role || '');
 };
 
+// Fix for canAdmin to properly handle null/undefined
 export const canAdmin = (): boolean => {
   const user = getCurrentUserData();
-  return user && ['admin', 'super_admin'].includes(user.role);
+  if (!user) return false;
+  return ['admin', 'super_admin'].includes(user.role || '');
 };
 
 export default { 

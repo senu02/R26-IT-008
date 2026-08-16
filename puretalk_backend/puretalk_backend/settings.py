@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'toxicity_behavior',
     'adptiveShelding',
     'toxicity_image',
+    'notifications',
 ]
 
 CORS_ALLOWED_ORIGINS = [

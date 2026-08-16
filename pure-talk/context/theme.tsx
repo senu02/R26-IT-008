@@ -42,13 +42,13 @@ export const darkTheme: ThemeColors = {
     borderHover: 'hover:border-white/20',
   },
   accent: {
-    primary: 'text-[#fd297b]',
-    gradient: 'from-[#fd297b] to-[#ff655b]',
-    gradientHover: 'hover:from-[#ff655b] hover:to-[#fd297b]',
+    primary: 'text-blue-500',
+    gradient: 'from-blue-500 to-indigo-500',
+    gradientHover: 'hover:from-indigo-500 hover:to-blue-500',
   },
   background: {
-    gradient: ['#0a0a0a', '#12040a', '#0a0a0a'],
-    particles: 'rgba(253, 41, 123, 0.45)',
+    gradient: ['#0a0a0a', '#050a12', '#0a0a0a'],
+    particles: 'rgba(59, 130, 246, 0.45)',
     overlay: 'bg-transparent',
   },
   status: {
@@ -71,16 +71,16 @@ export const lightTheme: ThemeColors = {
     glass: 'bg-white/70',
     glassHover: 'hover:bg-white/90',
     border: 'border border-white/60',
-    borderHover: 'hover:border-[#fd297b]/30',
+    borderHover: 'hover:border-blue-500/30',
   },
   accent: {
-    primary: 'text-[#fd297b]',
-    gradient: 'from-[#fd297b] to-[#ff655b]',
-    gradientHover: 'hover:from-[#ff655b] hover:to-[#fd297b]',
+    primary: 'text-blue-500',
+    gradient: 'from-blue-500 to-indigo-500',
+    gradientHover: 'hover:from-indigo-500 hover:to-blue-500',
   },
   background: {
-    gradient: ['#fff0f5', '#ffe4ef', '#fff8f0'],
-    particles: 'rgba(253, 41, 123, 0.25)',
+    gradient: ['#f0f5ff', '#e4efff', '#f0f8ff'],
+    particles: 'rgba(59, 130, 246, 0.25)',
     overlay: 'bg-transparent',
   },
   status: {
@@ -99,17 +99,17 @@ export function getTheme(isDark: boolean): ThemeColors {
 export function getWaveColors(isDark: boolean) {
   if (isDark) {
     return [
-      { amplitude: 32, frequency: 0.007, speed: 0.5,  color: 'rgba(255, 88, 100, 0.12)',  phase: 0   },
-      { amplitude: 26, frequency: 0.010, speed: 0.8,  color: 'rgba(255, 101, 91, 0.18)',  phase: 1.2 },
-      { amplitude: 20, frequency: 0.014, speed: 1.1,  color: 'rgba(253, 41, 123, 0.22)',  phase: 2.4 },
-      { amplitude: 15, frequency: 0.019, speed: 1.4,  color: 'rgba(253, 41, 123, 0.32)',  phase: 3.6 },
+      { amplitude: 32, frequency: 0.007, speed: 0.5,  color: 'rgba(99, 102, 241, 0.12)',  phase: 0   },
+      { amplitude: 26, frequency: 0.010, speed: 0.8,  color: 'rgba(59, 130, 246, 0.18)',  phase: 1.2 },
+      { amplitude: 20, frequency: 0.014, speed: 1.1,  color: 'rgba(59, 130, 246, 0.22)',  phase: 2.4 },
+      { amplitude: 15, frequency: 0.019, speed: 1.4,  color: 'rgba(99, 102, 241, 0.32)',  phase: 3.6 },
     ];
   }
   return [
-    { amplitude: 32, frequency: 0.007, speed: 0.5,  color: 'rgba(253, 41, 123, 0.07)',  phase: 0   },
-    { amplitude: 26, frequency: 0.010, speed: 0.8,  color: 'rgba(255, 101, 91, 0.11)',  phase: 1.2 },
-    { amplitude: 20, frequency: 0.014, speed: 1.1,  color: 'rgba(255, 88, 100, 0.15)',  phase: 2.4 },
-    { amplitude: 15, frequency: 0.019, speed: 1.4,  color: 'rgba(253, 41, 123, 0.22)',  phase: 3.6 },
+    { amplitude: 32, frequency: 0.007, speed: 0.5,  color: 'rgba(59, 130, 246, 0.07)',  phase: 0   },
+    { amplitude: 26, frequency: 0.010, speed: 0.8,  color: 'rgba(99, 102, 241, 0.11)',  phase: 1.2 },
+    { amplitude: 20, frequency: 0.014, speed: 1.1,  color: 'rgba(59, 130, 246, 0.15)',  phase: 2.4 },
+    { amplitude: 15, frequency: 0.019, speed: 1.4,  color: 'rgba(99, 102, 241, 0.22)',  phase: 3.6 },
   ];
 }
 
@@ -189,8 +189,8 @@ export function getSpaceBackground(isDark: boolean) {
     })),
     nebulas: [
       { className: "absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/5 blur-3xl animate-pulse-slow" },
-      { className: "absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-pink-600/5 blur-3xl animate-pulse-slow delay-1000" },
-      { className: "absolute top-1/2 left-1/2 w-120 h-120 rounded-full bg-blue-500/3 blur-3xl animate-pulse-slow delay-2000" },
+      { className: "absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-blue-600/5 blur-3xl animate-pulse-slow delay-1000" },
+      { className: "absolute top-1/2 left-1/2 w-120 h-120 rounded-full bg-indigo-500/3 blur-3xl animate-pulse-slow delay-2000" },
     ]
   };
 }
@@ -237,12 +237,12 @@ export function BackgroundWrapper({ isDark, children }: { isDark: boolean; child
               />
             ))}
             <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/5 blur-3xl animate-pulse-slow"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-pink-600/5 blur-3xl animate-pulse-slow delay-1000"></div>
-            <div className="absolute top-1/2 left-1/2 w-120 h-120 rounded-full bg-blue-500/3 blur-3xl animate-pulse-slow delay-2000"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-blue-600/5 blur-3xl animate-pulse-slow delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 w-120 h-120 rounded-full bg-indigo-500/3 blur-3xl animate-pulse-slow delay-2000"></div>
           </div>
         </div>
       ) : (
-        <div className="fixed inset-0 bg-gradient-to-br from-[#fff0f5] via-[#ffe4ef] to-[#fff8f0]"></div>
+        <div className="fixed inset-0 bg-gradient-to-br from-[#f0f5ff] via-[#e4efff] to-[#f0f8ff]"></div>
       )}
       <div className="relative z-10">{children}</div>
       
@@ -256,7 +256,7 @@ export function getBackgroundClasses(isDark: boolean): string {
   if (isDark) {
     return "bg-black";
   }
-  return "bg-gradient-to-br from-[#fff0f5] via-[#ffe4ef] to-[#fff8f0]";
+  return "bg-gradient-to-br from-[#f0f5ff] via-[#e4efff] to-[#f0f8ff]";
 }
 
 // Helper function to get stars (for custom implementation) 

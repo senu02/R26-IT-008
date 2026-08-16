@@ -15,6 +15,46 @@ from .serializers import (
     PostLikeSerializer,
 )
 from .permissions import IsAuthorOrReadOnly, CanModeratePost, CanDeleteAnyPost, CanViewPost
+from notifications.services import notify_user, notify_admins
+from notifications.models import NotificationType
+
+# ── Notification helpers ───────────────────────────────────────────────────────
+
+def _notify_comment_recipients(comment, commenter):
+    """
+    Notify whoever should hear about a new comment:
+      - top-level comment → the post's author (POST_COMMENT)
+      - reply             → the parent comment's author (COMMENT_REPLY)
+    Never notifies someone about their own comment/reply.
+    """
+    post = comment.post
+
+    if comment.parent_id:
+        parent_author = comment.parent.author
+        if parent_author.id != commenter.id:
+            notify_user(
+                user=parent_author,
+                notification_type=NotificationType.COMMENT_REPLY,
+                title="New reply to your comment",
+                message=f"{commenter.get_full_name_display()} replied to your comment.",
+                related_user=commenter,
+                metadata={
+                    'post_id': post.id,
+                    'comment_id': comment.id,
+                    'parent_comment_id': comment.parent_id,
+                },
+            )
+        return
+
+    if post.author_id != commenter.id:
+        notify_user(
+            user=post.author,
+            notification_type=NotificationType.POST_COMMENT,
+            title="New comment on your post",
+            message=f"{commenter.get_full_name_display()} commented on your post.",
+            related_user=commenter,
+            metadata={'post_id': post.id, 'comment_id': comment.id},
+        )
 
 # ── Toxicity helpers ──────────────────────────────────────────────────────────
 
@@ -112,6 +152,63 @@ def _toxicity_response(result):
     return None
 
 
+def _run_image_toxicity_check(image_files, author, post):
+    """
+    Run image toxicity scan on every uploaded image file.
+    Saves an ImageToxicityLog per image.
+    Returns (is_any_toxic: bool, first_blocked_response: Response | None)
+    Does NOT raise — failures are logged and ignored.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        from toxicity_image.services import analyse_image
+        from toxicity_image.models import ImageToxicityLog
+    except ImportError:
+        logger.warning("toxicity_image app not available — skipping image check")
+        return False, None
+
+    for image_file in image_files:
+        try:
+            # Seek to start in case file pointer moved during serializer save
+            if hasattr(image_file, 'seek'):
+                image_file.seek(0)
+
+            result = analyse_image(image_file)
+
+            # Persist log
+            if hasattr(image_file, 'seek'):
+                image_file.seek(0)
+
+            ImageToxicityLog.objects.create(
+                author=author,
+                post=post,
+                content_type='post',
+                image=image_file,
+                is_toxic=result['is_toxic'],
+                confidence_score=result['confidence_score'],
+                toxic_probability=result['toxic_probability'],
+                non_toxic_probability=result['non_toxic_probability'],
+                model_available=result['model_available'],
+            )
+
+            if result['model_available'] and result['is_toxic'] and TOXIC_BLOCK:
+                blocked_response = Response(
+                    {
+                        "error": "One or more images were flagged as inappropriate and could not be posted.",
+                        "confidence": result['confidence_score'],
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+                return True, blocked_response
+
+        except Exception as e:
+            logger.error("Image toxicity check failed for file %s: %s", getattr(image_file, 'name', '?'), e)
+
+    return False, None
+
+
 # ── PostViewSet ───────────────────────────────────────────────────────────────
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -203,6 +300,20 @@ class PostViewSet(viewsets.ModelViewSet):
                 return blocked
         else:
             post = serializer.save()
+        # ─────────────────────────────────────────────────────────────────
+
+        # ── Image toxicity check ─────────────────────────────────────────
+        uploaded_media = request.FILES.getlist('uploaded_media')
+        image_files = [
+            f for f in uploaded_media
+            if f.content_type and f.content_type.startswith('image/')
+        ]
+        if image_files:
+            is_toxic, blocked = _run_image_toxicity_check(image_files, request.user, post)
+            if blocked:
+                post.status = PostStatus.REPORTED
+                post.save(update_fields=['status'])
+                return blocked
         # ─────────────────────────────────────────────────────────────────
 
         return Response(
@@ -352,6 +463,16 @@ class PostViewSet(viewsets.ModelViewSet):
             like.is_active = True
             like.save()
 
+        if post.author_id != request.user.id:
+            notify_user(
+                user=post.author,
+                notification_type=NotificationType.POST_LIKE,
+                title="New reaction on your post",
+                message=f"{request.user.get_full_name_display()} reacted to your post.",
+                related_user=request.user,
+                metadata={'post_id': post.id, 'reaction_type': reaction_type},
+            )
+
         return Response({
             "message": "Post liked" if created else "Reaction updated",
             "like_count": post.like_count,
@@ -417,7 +538,25 @@ class PostViewSet(viewsets.ModelViewSet):
             context={'request': request, 'post_id': post.id}
         )
         if serializer.is_valid():
-            serializer.save()
+            report = serializer.save()
+
+            notify_admins(
+                notification_type=NotificationType.CONTENT_REPORT,
+                title=f"Post reported: {report.get_reason_display()}",
+                message=(
+                    f"{request.user.get_full_name_display()} reported a post "
+                    f"by {post.author.get_full_name_display()} for "
+                    f"'{report.get_reason_display()}'."
+                ),
+                related_user=post.author,
+                metadata={
+                    'post_id': post.id,
+                    'report_id': report.id,
+                    'reason': report.reason,
+                    'reporter_id': request.user.id,
+                },
+            )
+
             return Response({"message": "Post reported successfully"})
         return Response(serializer.errors, status=400)
 
@@ -529,6 +668,8 @@ class CommentViewSet(viewsets.ModelViewSet):
             comment = serializer.save()
         # ──────────────────────────────────────────────────────────────
 
+        _notify_comment_recipients(comment, request.user)
+
         return Response(
             CommentSerializer(comment, context={'request': request}).data,
             status=status.HTTP_201_CREATED
@@ -550,8 +691,21 @@ class CommentViewSet(viewsets.ModelViewSet):
             like.is_active = not like.is_active
             like.save()
             message = "Like removed" if not like.is_active else "Comment liked"
+            just_liked = like.is_active
         else:
             message = "Comment liked"
+            just_liked = True
+
+        if just_liked and comment.author_id != request.user.id:
+            notify_user(
+                user=comment.author,
+                notification_type=NotificationType.COMMENT_LIKE,
+                title="Someone liked your comment",
+                message=f"{request.user.get_full_name_display()} liked your comment.",
+                related_user=request.user,
+                metadata={'post_id': comment.post_id, 'comment_id': comment.id},
+            )
+
         return Response({"message": message, "like_count": comment.like_count})
 
     @action(detail=True, methods=['get'], url_path='replies')

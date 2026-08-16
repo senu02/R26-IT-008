@@ -1,8 +1,8 @@
-// components/User/Posts/CreatePost.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { ThemeColors } from '@/context/theme';
 import { getCurrentUserAvatar, getCurrentUserData, getFallbackAvatarUrl } from '@/app/services/posts/actions';
 import { Image, Smile, SendHorizontal, X } from 'lucide-react';
+import { useToast } from '@/context/userToast';
 
 interface CreatePostProps {
   theme: ThemeColors;
@@ -20,6 +20,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
 
   useEffect(() => {
     const loadUserData = () => {
@@ -42,11 +43,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB');
+        toast.showError('Image size should be less than 5MB');
         return;
       }
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        toast.showError('Please select an image file');
         return;
       }
       setSelectedImage(file);

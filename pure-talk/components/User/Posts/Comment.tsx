@@ -1,7 +1,7 @@
-// components/User/Posts/Comment.tsx
 import React, { useState } from 'react';
 import { ThemeColors } from '@/context/theme';
 import { getFallbackAvatarUrl } from '@/app/services/posts/actions';
+import { useToast } from '@/context/userToast';
 
 export interface CommentData {
   id: string;
@@ -43,6 +43,7 @@ const Comment: React.FC<CommentProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
 
   const formatTime = (timestamp: string) => {
     if (!timestamp) return 'Just now';
@@ -105,7 +106,7 @@ const Comment: React.FC<CommentProps> = ({
         setIsEditing(false);
       } catch (error) {
         console.error('Failed to update comment:', error);
-        alert('Failed to update comment. Please try again.');
+        toast.showError('Failed to update comment. Please try again.');
       } finally {
         setIsSubmitting(false);
       }

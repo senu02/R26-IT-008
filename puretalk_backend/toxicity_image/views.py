@@ -1,162 +1,236 @@
-from rest_framework.views import APIView
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status, generics
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
-from .engine import predict_toxic_image
-from .models import ToxicImageLog
-from .serializers import (
-    ToxicImageSerializer,
-    ToxicImageBatchSerializer,
-    ToxicImageLogSerializer,
-)
+from .models import ImageToxicityLog
+from .serializers import ImageToxicityLogSerializer, ImageCheckResultSerializer
+from .services import analyse_image
 
 
-# ─── 1. Single Image Detection ────────────────────────────────────────────────
-
-class ToxicImageDetectView(APIView):
+class ImageToxicityViewSet(viewsets.GenericViewSet):
     """
-    POST /api/toxicity/detect/
+    Image toxicity detection endpoints.
 
-    Upload one image → get toxicity result.
-    Saves the result to ToxicImageLog automatically.
-
-    Form fields:
-        image     (required)
-        model     (optional) "h5" | "pkl"       default: h5
-        threshold (optional) float 0.0–1.0      default: 0.5
+    POST /api/toxicity_image/check/        — Check an image (saves log)
+    POST /api/toxicity_image/quick-check/  — Check an image (no DB save)
+    GET  /api/toxicity_image/logs/         — List all scan logs  (admin)
+    GET  /api/toxicity_image/logs/{id}/    — Single log detail   (admin)
+    POST /api/toxicity_image/logs/{id}/review/ — Admin review/override
     """
-    parser_classes     = [MultiPartParser, FormParser]
-    permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
-        serializer = ToxicImageSerializer(data=request.data)
-        if not serializer.is_valid():
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    # ------------------------------------------------------------------ #
+    #  1. Check image and save a log                                       #
+    # ------------------------------------------------------------------ #
+
+    @action(detail=False, methods=['post'], url_path='check')
+    def check_image(self, request):
+        """
+        Upload an image, run the ML model, save the result to DB.
+
+        Request (multipart/form-data):
+            image       — required image file
+            content_type — optional: post | profile | story | standalone
+            post        — optional: post ID to link
+
+        Response:
+            {
+                "is_toxic": bool,
+                "confidence_score": float,
+                "toxic_probability": float,
+                "non_toxic_probability": float,
+                "model_available": bool,
+                "message": str,
+                "log_id": int
+            }
+        """
+        image_file = request.FILES.get('image')
+        if not image_file:
             return Response(
-                {"error": serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"error": "image file is required"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        image_file = serializer.validated_data["image"]
-        model      = serializer.validated_data.get("model", "h5")
-        threshold  = serializer.validated_data.get("threshold", 0.5)
+        # Run inference
+        result = analyse_image(image_file)
 
-        try:
-            result = predict_toxic_image(image_file, model=model, threshold=threshold)
-        except Exception as e:
-            return Response(
-                {"error": f"Model inference failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        # Build a human-readable message
+        if not result['model_available']:
+            message = "Model not available. Image was not scanned."
+        elif result['is_toxic']:
+            message = (
+                f"⚠️ Toxic image detected "
+                f"(confidence: {result['confidence_score']*100:.1f}%). "
+                "This image has been flagged."
+            )
+        else:
+            message = (
+                f"✅ Image appears safe "
+                f"(confidence: {result['confidence_score']*100:.1f}%)."
             )
 
-        # ── Save log to DB ──
-        ToxicImageLog.objects.create(
-            user       = request.user,
-            image_name = image_file.name,
-            score      = result["score"],
-            label      = result["label"],
-            is_toxic   = result["is_toxic"],
-            confidence = result["confidence"],
-            model_used = result["model_used"],
-            threshold  = threshold,
+        # Save log
+        content_type = request.data.get('content_type', 'standalone')
+        post_id = request.data.get('post', None)
+
+        # Reset file pointer before saving
+        image_file.seek(0)
+
+        log = ImageToxicityLog.objects.create(
+            author=request.user,
+            post_id=post_id,
+            content_type=content_type,
+            image=image_file,
+            is_toxic=result['is_toxic'],
+            confidence_score=result['confidence_score'],
+            toxic_probability=result['toxic_probability'],
+            non_toxic_probability=result['non_toxic_probability'],
+            model_available=result['model_available'],
         )
-
-        return Response(result, status=status.HTTP_200_OK)
-
-
-# ─── 2. Batch Image Detection ─────────────────────────────────────────────────
-
-class ToxicImageBatchDetectView(APIView):
-    """
-    POST /api/toxicity/detect/batch/
-
-    Upload multiple images (max 10) at once.
-    Each is analyzed individually. All logs saved.
-
-    Form fields:
-        images[]  (required)  — multiple files
-        model     (optional)  "h5" | "pkl"
-        threshold (optional)  float 0.0–1.0
-    """
-    parser_classes     = [MultiPartParser, FormParser]
-    permission_classes = [IsAuthenticated]
-    MAX_BATCH          = 10
-
-    def post(self, request, *args, **kwargs):
-        images = request.FILES.getlist("images[]")
-        if not images:
-            return Response(
-                {"error": "No images provided. Send files with key 'images[]'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if len(images) > self.MAX_BATCH:
-            return Response(
-                {"error": f"Max batch size is {self.MAX_BATCH} images."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        s         = ToxicImageBatchSerializer(data=request.data)
-        model     = s.initial_data.get("model", "h5")
-        threshold = float(s.initial_data.get("threshold", 0.5))
-
-        results = []
-        for img_file in images:
-            try:
-                result = predict_toxic_image(img_file, model=model, threshold=threshold)
-                result["filename"] = img_file.name
-
-                ToxicImageLog.objects.create(
-                    user       = request.user,
-                    image_name = img_file.name,
-                    score      = result["score"],
-                    label      = result["label"],
-                    is_toxic   = result["is_toxic"],
-                    confidence = result["confidence"],
-                    model_used = result["model_used"],
-                    threshold  = threshold,
-                )
-                results.append(result)
-
-            except Exception as e:
-                results.append({"filename": img_file.name, "error": str(e)})
-
-        toxic_count = sum(1 for r in results if r.get("is_toxic"))
 
         return Response(
             {
-                "total"       : len(results),
-                "toxic_count" : toxic_count,
-                "safe_count"  : len(results) - toxic_count,
-                "results"     : results,
+                **result,
+                "message": message,
+                "log_id": log.id,
             },
-            status=status.HTTP_200_OK,
+            status=status.HTTP_200_OK
         )
 
+    # ------------------------------------------------------------------ #
+    #  2. Quick check — no DB save                                         #
+    # ------------------------------------------------------------------ #
 
-# ─── 3. My Detection History ──────────────────────────────────────────────────
+    @action(detail=False, methods=['post'], url_path='quick-check')
+    def quick_check(self, request):
+        """
+        Run inference without saving to DB.
+        Useful for real-time front-end validation before upload.
 
-class MyToxicityHistoryView(generics.ListAPIView):
-    """
-    GET /api/toxicity/history/
+        Request (multipart/form-data):
+            image — required image file
+        """
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response(
+                {"error": "image file is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    Returns all toxicity checks made by the current logged-in user.
-    """
-    serializer_class   = ToxicImageLogSerializer
-    permission_classes = [IsAuthenticated]
+        result = analyse_image(image_file)
 
-    def get_queryset(self):
-        return ToxicImageLog.objects.filter(user=self.request.user)
+        if not result['model_available']:
+            message = "Model not available."
+        elif result['is_toxic']:
+            message = f"⚠️ Toxic image ({result['confidence_score']*100:.1f}% confidence)."
+        else:
+            message = f"✅ Safe image ({result['confidence_score']*100:.1f}% confidence)."
 
+        return Response({**result, "message": message}, status=status.HTTP_200_OK)
 
-# ─── 4. Admin — All Logs ──────────────────────────────────────────────────────
+    # ------------------------------------------------------------------ #
+    #  3. List all logs (admin only)                                       #
+    # ------------------------------------------------------------------ #
 
-class AllToxicityLogsView(generics.ListAPIView):
-    """
-    GET /api/toxicity/admin/logs/
+    @action(detail=False, methods=['get'], url_path='logs')
+    def list_logs(self, request):
+        if not request.user.is_staff:
+            return Response(
+                {"error": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-    Admin only. Returns all toxicity check logs across all users.
-    """
-    serializer_class   = ToxicImageLogSerializer
-    permission_classes = [IsAdminUser]
-    queryset           = ToxicImageLog.objects.all()
+        logs = ImageToxicityLog.objects.select_related('author', 'post').all()
+
+        # Optional filters
+        is_toxic = request.query_params.get('is_toxic')
+        if is_toxic is not None:
+            logs = logs.filter(is_toxic=is_toxic.lower() == 'true')
+
+        is_reviewed = request.query_params.get('is_reviewed')
+        if is_reviewed is not None:
+            logs = logs.filter(is_reviewed=is_reviewed.lower() == 'true')
+
+        serializer = ImageToxicityLogSerializer(logs, many=True)
+        return Response(serializer.data)
+
+    # ------------------------------------------------------------------ #
+    #  4. Single log detail (admin only)                                   #
+    # ------------------------------------------------------------------ #
+
+    @action(detail=True, methods=['get'], url_path='detail')
+    def log_detail(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response(
+                {"error": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            log = ImageToxicityLog.objects.get(pk=pk)
+        except ImageToxicityLog.DoesNotExist:
+            return Response(
+                {"error": "Log not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ImageToxicityLogSerializer(log)
+        return Response(serializer.data)
+
+    # ------------------------------------------------------------------ #
+    #  5. Admin review / override                                          #
+    # ------------------------------------------------------------------ #
+
+    @action(detail=True, methods=['post'], url_path='review')
+    def review_log(self, request, pk=None):
+        """
+        Admin can override the ML decision.
+
+        Body:
+            {
+                "override_decision": true | false,   // new is_toxic value
+                "review_notes": "..."
+            }
+        """
+        if not request.user.is_staff:
+            return Response(
+                {"error": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            log = ImageToxicityLog.objects.get(pk=pk)
+        except ImageToxicityLog.DoesNotExist:
+            return Response(
+                {"error": "Log not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        override_decision = request.data.get('override_decision')
+        review_notes = request.data.get('review_notes', '')
+
+        if override_decision is not None:
+            log.is_toxic = bool(override_decision)
+            log.overridden = True
+
+        log.is_reviewed = True
+        log.reviewer = request.user
+        log.review_notes = review_notes
+        log.save()
+
+        serializer = ImageToxicityLogSerializer(log)
+        return Response(serializer.data)
+
+    # ------------------------------------------------------------------ #
+    #  6. My own image scan history                                        #
+    # ------------------------------------------------------------------ #
+
+    @action(detail=False, methods=['get'], url_path='my-logs')
+    def my_logs(self, request):
+        """Returns the current user's image scan history."""
+        logs = ImageToxicityLog.objects.filter(author=request.user)
+        serializer = ImageToxicityLogSerializer(logs, many=True)
+        return Response(serializer.data)
