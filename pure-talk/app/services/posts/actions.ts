@@ -152,6 +152,10 @@ export interface CreatePostData {
   image?: File;
   privacy?: 'public' | 'friends' | 'only_me';
   post_type?: 'text' | 'image' | 'video' | 'link';
+  // The text the user actually typed, before AESM rewriting/blurring.
+  // Sent alongside `content` so backend enforcement scores what the
+  // user really wrote, not the sanitized display text.
+  originalContent?: string;
 }
 
 export interface CommentData {
@@ -307,6 +311,9 @@ export const postAPI = {
       formData.append('privacy', data.privacy || 'public');
       formData.append('post_type', 'image');
       formData.append('uploaded_media', data.image);
+      if (data.originalContent) {
+        formData.append('original_content', data.originalContent);
+      }
       
       response = await apiCall<any>('/posts/', {
         method: 'POST',
@@ -319,6 +326,7 @@ export const postAPI = {
           content: data.content,
           privacy: data.privacy || 'public',
           post_type: data.post_type || 'text',
+          ...(data.originalContent ? { original_content: data.originalContent } : {}),
         }),
       });
     }
@@ -371,7 +379,7 @@ export const postAPI = {
     });
   },
 
-  createComment: async (postId: string, content: string): Promise<CommentData | null> => {
+  createComment: async (postId: string, content: string, originalContent?: string): Promise<CommentData | null> => {
     if (!isAuthenticated()) {
       throw new Error('Please login to comment');
     }
@@ -382,6 +390,7 @@ export const postAPI = {
       body: JSON.stringify({
         post: parseInt(postId),
         content: content,
+        ...(originalContent ? { original_content: originalContent } : {}),
       }),
     });
     
