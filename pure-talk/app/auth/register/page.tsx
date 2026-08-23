@@ -8,10 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaEye, FaEyeSlash, FaCheck, FaCamera, FaImage } from 'react-icons/fa';
 import { Loader2, Mail, X, Heart } from 'lucide-react';
 import { authAPI } from '@/lib/api';
-<<<<<<< HEAD
-=======
 import HeroVideo from '@/components/HeroVideo';
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
 
 interface FormData {
   first_name: string;
@@ -40,16 +37,6 @@ const STEP_LABELS = [
 const Register: React.FC = () => {
   const router = useRouter();
 
-<<<<<<< HEAD
-  // Fixed dark theme – no toggle
-  const isDarkMode = true;
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
-  const [isHoveringForm, setIsHoveringForm] = useState(false);
-
-=======
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
   const [formData, setFormData] = useState<FormData>({
     first_name: '', last_name: '', email: '',
     password: '', confirmPassword: '', birthday: '', gender: '', bio: '', 
@@ -71,164 +58,6 @@ const Register: React.FC = () => {
   const [isModalOpen,    setIsModalOpen]    = useState(false);
   const [fieldErrors,    setFieldErrors]    = useState<Record<string, string>>({});
 
-<<<<<<< HEAD
-  // Wave canvas animation (dark theme)
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationId: number;
-    let time = 0;
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-
-    const handleResize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
-    };
-
-    let ripples: { x: number; y: number; radius: number; alpha: number }[] = [];
-
-    const drawBackground = () => {
-      // Dark gradient (matches custom.css)
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#060816');
-      gradient.addColorStop(0.5, '#0a0f1f');
-      gradient.addColorStop(1, '#111827');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // Cyan particles
-      ctx.fillStyle = '#0a939630';
-      for (let i = 0; i < 100; i++) {
-        const starX = (i * 173) % width;
-        const starY = (i * 257) % (height * 0.4);
-        ctx.beginPath();
-        ctx.arc(starX, starY, Math.random() * 1.2 + 0.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
-    const drawWave = (
-      amplitude: number,
-      frequency: number,
-      speed: number,
-      color: string,
-      phaseOffset: number,
-      currentTime: number,
-      mouseInfluence: { x: number | null; strength: number }
-    ) => {
-      ctx.beginPath();
-      const baseY = height * 0.65;
-      let x = 0;
-      let y: number;
-
-      while (x <= width) {
-        let waveY = Math.sin(x * frequency + currentTime * speed + phaseOffset) * amplitude;
-        if (mouseInfluence.x !== null && mouseInfluence.strength > 0) {
-          const dx = x - mouseInfluence.x;
-          const distance = Math.abs(dx);
-          const maxDistance = 200;
-          if (distance < maxDistance) {
-            const rippleIntensity = mouseInfluence.strength * (1 - distance / maxDistance);
-            waveY += Math.sin(distance * 0.05 - currentTime * 15) * rippleIntensity * 12;
-          }
-        }
-        y = baseY + waveY;
-        if (x === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-        x += 5;
-      }
-
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
-      ctx.closePath();
-      ctx.fillStyle = color;
-      ctx.fill();
-    };
-
-    const drawRipples = () => {
-      ripples = ripples.filter(r => r.alpha > 0);
-      ripples.forEach(ripple => {
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(10, 147, 150, ${ripple.alpha * 0.6})`;
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, ripple.radius * 0.5, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(16, 146, 149, ${ripple.alpha * 0.4})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ripple.radius += 3;
-        ripple.alpha -= 0.025;
-      });
-    };
-
-    const addRipple = (x: number, y: number) => {
-      if (y > height * 0.5) {
-        ripples.push({ x, y, radius: 10, alpha: 0.9 });
-      }
-    };
-
-    const animate = () => {
-      if (!ctx) return;
-      drawBackground();
-
-      let mouseInfluence = { x: null as number | null, strength: 0 };
-      if (isHoveringForm && mousePosition) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const canvasX = (mousePosition.x - rect.left) * scaleX;
-        const canvasY = (mousePosition.y - rect.top) * scaleY;
-        mouseInfluence = { x: canvasX, strength: 0.75 };
-        if (Math.random() < 0.12) addRipple(canvasX, canvasY);
-      }
-
-      // Dark theme waves – cyan and deep teal
-      const waves = [
-        { amplitude: 22, frequency: 0.008, speed: 1.2, color: '#0a939630', phase: 0 },
-        { amplitude: 16, frequency: 0.012, speed: 1.5, color: '#10929540', phase: 1.2 },
-        { amplitude: 14, frequency: 0.006, speed: 0.9, color: '#043b3c30', phase: 2.5 },
-      ];
-
-      waves.forEach(wave => {
-        drawWave(wave.amplitude, wave.frequency, wave.speed, wave.color, wave.phase, time, mouseInfluence);
-      });
-
-      drawRipples();
-      time += 0.016;
-      animationId = requestAnimationFrame(animate);
-    };
-
-    const handleCanvasMouseMove = (e: MouseEvent) => {
-      if (isHoveringForm) setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    canvas.addEventListener('mousemove', handleCanvasMouseMove);
-    animate();
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('mousemove', handleCanvasMouseMove);
-      cancelAnimationFrame(animationId);
-    };
-  }, [isHoveringForm, mousePosition]);
-
-=======
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     if (type === 'file') {
@@ -380,16 +209,7 @@ const Register: React.FC = () => {
 
   const curStep = STEP_LABELS[step - 1];
 
-<<<<<<< HEAD
-  // Dark input classes
-  const getInputClasses = (hasError?: boolean) => {
-    return `w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan/40 focus:border-transparent bg-white/5 border-white/10 text-white placeholder-white/30 ${hasError ? 'border-red-500/50' : ''}`;
-  };
-
-  // Gender dropdown
-=======
   // Custom select component with portal-like rendering using fixed positioning
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
   const [isGenderOpen, setIsGenderOpen] = useState(false);
   const genderRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -426,25 +246,6 @@ const Register: React.FC = () => {
   }, []);
 
   return (
-<<<<<<< HEAD
-    <div className="relative min-h-screen w-full overflow-x-hidden font-sans bg-dark-main text-gray-200">
-      {/* Wave Canvas Background */}
-      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full block" />
-
-      {/* Glow effects (matching main page) */}
-      <div className="hero-glow-one" />
-      <div className="hero-glow-two" />
-
-      {/* Nav */}
-      <nav className="absolute top-0 left-0 right-0 z-40 px-6 py-5">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-cyan/50 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Heart className="w-7 h-7 text-cyan relative z-10" fill="currentColor" />
-            </div>
-            <span className="text-lg font-bold tracking-[0.15em] text-white">PURETALK</span>
-=======
     <div className="relative min-h-screen w-full overflow-x-hidden font-sans bg-[#111] text-white selection:bg-red-500 selection:text-white">
       {/* Hero Video background */}
       <HeroVideo />
@@ -469,7 +270,6 @@ const Register: React.FC = () => {
             className="inline-flex items-center rounded-full border border-white/30 px-6 py-2 text-xs tracking-[0.2em] uppercase hover:bg-white/10 transition-colors"
           >
             Sign In
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
           </Link>
         </div>
       </header>
@@ -477,7 +277,7 @@ const Register: React.FC = () => {
       {/* Split layout */}
       <div className="relative z-20 flex flex-col lg:flex-row min-h-[calc(100vh-85px)] max-w-7xl mx-auto px-6 py-10">
 
-        {/* LEFT — Branding (dark) */}
+        {/* LEFT — Branding */}
         <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-8 lg:p-14 order-2 lg:order-1">
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -485,14 +285,6 @@ const Register: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.2, ease: [0.23, 1, 0.32, 1] }}
             className="max-w-md w-full"
           >
-<<<<<<< HEAD
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] mb-5">
-              <span className="block text-white">Your story</span>
-              <span className="block text-white bg-clip-text bg-gradient-to-r from-cyan via-desaturated-cyan to-blue-green pb-1">Starts here.</span>
-            </h1>
-
-            <p className="text-base leading-relaxed font-light mb-8 max-w-sm text-gray-300">
-=======
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold uppercase leading-tight tracking-tight mb-5">
               <span className="block text-white">Your story</span>
               <span className="block text-red-500">
@@ -501,7 +293,6 @@ const Register: React.FC = () => {
             </h1>
 
             <p className="text-base leading-relaxed font-light mb-8 max-w-sm text-white/70">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
               Share moments, spark conversations, and build your tribe — a community where every voice is heard and every story matters.
             </p>
 
@@ -511,15 +302,6 @@ const Register: React.FC = () => {
                 { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>, title: 'Post, share & react', sub: 'Stories, threads, photos & more' },
                 { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, title: 'Safe & authentic', sub: 'AI keeps your feed toxicity-free' },
               ].map(({ icon, title, sub }) => (
-<<<<<<< HEAD
-                <div key={title} className="flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-sm bg-white/4 border border-white/5">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#0a939622' }}>
-                    <span className="text-cyan">{icon}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{title}</p>
-                    <p className="text-xs text-gray-400">{sub}</p>
-=======
                 <div key={title} className="flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-white/10 text-red-400">
                     {icon}
@@ -527,7 +309,6 @@ const Register: React.FC = () => {
                   <div>
                     <p className="text-sm font-bold text-white uppercase">{title}</p>
                     <p className="text-xs text-white/50">{sub}</p>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                   </div>
                 </div>
               ))}
@@ -536,80 +317,43 @@ const Register: React.FC = () => {
             <div className="mt-8 pt-5 border-t border-white/10 flex gap-7">
               {[['2M+','Members'],['180+','Countries'],['4.9★','Rated']].map(([v, l]) => (
                 <div key={l}>
-<<<<<<< HEAD
-                  <p className="text-xl font-bold bg-gradient-to-r from-cyan to-desaturated-cyan bg-clip-text text-white">{v}</p>
-                  <p className="text-xs mt-0.5 text-gray-400">{l}</p>
-=======
                   <p className="text-xl font-bold text-white tracking-tight">{v}</p>
                   <p className="text-xs mt-0.5 font-mono text-white/40 uppercase">{l}</p>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                 </div>
               ))}
             </div>
           </motion.div>
         </div>
 
-<<<<<<< HEAD
-        {/* RIGHT — Form (dark glass) */}
-        <div
-          className="lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-10 order-1 lg:order-2"
-          onMouseEnter={() => setIsHoveringForm(true)}
-          onMouseLeave={() => { setIsHoveringForm(false); setMousePosition(null); }}
-        >
-=======
         {/* RIGHT — Form */}
         <div className="lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-10 order-1 lg:order-2">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.25, ease: [0.23, 1, 0.32, 1] }}
             className="w-full max-w-[680px]"
           >
-<<<<<<< HEAD
-            <div
-              className="backdrop-blur-2xl rounded-3xl relative overflow-visible bg-gray-900/60 border border-white/10"
-              style={{ boxShadow: '0 20px 60px rgba(10,147,150,0.14), 0 0 0 0.5px rgba(255,255,255,0.06)' }}
-            >
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-cyan via-desaturated-cyan to-blue-green" />
-=======
             <div className="backdrop-blur-2xl rounded-3xl relative overflow-visible border border-white/10 bg-[#1a1a1a]/80 shadow-2xl p-7">
               <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-500 to-orange-500 rounded-t-3xl" />
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
 
               <div>
 
-<<<<<<< HEAD
-                {/* Progress - 5 steps (cyan) */}
-=======
                 {/* Progress - 5 steps */}
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                 <div className="flex justify-between items-center mb-6 pb-5 border-b border-white/10">
                   {[1,2,3,4,5].map((n) => (
                     <React.Fragment key={n}>
                       <div
                         className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-mono font-bold transition-all duration-500 ${
                           step >= n
-<<<<<<< HEAD
-                            ? 'bg-gradient-to-tr from-cyan to-deep-dark-cyan text-white'
-                            : 'bg-white/5 text-gray-500 border border-white/10'
-                        }`}
-                        style={step >= n ? { boxShadow: '0 0 14px rgba(10,147,150,0.40)' } : {}}
-=======
                             ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
                             : 'bg-black/40 text-gray-500 border border-white/10'
                         }`}
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       >
                         {step > n ? <FaCheck size={11} /> : n}
                       </div>
                       {n < 5 && (
                         <div className="flex-1 mx-1.5">
-<<<<<<< HEAD
-                          <div className={`h-0.5 rounded-full transition-all duration-500 ${step > n ? 'bg-gradient-to-r from-cyan to-deep-dark-cyan' : 'bg-white/10'}`} />
-=======
                           <div className={`h-0.5 rounded-full transition-all duration-500 ${step > n ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-white/10'}`} />
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         </div>
                       )}
                     </React.Fragment>
@@ -618,13 +362,8 @@ const Register: React.FC = () => {
 
                 {/* Step heading */}
                 <div className="mb-5">
-<<<<<<< HEAD
-                  <h2 className="text-2xl font-bold tracking-tight text-white">{curStep.title}</h2>
-                  <p className="text-sm mt-0.5 text-gray-400">{curStep.sub}</p>
-=======
                   <h2 className="text-2xl font-bold uppercase tracking-tight text-white">{curStep.title}</h2>
                   <p className="text-xs font-mono uppercase text-white/50 mt-0.5">{curStep.sub}</p>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                 </div>
 
                 {/* Alerts */}
@@ -634,15 +373,9 @@ const Register: React.FC = () => {
                       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                       animate={{ opacity: 1, height: 'auto', marginBottom: 14 }}
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-<<<<<<< HEAD
-                      className="p-3 rounded-xl text-xs flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-300"
-                    >
-                      <X size={14} className="shrink-0 mt-0.5 cursor-pointer" onClick={() => setApiError('')} />
-=======
                       className="p-3 rounded-xl text-xs flex items-start gap-2 bg-red-500/20 border border-red-500/40 text-red-300"
                     >
                       <X size={14} className="shrink-0 mt-0.5 cursor-pointer text-red-400" onClick={() => setApiError('')} />
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       <p className="flex-1 break-words">{apiError}</p>
                     </motion.div>
                   )}
@@ -651,11 +384,7 @@ const Register: React.FC = () => {
                       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                       animate={{ opacity: 1, height: 'auto', marginBottom: 14 }}
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-<<<<<<< HEAD
-                      className="p-3 rounded-xl text-xs bg-green-500/10 border border-green-500/30 text-green-300 flex items-start gap-2"
-=======
                       className="p-3 rounded-xl text-xs bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 flex items-start gap-2"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                     >
                       <FaCheck size={12} className="shrink-0 mt-0.5" />
                       <p>{successMsg}</p>
@@ -670,11 +399,7 @@ const Register: React.FC = () => {
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-<<<<<<< HEAD
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">First name *</label>
-=======
                           <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">First name *</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           <input 
                             type="text" 
                             name="first_name" 
@@ -689,11 +414,7 @@ const Register: React.FC = () => {
                           )}
                         </div>
                         <div>
-<<<<<<< HEAD
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Last name *</label>
-=======
                           <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Last name *</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           <input 
                             type="text" 
                             name="last_name" 
@@ -710,11 +431,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Email address *</label>
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Email address *</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         <input 
                           type="email" 
                           name="email" 
@@ -727,48 +444,29 @@ const Register: React.FC = () => {
                         {fieldErrors.email ? (
                           <p className="text-red-400 text-[10px] mt-1">{fieldErrors.email}</p>
                         ) : (
-<<<<<<< HEAD
-                          <p className="text-[11px] mt-1 text-gray-400">We'll never share your email.</p>
-=======
                           <p className="text-[11px] mt-1 text-white/40 font-mono">We&apos;ll never share your email.</p>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-<<<<<<< HEAD
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Birthday</label>
-=======
                           <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Birthday</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           <input 
                             type="date" 
                             name="birthday" 
                             value={formData.birthday} 
                             onChange={handleChange} 
-<<<<<<< HEAD
-                            className={`${getInputClasses(!!fieldErrors.birthday)} [color-scheme:dark]`} 
-=======
                             className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent [color-scheme:dark]" 
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           />
                           {fieldErrors.birthday && (
                             <p className="text-red-400 text-[10px] mt-1">{fieldErrors.birthday}</p>
                           )}
                         </div>
                         <div className="relative" ref={genderRef}>
-<<<<<<< HEAD
-                          <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Gender</label>
-                          <div 
-                            onClick={openGenderDropdown}
-                            className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan/40 focus:border-transparent cursor-pointer flex justify-between items-center bg-white/5 border-white/10 text-white ${fieldErrors.gender ? 'border-red-500/50' : ''}`}
-=======
                           <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Gender</label>
                           <div 
                             onClick={openGenderDropdown}
                             className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent cursor-pointer flex justify-between items-center"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           >
                             <span className={!formData.gender ? 'text-white/30' : ''}>
                               {formData.gender ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1).replace(/_/g, ' ') : 'Select'}
@@ -789,11 +487,7 @@ const Register: React.FC = () => {
                   {step === 2 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Password *</label>
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Password *</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         <div className="relative">
                           <input 
                             type={showPw ? 'text' : 'password'} 
@@ -805,11 +499,7 @@ const Register: React.FC = () => {
                             className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent pr-11" 
                             placeholder="Min 6 characters" 
                           />
-<<<<<<< HEAD
-                          <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-cyan transition-colors">
-=======
                           <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-white">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                             {showPw ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                           </button>
                         </div>
@@ -821,11 +511,7 @@ const Register: React.FC = () => {
                             {[1,2,3,4].map(i => (
                               <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                                 formData.password.length >= i * 3
-<<<<<<< HEAD
-                                  ? i <= 1 ? 'bg-red-500' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-cyan'
-=======
                                   ? i <= 1 ? 'bg-red-500' : i <= 2 ? 'bg-orange-400' : i <= 3 ? 'bg-yellow-400' : 'bg-emerald-500'
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                                   : 'bg-white/10'
                               }`} />
                             ))}
@@ -834,11 +520,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Confirm password *</label>
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Confirm password *</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         <div className="relative">
                           <input 
                             type={showCPw ? 'text' : 'password'} 
@@ -849,11 +531,7 @@ const Register: React.FC = () => {
                             className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent pr-11" 
                             placeholder="Repeat password" 
                           />
-<<<<<<< HEAD
-                          <button type="button" onClick={() => setShowCPw(!showCPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-cyan transition-colors">
-=======
                           <button type="button" onClick={() => setShowCPw(!showCPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors text-white/50 hover:text-white">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                             {showCPw ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                           </button>
                         </div>
@@ -868,21 +546,12 @@ const Register: React.FC = () => {
                         )}
                       </div>
 
-<<<<<<< HEAD
-                      <div className="p-4 rounded-2xl flex gap-3 items-start bg-cyan/5 border border-cyan/15">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-cyan/15">
-                          <Heart className="w-3.5 h-3.5 text-cyan" fill="currentColor" />
-                        </div>
-                        <div className="text-xs text-cyan-200/75">
-                          <p className="font-semibold mb-0.5 text-cyan-200">Protect your account</p>
-=======
                       <div className="p-4 rounded-2xl flex gap-3 items-start bg-white/5 border border-white/10">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-red-500/20 text-red-400">
                           <Heart className="w-3.5 h-3.5" fill="currentColor" />
                         </div>
                         <div className="text-xs text-white/60">
                           <p className="font-mono uppercase font-bold mb-0.5 text-white">Protect your account</p>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           <p>Mix letters, numbers, and symbols. Never share your password with anyone.</p>
                         </div>
                       </div>
@@ -893,11 +562,7 @@ const Register: React.FC = () => {
                   {step === 3 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Mobile Number (optional)</label>
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Mobile Number (optional)</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         <input 
                           type="tel" 
                           name="mobile_number" 
@@ -912,11 +577,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">Country (optional)</label>
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">Country (optional)</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         <input 
                           type="text" 
                           name="country" 
@@ -931,11 +592,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">City (optional)</label>
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">City (optional)</label>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         <input 
                           type="text" 
                           name="city" 
@@ -951,22 +608,13 @@ const Register: React.FC = () => {
 
                       <div className="p-4 rounded-2xl flex gap-3 items-start bg-white/5 border border-white/10">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-white/10">
-<<<<<<< HEAD
-                          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-=======
                           <svg className="w-3.5 h-3.5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                         </div>
-<<<<<<< HEAD
-                        <div className="text-xs text-gray-400">
-                          <p className="font-semibold mb-0.5 text-gray-300">Location helps personalize your experience</p>
-=======
                         <div className="text-xs text-white/60">
                           <p className="font-mono uppercase font-bold mb-0.5 text-white">Location helps personalize your experience</p>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           <p>Your location is never shared publicly without your permission.</p>
                         </div>
                       </div>
@@ -977,17 +625,6 @@ const Register: React.FC = () => {
                   {step === 4 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-2 uppercase tracking-wider text-gray-400">Profile photo</label>
-                        <div className="flex items-center gap-4">
-                          <div className="relative group flex-shrink-0">
-                            {profilePreview ? (
-                              <img src={profilePreview} alt="Profile" className="w-[72px] h-[72px] rounded-full object-cover border-2 border-cyan group-hover:scale-105 transition-transform"
-                                style={{ boxShadow: '0 0 14px rgba(10,147,150,0.35)' }} />
-                            ) : (
-                              <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center group-hover:scale-105 transition-transform bg-white/5 border border-white/20">
-                                <FaCamera className="text-white/35" size={22} />
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-2 text-white/60">Profile photo</label>
                         <div className="flex items-center gap-4">
                           <div className="relative group flex-shrink-0">
@@ -996,22 +633,14 @@ const Register: React.FC = () => {
                             ) : (
                               <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center bg-black/40 border border-white/20">
                                 <FaCamera className="text-white/40" size={22} />
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                               </div>
                             )}
                           </div>
                           <div className="flex-1">
-<<<<<<< HEAD
-                            <p className="text-xs mb-2 text-gray-400">Your profile photo appears on your posts, comments, and profile page.</p>
-                            <label className="cursor-pointer inline-block">
-                              <input type="file" name="profile_image" accept="image/*" onChange={handleChange} className="hidden" />
-                              <span className="px-4 py-2 rounded-full text-xs font-bold transition-all bg-white/5 hover:bg-cyan/20 hover:border-cyan/40 text-white border border-white/10">
-=======
                             <p className="text-xs mb-2 text-white/50">Your profile photo appears on your posts, comments, and profile page.</p>
                             <label className="cursor-pointer inline-block">
                               <input type="file" name="profile_image" accept="image/*" onChange={handleChange} className="hidden" />
                               <span className="px-5 py-2 rounded-full text-xs font-mono uppercase tracking-wider transition-all bg-white/10 hover:bg-white/20 text-white border border-white/20">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                                 {profilePreview ? 'Change photo' : 'Upload photo'}
                               </span>
                             </label>
@@ -1023,20 +652,6 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-2 uppercase tracking-wider text-gray-400">Cover photo</label>
-                        {coverPreview ? (
-                          <div className="relative group overflow-hidden rounded-2xl border border-cyan/25 h-24 mb-2">
-                            <img src={coverPreview} alt="Cover" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                          </div>
-                        ) : (
-                          <div
-                            className="h-20 w-full rounded-2xl flex flex-col items-center justify-center border border-dashed transition-colors cursor-pointer mb-2 bg-white/5 border-white/15 hover:bg-cyan/5 hover:border-cyan/30"
-                            onClick={() => document.getElementById('cover-input')?.click()}
-                          >
-                            <FaImage className="text-white/25" size={22} />
-                            <span className="text-xs mt-1.5 text-gray-400">Add a cover photo for your profile</span>
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-2 text-white/60">Cover photo</label>
                         {coverPreview ? (
                           <div className="relative group overflow-hidden rounded-2xl border border-white/20 h-24 mb-2">
@@ -1049,16 +664,11 @@ const Register: React.FC = () => {
                           >
                             <FaImage className="text-white/30" size={22} />
                             <span className="text-xs font-mono uppercase mt-1.5 text-white/40">Add a cover photo for your profile</span>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           </div>
                         )}
                         <label className="cursor-pointer block w-full">
                           <input id="cover-input" type="file" name="cover_image" accept="image/*" onChange={handleChange} className="hidden" />
-<<<<<<< HEAD
-                          <span className="block w-full text-center px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 hover:bg-cyan/10 text-white border border-white/10 hover:border-cyan/25">
-=======
                           <span className="block w-full text-center px-4 py-2.5 rounded-xl text-xs font-mono uppercase tracking-wider transition-all bg-white/10 hover:bg-white/20 text-white border border-white/20">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                             {coverPreview ? 'Change cover' : 'Upload cover'}
                           </span>
                         </label>
@@ -1068,11 +678,7 @@ const Register: React.FC = () => {
                       </div>
 
                       <div>
-<<<<<<< HEAD
-                        <label className="block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-gray-400">
-=======
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-1.5 text-white/60">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           Bio <span className="normal-case font-normal">(optional)</span>
                         </label>
                         <textarea
@@ -1087,11 +693,7 @@ const Register: React.FC = () => {
                         {fieldErrors.bio && (
                           <p className="text-red-400 text-[10px] mt-1">{fieldErrors.bio}</p>
                         )}
-<<<<<<< HEAD
-                        <p className="text-[11px] mt-1 text-right text-gray-400">{formData.bio.length}/150</p>
-=======
                         <p className="text-[11px] mt-1 text-right text-white/40 font-mono">{formData.bio.length}/150</p>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       </div>
                     </motion.div>
                   )}
@@ -1099,38 +701,21 @@ const Register: React.FC = () => {
                   {/* STEP 5 — Review */}
                   {step === 5 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-<<<<<<< HEAD
-                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                        <div className="flex items-center gap-3 mb-3">
-                          {profilePreview
-                            ? <img src={profilePreview} alt="" className="w-11 h-11 rounded-full object-cover border border-cyan/50" />
-                            : <div className="w-11 h-11 rounded-full bg-gradient-to-br from-cyan to-deep-dark-cyan flex items-center justify-center text-white font-bold text-base">
-=======
                       <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
                         <div className="flex items-center gap-3 mb-3">
                           {profilePreview
                             ? <img src={profilePreview} alt="" className="w-11 h-11 rounded-full object-cover border border-red-500" />
                             : <div className="w-11 h-11 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center text-white font-bold text-base">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                                 {formData.first_name[0]?.toUpperCase()}
                               </div>
                           }
                           <div className="min-w-0">
-<<<<<<< HEAD
-                            <p className="font-semibold text-sm truncate text-white">{formData.first_name} {formData.last_name}</p>
-                            <p className="text-xs text-cyan">{formData.email}</p>
-                            {formData.bio && <p className="text-xs mt-0.5 line-clamp-1 text-gray-400">{formData.bio}</p>}
-                          </div>
-                        </div>
-                        <div className="space-y-1.5 text-xs border-t pt-3 border-white/10">
-=======
                             <p className="font-bold text-sm truncate uppercase text-white">{formData.first_name} {formData.last_name}</p>
                             <p className="text-xs font-mono text-red-400">{formData.email}</p>
                             {formData.bio && <p className="text-xs mt-0.5 line-clamp-1 text-white/50">{formData.bio}</p>}
                           </div>
                         </div>
                         <div className="space-y-1.5 text-xs border-t pt-3 border-white/10 font-mono">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           {[
                             ['Email', formData.email],
                             ...(formData.mobile_number ? [['Mobile', formData.mobile_number]] : []),
@@ -1142,62 +727,36 @@ const Register: React.FC = () => {
                             ...(coverPreview ? [['Cover Photo', 'Uploaded']] : []),
                           ].map(([k, v]) => (
                             <div key={k} className="flex justify-between gap-4">
-<<<<<<< HEAD
-                              <span className="flex-shrink-0 text-gray-400">{k}</span>
-=======
                               <span className="flex-shrink-0 text-white/40 uppercase">{k}</span>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                               <span className="font-medium capitalize truncate text-white">{v}</span>
                             </div>
                           ))}
                         </div>
                       </div>
 
-<<<<<<< HEAD
-                      <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan/10 to-blue-green/10 border border-cyan/20">
-=======
                       <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         <label className="flex items-start gap-3 cursor-pointer group">
                           <div className="relative flex items-center justify-center shrink-0 mt-0.5">
                             <input
                               type="checkbox"
                               checked={agreed}
                               onChange={(e) => setAgreed(e.target.checked)}
-<<<<<<< HEAD
-                              className="w-4 h-4 appearance-none rounded border-2 border-cyan/50 checked:bg-cyan checked:border-cyan outline-none transition-all cursor-pointer peer"
-=======
                               style={{ accentColor: '#ef4444' }}
                               className="w-4 h-4 rounded cursor-pointer"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                             />
                           </div>
-<<<<<<< HEAD
-                          <span className="text-xs leading-relaxed group-hover:text-white transition-colors text-gray-300">
-                            I agree to PureTalk's{' '}
-                            <Link href="/terms" className="font-bold text-cyan hover:text-desaturated-cyan transition-colors">Terms of Service</Link>
-                            {' '}and{' '}
-                            <Link href="/privacy" className="font-bold text-cyan hover:text-desaturated-cyan transition-colors">Privacy Policy</Link>.
-                            I'll keep my conversations real and respectful.
-=======
                           <span className="text-xs leading-relaxed text-white/70">
                             I agree to PureTalk&apos;s{' '}
                             <Link href="/terms" className="font-bold text-red-400 hover:text-red-300 transition-colors">Terms of Service</Link>
                             {' '}and{' '}
                             <Link href="/privacy" className="font-bold text-red-400 hover:text-red-300 transition-colors">Privacy Policy</Link>.
                             I&apos;ll keep my conversations real and respectful.
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                           </span>
                         </label>
                       </div>
 
-<<<<<<< HEAD
-                      <p className="text-xs flex items-center gap-2 px-1 text-gray-400">
-                        <Heart className="w-3 h-3 text-cyan flex-shrink-0" fill="currentColor" />
-=======
                       <p className="text-xs flex items-center gap-2 px-1 text-white/50 font-mono uppercase">
                         <Heart className="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="currentColor" />
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                         After joining you can customise your feed, follow people, and post your first story.
                       </p>
                     </motion.div>
@@ -1207,11 +766,7 @@ const Register: React.FC = () => {
                   <div className="flex gap-3 pt-2">
                     {step > 1 && (
                       <button type="button" onClick={prevStep} disabled={isLoading}
-<<<<<<< HEAD
-                        className="py-3 px-5 rounded-full text-sm font-bold transition-all disabled:opacity-50 hidden sm:block active:scale-95 bg-white/5 hover:bg-white/10 text-white border border-white/10"
-=======
                         className="py-3 px-6 rounded-full text-xs font-mono uppercase tracking-wider transition-all disabled:opacity-50 hidden sm:block bg-white/10 hover:bg-white/20 text-white border border-white/20"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       >
                         Back
                       </button>
@@ -1219,12 +774,7 @@ const Register: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-<<<<<<< HEAD
-                      className="flex-1 py-3.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-cyan to-deep-dark-cyan hover:from-deep-dark-cyan hover:to-cyan text-white hover:scale-[1.02] active:scale-95"
-                      style={{ boxShadow: '0 6px 20px rgba(10,147,150,0.38)' }}
-=======
                       className="flex-1 py-3.5 rounded-full text-xs font-mono uppercase tracking-widest font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                     >
                       {isLoading
                         ? <><Loader2 className="animate-spin" size={17} />{step === 5 ? 'Creating profile…' : 'Saving…'}</>
@@ -1241,13 +791,8 @@ const Register: React.FC = () => {
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-white/10" />
                       </div>
-<<<<<<< HEAD
-                      <div className="relative flex justify-center text-[11px] uppercase font-bold tracking-widest">
-                        <span className="px-4 bg-transparent text-gray-500">or join with</span>
-=======
                       <div className="relative flex justify-center text-[11px] font-mono uppercase tracking-widest">
                         <span className="px-4 bg-[#1a1a1a] text-white/40">or join with</span>
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       </div>
                     </div>
 
@@ -1255,11 +800,7 @@ const Register: React.FC = () => {
                       <button
                         onClick={() => { setIsGoogleLoad(true); setTimeout(() => { alert('Google OAuth integration coming soon'); setIsGoogleLoad(false); }, 1500); }}
                         disabled={isGoogleLoad || isLoading}
-<<<<<<< HEAD
-                        className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all bg-white/5 hover:bg-white/15 border border-white/10 text-white text-sm font-semibold disabled:opacity-50 hover:scale-[1.02] active:scale-95"
-=======
                         className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all bg-white hover:bg-gray-100 text-black text-xs font-mono uppercase tracking-wider font-bold disabled:opacity-50"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       >
                         {isGoogleLoad ? <Loader2 className="animate-spin" size={17} /> : (
                           <>
@@ -1277,11 +818,7 @@ const Register: React.FC = () => {
                       <button
                         onClick={() => { setIsAppleLoad(true); setTimeout(() => { alert('Apple OAuth integration coming soon'); setIsAppleLoad(false); }, 1500); }}
                         disabled={isAppleLoad || isLoading}
-<<<<<<< HEAD
-                        className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all bg-white/5 hover:bg-white/15 border border-white/10 text-white text-sm font-semibold disabled:opacity-50 hover:scale-[1.02] active:scale-95"
-=======
                         className="py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-mono uppercase tracking-wider font-bold disabled:opacity-50 bg-white/10 hover:bg-white/20 border border-white/20 text-white"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       >
                         {isAppleLoad ? <Loader2 className="animate-spin" size={17} /> : (
                           <>
@@ -1297,19 +834,11 @@ const Register: React.FC = () => {
                 )}
 
                 {/* Sign in link */}
-<<<<<<< HEAD
-                <p className="text-center text-sm mt-6 text-gray-400">
-                  Already have an account?{' '}
-                  <Link
-                    href="/auth/login"
-                    className="font-semibold text-cyan hover:text-desaturated-cyan transition-colors"
-=======
                 <p className="text-center text-xs font-mono uppercase mt-6 text-white/50">
                   Already have an account?{' '}
                   <Link
                     href="/auth/login"
                     className="font-bold text-red-400 hover:text-red-300 transition-colors"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                   >
                     Sign in instead
                   </Link>
@@ -1320,11 +849,7 @@ const Register: React.FC = () => {
         </div>
       </div>
 
-<<<<<<< HEAD
-      {/* Gender Dropdown - Portal style */}
-=======
       {/* Gender Dropdown */}
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
       <AnimatePresence>
         {isGenderOpen && (
           <motion.div
@@ -1339,11 +864,7 @@ const Register: React.FC = () => {
               width: dropdownPosition.width,
               zIndex: 9999,
             }}
-<<<<<<< HEAD
-            className="rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl border bg-gray-900/95 border-white/15"
-=======
             className="rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl border border-white/15 bg-[#1a1a1a]/95 text-white"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
           >
             <div className="py-1">
               {['male', 'female', 'custom', 'prefer_not_to_say'].map((option) => (
@@ -1353,11 +874,7 @@ const Register: React.FC = () => {
                   onClick={() => selectGender(option)}
                   className={`w-full text-left px-4 py-2.5 text-xs font-mono uppercase transition-colors ${
                     formData.gender === option
-<<<<<<< HEAD
-                      ? 'bg-cyan/10 text-cyan'
-=======
                       ? 'bg-red-500/20 text-red-400'
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                       : 'text-white/80 hover:bg-white/10'
                   }`}
                 >
@@ -1374,28 +891,6 @@ const Register: React.FC = () => {
         {isModalOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-<<<<<<< HEAD
-              onClick={() => setIsModalOpen(false)} className="fixed inset-0 backdrop-blur-sm bg-black/60 z-50" />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-md rounded-2xl shadow-2xl overflow-hidden bg-gray-900/95 backdrop-blur-xl border border-white/15"
-              style={{ boxShadow: '0 25px 50px rgba(10,147,150,0.20)' }}
-            >
-              <div className="flex justify-between items-center p-5 border-b border-white/10">
-                <h3 className="text-base font-bold flex items-center gap-2 text-white">
-                  <Mail className="text-cyan w-4 h-4" /> Need Help?
-                </h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white transition">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="p-6">
-                <p className="text-center mb-4 text-sm text-gray-300">Trouble signing up? Our team is here for you.</p>
-                <button onClick={() => (window.location.href = 'mailto:support@puretalk.com')}
-                  className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-gradient-to-r from-cyan to-deep-dark-cyan hover:from-deep-dark-cyan hover:to-cyan text-white text-sm font-bold transition-all active:scale-95"
-                  style={{ boxShadow: '0 5px 15px rgba(10,147,150,0.35)' }}
-=======
               onClick={() => setIsModalOpen(false)} className="fixed inset-0 backdrop-blur-md z-50 bg-black/80" />
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1414,7 +909,6 @@ const Register: React.FC = () => {
                 <p className="text-center mb-4 text-xs font-mono uppercase text-white/60">Trouble signing up? Our team is here for you.</p>
                 <button onClick={() => (window.location.href = 'mailto:support@puretalk.com')}
                   className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-mono uppercase tracking-widest font-bold transition-all shadow-lg"
->>>>>>> b4e6d24b3cc3919d734ab50651e9dbaccbb04610
                 >
                   Email Support Team
                 </button>
@@ -1424,34 +918,9 @@ const Register: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Global styles for glow effects (matching custom.css) */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
         * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-
-        .hero-glow-one {
-          position: fixed;
-          top: -120px;
-          left: -120px;
-          width: 400px;
-          height: 400px;
-          background: rgba(10, 147, 150, 0.2);
-          filter: blur(120px);
-          border-radius: 999px;
-          z-index: 0;
-        }
-
-        .hero-glow-two {
-          position: fixed;
-          right: -120px;
-          top: 250px;
-          width: 350px;
-          height: 350px;
-          background: rgba(238, 155, 0, 0.15);
-          filter: blur(120px);
-          border-radius: 999px;
-          z-index: 0;
-        }
       `}</style>
     </div>
   );
