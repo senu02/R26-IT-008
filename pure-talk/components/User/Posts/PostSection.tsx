@@ -176,6 +176,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
 
     try {
       let finalContent = content;
+      let originalContent = content;
 
       if (content.trim()) {
         try {
@@ -185,9 +186,11 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
             return;
           } else if (shield.strategy === 'Rewriting') {
             finalContent = shield.output;
+            originalContent = content;
             toast.showInfo('✏️ Your post was auto-rewritten to keep things positive.');
           } else if (shield.strategy === 'Blurring') {
             finalContent = shield.output;
+            originalContent = content;
             toast.showInfo('🌫️ Some words in your post have been blurred.');
           }
         } catch (shieldErr) {
@@ -195,7 +198,11 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         }
       }
 
-      const newPost = await postAPI.createPost({ content: finalContent, image });
+      // Send the cleaned text for display, but the ORIGINAL typed text
+      // for behavior enforcement — otherwise AESM's rewrite/blur silently
+      // launders a toxic message into a "clean" one before it ever
+      // reaches the profile-enforcement pipeline.
+      const newPost = await postAPI.createPost({ content: finalContent, image, originalContent });
 
       if (newPost) {
         setPosts(prev => [newPost, ...prev]);
@@ -268,6 +275,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
 
     try {
       let finalContent = content;
+      let originalContent = content;
       try {
         const shield = await adaptiveShieldingAPI.analyzeMessage(content, 'comment');
         if (shield.strategy === 'Filtering') {
@@ -279,6 +287,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
           return;
         } else if (shield.strategy === 'Rewriting') {
           finalContent = shield.output;
+          originalContent = content;
           setShieldAlert(prev => ({
             ...prev,
             [postId]: { type: 'rewrite', message: '✏️ Your comment was auto-rewritten to keep things positive.' }
@@ -289,12 +298,17 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
             [postId]: { type: 'blur', message: '🌫️ Some words in your comment have been blurred.' }
           }));
           finalContent = shield.output;
+          originalContent = content;
         }
       } catch (shieldErr) {
         console.warn('Shield check skipped:', shieldErr);
       }
 
-      const newComment = await postAPI.createComment(postId, finalContent);
+      // Post the display (cleaned) content, but still send the ORIGINAL
+      // typed text for behavior enforcement — otherwise a user who typed
+      // something toxic gets credited as "clean" once AESM rewrites it,
+      // silently lowering their severity score.
+      const newComment = await postAPI.createComment(postId, finalContent, originalContent);
       if (newComment) {
         await fetchCommentsForPost(postId);
         setPosts(posts.map(p =>
