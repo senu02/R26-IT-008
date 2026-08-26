@@ -68,11 +68,18 @@ def get_toxicity(text: str) -> float:
     # Force a minimum toxicity score if known toxic words are present,
     # ensuring that final_score reaches at least 0.30 (Rewriting threshold)
     lw_text = text.lower()
-    for word in _REPLACEMENTS.keys():
-        if re.search(r'\b' + re.escape(word) + r'\b', lw_text):
-            if score < 0.5:
-                score = 0.5
-            break
+    toxic_word_count = sum(
+        1 for word in _REPLACEMENTS.keys()
+        if re.search(r'\b' + re.escape(word) + r'\b', lw_text)
+    )
+    if toxic_word_count >= 4:
+        score = max(score, 0.92)
+    elif toxic_word_count >= 3:
+        score = max(score, 0.78)
+    elif toxic_word_count >= 2:
+        score = max(score, 0.62)
+    elif toxic_word_count >= 1 and score < 0.5:
+        score = 0.5
             
     return score
 
@@ -140,8 +147,16 @@ _REPLACEMENTS = {
 
 
 def blur_text(text: str) -> str:
+    toxic_keys = set(_REPLACEMENTS.keys())
     words = text.split()
-    return " ".join(["****" if len(w) > 4 else w for w in words])
+    result = []
+    for w in words:
+        core = re.sub(r"[^a-zA-Z]", "", w).lower()
+        if core in toxic_keys or len(w) > 4:
+            result.append("****")
+        else:
+            result.append(w)
+    return " ".join(result)
 
 
 def rewrite_text(text: str) -> str:
@@ -168,7 +183,8 @@ def highlight_toxic_words(text: str) -> str:
     words = text.split()
     result = []
     for w in words:
-        if w.lower() in toxic_keys:
+        core = re.sub(r"[^a-zA-Z]", "", w).lower()
+        if core in toxic_keys:
             result.append(f"**{w}**")
         else:
             result.append(w)
@@ -209,32 +225,37 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
     behavior = get_behavior_score(user_history)
     final_score = (toxicity * 0.7) + (behavior * 0.3)
 
-    # Force rewriting if specific toxic words are found (to ensure testing works)
     lw_text = text.lower()
-    needs_rewrite = any(re.search(r'\b' + re.escape(w) + r'\b', lw_text) for w in _REPLACEMENTS.keys())
+    needs_rewrite = any(
+        re.search(r'\b' + re.escape(w) + r'\b', lw_text)
+        for w in _REPLACEMENTS.keys()
+    )
 
-    if final_score >= 0.85 and not needs_rewrite:
+    if final_score >= 0.85:
         return {
             "strategy": "Filtering",
             "output": "🚫 Message hidden due to high toxicity",
+            "support": emotional_support(),
             "toxicity": round(toxicity, 4),
             "behavior": round(behavior, 4),
             "final_score": round(final_score, 4),
         }
 
-    elif final_score >= 0.65 and not needs_rewrite:
+    elif final_score >= 0.65:
         return {
             "strategy": "Blurring",
             "output": blur_text(text),
+            "support": emotional_support(),
             "toxicity": round(toxicity, 4),
             "behavior": round(behavior, 4),
             "final_score": round(final_score, 4),
         }
 
-    elif final_score >= 0.45 and not needs_rewrite:
+    elif final_score >= 0.45:
         return {
             "strategy": "Warning",
             "output": f"⚠️ {highlight_toxic_words(text)}",
+            "support": emotional_support(),
             "toxicity": round(toxicity, 4),
             "behavior": round(behavior, 4),
             "final_score": round(final_score, 4),
@@ -246,6 +267,7 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
             "strategy": "Rewriting",
             "output": rewritten,
             "new_toxicity": round(get_toxicity(rewritten), 4),
+            "support": emotional_support(),
             "toxicity": round(toxicity, 4),
             "behavior": round(behavior, 4),
             "final_score": round(final_score, 4),

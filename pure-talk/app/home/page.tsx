@@ -25,7 +25,14 @@ export default function Home() {
   }, []);
 
   if (!mounted) {
-    return null;
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#111] text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-red-500" />
+          <p className="text-sm text-white/60">Loading feed...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

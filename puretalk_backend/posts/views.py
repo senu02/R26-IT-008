@@ -152,6 +152,14 @@ def _toxicity_response(result):
     return None
 
 
+def _aesm_already_processed(content: str, enforcement_text: str) -> bool:
+    """True when the frontend AESM shield already sanitized the display text."""
+    return (
+        bool(enforcement_text.strip())
+        and enforcement_text.strip() != (content or '').strip()
+    )
+
+
 def _run_image_toxicity_check(image_files, author, post):
     """
     Run image toxicity scan on every uploaded image file.
@@ -298,9 +306,8 @@ class PostViewSet(viewsets.ModelViewSet):
                 content_type='post',
             )
 
-            blocked = _toxicity_response(result)
+            blocked = None if _aesm_already_processed(content, enforcement_text) else _toxicity_response(result)
             if blocked:
-                # Soft-delete the post so it isn't visible
                 post.status = PostStatus.REPORTED
                 post.save(update_fields=['status'])
                 return blocked
@@ -345,7 +352,7 @@ class PostViewSet(viewsets.ModelViewSet):
                 post=post,
                 content_type='post',
             )
-            blocked = _toxicity_response(result)
+            blocked = None if _aesm_already_processed(new_content, enforcement_text) else _toxicity_response(result)
             if blocked:
                 return blocked
         # ─────────────────────────────────────────────────────────────────
@@ -667,7 +674,7 @@ class CommentViewSet(viewsets.ModelViewSet):
                 content_type='comment',
             )
 
-            blocked = _toxicity_response(result)
+            blocked = None if _aesm_already_processed(content, enforcement_text) else _toxicity_response(result)
             if blocked:
                 comment.is_active = False
                 comment.save(update_fields=['is_active'])

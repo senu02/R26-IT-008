@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Mail, Phone, X, Loader2, Heart, Zap, MessageCircle, Users } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { authAPI } from '@/lib/api';
 import Link from 'next/link';
 import HeroVideo from '@/components/HeroVideo';
@@ -20,7 +19,6 @@ interface LoginError {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -32,12 +30,38 @@ export default function LoginPage() {
   const [isAppleLoading, setIsAppleLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem('auth_token');
-    if (token && token !== 'undefined' && token !== 'null') {
-      router.push('/home');
+    const userData = localStorage.getItem('user_data');
+
+    if (
+      token &&
+      token !== 'undefined' &&
+      token !== 'null' &&
+      userData &&
+      userData !== 'undefined' &&
+      userData !== 'null'
+    ) {
+      try {
+        const parsed = JSON.parse(userData);
+        const role = parsed?.role || localStorage.getItem('user_role');
+        if (parsed?.email || parsed?.id) {
+          if (role === 'admin' || role === 'super_admin') {
+            window.location.replace('/admin/dashboard');
+          } else if (role === 'moderator') {
+            window.location.replace('/admin/dashboard');
+          } else {
+            window.location.replace('/home');
+          }
+          return;
+        }
+      } catch {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('user_role');
+      }
     }
 
     const savedEmail = localStorage.getItem('rememberedEmail');
@@ -46,7 +70,8 @@ export default function LoginPage() {
       setEmail(savedEmail);
       setRememberMe(true);
     }
-  }, [router]);
+    setSessionChecked(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,14 +103,12 @@ export default function LoginPage() {
         localStorage.setItem('rememberMe', 'false');
       }
       
-      const userRole = response.user.role;
-      if (userRole === 'admin' || userRole === 'super_admin') {
-        router.push('/admin/dashboard');
-      } else if (userRole === 'moderator') {
-        router.push('/moderator/dashboard');
-      } else {
-        router.push('/home');
+      const userRole = response.user.role || response.role;
+      let destination = '/home';
+      if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'moderator') {
+        destination = '/admin/dashboard';
       }
+      window.location.assign(destination);
       
     } catch (err: unknown) {
       console.error('Login error:', err);
@@ -126,6 +149,17 @@ export default function LoginPage() {
     alert(`Password reset via ${method} will be available soon!`);
     setIsModalOpen(false);
   };
+
+  if (!sessionChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#111] text-white">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-red-500" />
+          <p className="text-sm text-white/60">Loading sign in...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden font-sans bg-[#111] text-white selection:bg-red-500 selection:text-white">

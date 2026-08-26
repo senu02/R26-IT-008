@@ -32,7 +32,7 @@ export default function DangerZone({ onDeleteAccount }: DangerZoneProps) {
     if (result.success) {
       showSuccess('Account deleted successfully');
       setTimeout(() => {
-        window.location.href = '/login';
+        window.location.href = '/auth/login';
       }, 1500);
     } else {
       showError(`Failed to delete account: ${result.error}`);

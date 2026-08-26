@@ -6,9 +6,11 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from .engine import aesm_engine
+from .xai import get_lime_word_explanation
 from .models import ToxicityRecord
 from .serializers import (
     AnalyzeRequestSerializer,
+    ExplainRequestSerializer,
     AnalyzeResponseSerializer,
     ToxicityRecordSerializer,
 )
@@ -61,6 +63,8 @@ class AnalyzeMessageView(APIView):
         # ── Run AESM engine ──
         result = aesm_engine(text, user_history=user_history)
 
+        # LIME is admin-only via POST /api/shield/explain/ — omit here so
+        # comment/post shield checks stay fast and do not time out in the browser.
         # ── Persist the result ──
         ToxicityRecord.objects.create(
             user=request.user,
@@ -99,6 +103,38 @@ class AnalyzeMessageView(APIView):
                 logger.error(f"Behaviour enforcement failed (AESM path): {exc}")
 
         return Response(result, status=status.HTTP_200_OK)
+
+
+class ExplainMessageView(APIView):
+    """
+    POST /api/shield/explain/
+    Admin-only on-demand LIME explanation without saving a record.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        role = getattr(request.user, 'role', None)
+        if role not in {'admin', 'super_admin', 'moderator'}:
+            return Response(
+                {"detail": "Admin access required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = ExplainRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        text = serializer.validated_data["text"]
+        try:
+            lime = get_lime_word_explanation(text)
+        except Exception as exc:
+            logger.error(f"LIME explanation failed: {exc}")
+            return Response(
+                {"detail": "Explanation generation failed."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response({"lime_explanation": lime}, status=status.HTTP_200_OK)
 
 
 class UserToxicityHistoryView(APIView):
