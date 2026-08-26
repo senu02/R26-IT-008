@@ -11,17 +11,17 @@ import {
   Loader2, 
   RefreshCw, 
   AlertTriangle, 
-  BarChart3,
   Flame,
   Sparkles,
   Binary,
   Activity,
   Zap
 } from 'lucide-react';
-import { adaptiveShieldingAPI, type ShieldAdminRecord } from '@/lib/api';
+import { adaptiveShieldingAPI, type ShieldAdminRecord, type LimeExplanation } from '@/lib/api';
 
 const STRATEGY_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   Safe:      { label: 'Safe',      color: 'bg-green-500/15 text-green-400 border-green-500/30',  icon: <ShieldCheck  className="w-3.5 h-3.5" /> },
+  Warning:   { label: 'Warning',   color: 'bg-amber-500/15 text-amber-400 border-amber-500/30',  icon: <AlertTriangle className="w-3.5 h-3.5" /> },
   Blurring:  { label: 'Blurring',  color: 'bg-purple-500/15 text-purple-400 border-purple-500/30', icon: <EyeOff       className="w-3.5 h-3.5" /> },
   Rewriting: { label: 'Rewriting', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30',    icon: <Eye          className="w-3.5 h-3.5" /> },
   Filtering: { label: 'Filtered',  color: 'bg-red-500/15 text-red-400 border-red-500/30',       icon: <ShieldOff    className="w-3.5 h-3.5" /> },
@@ -33,6 +33,17 @@ export default function AdaptiveShieldingAdminPage() {
   const [error, setError]           = useState<string | null>(null);
   const [filter, setFilter]         = useState<string>('All');
   const [search, setSearch]         = useState('');
+  const [limeModal, setLimeModal]     = useState<{ message: string; data: LimeExplanation | null; loading: boolean } | null>(null);
+
+  const handleExplain = async (message: string) => {
+    setLimeModal({ message, data: null, loading: true });
+    try {
+      const res = await adaptiveShieldingAPI.explainMessage(message);
+      setLimeModal({ message, data: res.lime_explanation, loading: false });
+    } catch {
+      setLimeModal({ message, data: null, loading: false });
+    }
+  };
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -40,26 +51,30 @@ export default function AdaptiveShieldingAdminPage() {
     try {
       const data = await adaptiveShieldingAPI.getAdminRecords();
       setRecords(data.records);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to fetch records. Admin access required.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch records. Admin access required.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchRecords(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchRecords(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // ── Derived stats ────────────────────────────────────────────────
   const stats = {
     total:     records.length,
     safe:      records.filter(r => r.strategy === 'Safe').length,
+    warning:   records.filter(r => r.strategy === 'Warning').length,
     blurred:   records.filter(r => r.strategy === 'Blurring').length,
     rewritten: records.filter(r => r.strategy === 'Rewriting').length,
     filtered:  records.filter(r => r.strategy === 'Filtering').length,
   };
 
   // ── Advanced Intelligence Metrics ────────────────────────────────
-  const nonSafeCount = stats.blurred + stats.rewritten + stats.filtered;
+  const nonSafeCount = stats.warning + stats.blurred + stats.rewritten + stats.filtered;
   const rehabilitatedRate = nonSafeCount > 0 ? ((stats.rewritten / nonSafeCount) * 100).toFixed(1) : '0.0';
 
   // Leetspeak / Obfuscation pattern detection count
@@ -144,10 +159,11 @@ export default function AdaptiveShieldingAdminPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: 'Total',     value: stats.total,     color: 'from-white/10 to-white/5',              text: 'text-white'       },
           { label: 'Safe',      value: stats.safe,      color: 'from-green-500/20 to-green-500/5',     text: 'text-green-400'   },
+          { label: 'Warnings',  value: stats.warning,   color: 'from-amber-500/20 to-amber-500/5',     text: 'text-amber-400'   },
           { label: 'Blurred',   value: stats.blurred,   color: 'from-purple-500/20 to-purple-500/5',   text: 'text-purple-400'  },
           { label: 'Rewritten', value: stats.rewritten, color: 'from-blue-500/20 to-blue-500/5',       text: 'text-blue-400'    },
           { label: 'Filtered',  value: stats.filtered,  color: 'from-red-500/20 to-red-500/5',         text: 'text-red-400'     },
@@ -290,7 +306,7 @@ export default function AdaptiveShieldingAdminPage() {
       {/* Filters + Search */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="flex gap-2 flex-wrap">
-          {['All', 'Safe', 'Blurring', 'Rewriting', 'Filtering'].map(f => (
+          {['All', 'Safe', 'Warning', 'Blurring', 'Rewriting', 'Filtering'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -333,7 +349,7 @@ export default function AdaptiveShieldingAdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 bg-white/5">
-                {['#', 'User', 'Message', 'Strategy', 'Toxicity', 'Behavior', 'Final', 'Output', 'Date'].map(h => (
+                {['#', 'User', 'Message', 'Strategy', 'Toxicity', 'Behavior', 'Final', 'Output', 'XAI', 'Date'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-white/50 font-semibold text-xs uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -370,6 +386,16 @@ export default function AdaptiveShieldingAdminPage() {
                     <td className="px-4 py-3 max-w-[180px]">
                       <p className="text-white/50 text-xs truncate italic" title={r.processed_output}>{r.processed_output}</p>
                     </td>
+                    <td className="px-4 py-3">
+                      {r.strategy !== 'Safe' && (
+                        <button
+                          onClick={() => handleExplain(r.message)}
+                          className="px-2 py-1 rounded-lg text-[10px] font-semibold border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                        >
+                          LIME
+                        </button>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{formatDate(r.created_at)}</td>
                   </tr>
                 );
@@ -378,6 +404,37 @@ export default function AdaptiveShieldingAdminPage() {
           </table>
           <div className="px-4 py-3 border-t border-white/10 text-white/30 text-xs">
             Showing {filtered.length} of {records.length} records
+          </div>
+        </div>
+      )}
+
+      {limeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#1a1a2e] p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <Binary className="w-4 h-4 text-cyan-400" /> LIME Explanation
+              </h3>
+              <button onClick={() => setLimeModal(null)} className="text-white/40 hover:text-white text-sm">✕</button>
+            </div>
+            <p className="text-white/60 text-xs mb-4 truncate" title={limeModal.message}>{limeModal.message}</p>
+            {limeModal.loading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
+            ) : limeModal.data?.words?.length ? (
+              <div className="space-y-2">
+                <p className="text-xs text-white/40">Base toxicity: {(limeModal.data.base_score * 100).toFixed(1)}%</p>
+                {limeModal.data.words.map((w) => (
+                  <div key={w.word} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                    <span className="text-white font-medium text-sm">{w.word}</span>
+                    <span className={`text-xs font-mono ${w.direction === 'increases_toxicity' ? 'text-red-400' : 'text-green-400'}`}>
+                      {w.importance > 0 ? '+' : ''}{(w.importance * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-white/40 text-sm text-center py-6">No significant word contributions found.</p>
+            )}
           </div>
         </div>
       )}

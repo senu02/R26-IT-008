@@ -147,6 +147,23 @@ export interface ProfilesParams { warning_level?: WarningLevel; is_suspended?: b
 export interface EventsParams { user_id?: string; event_type?: EventType; content_type?: ContentType; page?: number; page_size?: number; }
 export interface SuspendRequest { hours?: number; reason?: string; }
 
+export interface ShapFeatureExplanation {
+  shap_value: number;
+  direction: 'increases_risk' | 'decreases_risk';
+  impact: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface XaiExplanation {
+  user_email: string;
+  method: 'SHAP';
+  risk_level: string;
+  risk_score: number;
+  behavior_type: string;
+  model_used: string;
+  ml_active: boolean;
+  shap_explanation: Record<string, ShapFeatureExplanation> | null;
+}
+
 // ─────────────────────────────────────────────
 // API methods
 // BehaviorViewSet → /api/behavior/...
@@ -173,6 +190,11 @@ export const behaviorAPI = {
   // GET /api/behavior/profiles/{id}/
   async getProfile(profileId: string): Promise<UserBehaviorProfile> {
     return apiCall<UserBehaviorProfile>(`/behavior/profiles/${profileId}/`, { method: 'GET' });
+  },
+
+  // GET /api/behavior/profiles/{id}/xai-explanation/
+  async getXaiExplanation(profileId: string): Promise<XaiExplanation> {
+    return apiCall<XaiExplanation>(`/behavior/profiles/${profileId}/xai-explanation/`, { method: 'GET' });
   },
 
   // POST /api/behavior/profiles/{id}/suspend/

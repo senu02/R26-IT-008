@@ -106,7 +106,7 @@ const FriendsPageContent = () => {
         localStorage.removeItem('user_data');
         localStorage.removeItem('user_role');
         setTimeout(() => {
-          window.location.href = '/login';
+          window.location.href = '/auth/login';
         }, 2000);
       } else {
         setError(err.message || 'Failed to load data');
@@ -296,7 +296,7 @@ const FriendsPageContent = () => {
           <div className="text-center">
             <p className="text-red-500 mb-4">Please login to access friends page</p>
             <button 
-              onClick={() => window.location.href = '/login'}
+              onClick={() => { window.location.href = '/auth/login'; }}
               className="px-4 py-2 bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white rounded-lg"
             >
               Go to Login

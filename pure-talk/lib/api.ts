@@ -383,6 +383,18 @@ export const canManageUsers = (): boolean => {
 };
 
 // Adaptive Shielding (AESM) Types & API
+export interface LimeWordExplanation {
+  word: string;
+  importance: number;
+  direction: 'increases_toxicity' | 'decreases_toxicity';
+}
+
+export interface LimeExplanation {
+  method: 'LIME';
+  base_score: number;
+  words: LimeWordExplanation[];
+}
+
 export interface AnalyzeResult {
   strategy: 'Safe' | 'Warning' | 'Blurring' | 'Filtering' | 'Rewriting';
   output: string;
@@ -391,6 +403,7 @@ export interface AnalyzeResult {
   final_score: number;
   support?: string;
   new_toxicity?: number;
+  lime_explanation?: LimeExplanation | null;
 }
 
 export interface ToxicityRecord {
@@ -439,6 +452,13 @@ export const adaptiveShieldingAPI = {
     return await apiCall<{ count: number; records: ShieldAdminRecord[] }>(
       '/api/shield/admin-records/'
     );
+  },
+
+  explainMessage: async (text: string): Promise<{ lime_explanation: LimeExplanation }> => {
+    return await apiCall<{ lime_explanation: LimeExplanation }>('/api/shield/explain/', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
   },
 };
 

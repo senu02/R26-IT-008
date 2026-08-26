@@ -17,6 +17,20 @@ import { adaptiveShieldingAPI } from '@/lib/api';
 import { Lock, SendHorizontal, Loader2, PlusCircle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { ToastProvider, useToast } from '@/context/userToast';
 
+function getErrMessage(err: unknown, fallback = 'An error occurred'): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === 'string') return msg;
+  }
+  return fallback;
+}
+
+function isAuthError(err: unknown): boolean {
+  const msg = getErrMessage(err, '');
+  return msg.includes('login') || msg.includes('Authentication');
+}
+
 interface PostSectionProps {
   theme: ThemeColors;
   isDark: boolean;
@@ -118,13 +132,13 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         console.error('Expected array but got:', data);
         setPosts([]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading posts:', err);
-      if (err.message?.includes('login') || err.message?.includes('Authentication')) {
+      if (isAuthError(err)) {
         setError('Please login to view posts');
         setIsLoggedIn(false);
       } else {
-        setError(err.message || 'Failed to load posts');
+        setError(getErrMessage(err, 'Failed to load posts'));
       }
       setPosts([]);
     } finally {
@@ -161,11 +175,13 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
   };
 
   useEffect(() => {
-    if (isLoggedIn) {
-      loadPosts();
+    if (!isLoggedIn) return;
+    const timer = window.setTimeout(() => {
       setComments({});
       setShowCommentsForPost({});
-    }
+      void loadPosts();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [activeFilter, isLoggedIn]);
 
   const handleNewPost = async (content: string, image?: File) => {
@@ -182,8 +198,11 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         try {
           const shield = await adaptiveShieldingAPI.analyzeMessage(content);
           if (shield.strategy === 'Filtering') {
+            if (shield.support) toast.showInfo(shield.support);
             toast.showError('🚫 Post blocked: your message contains highly toxic content.');
             return;
+          } else if (shield.strategy === 'Warning') {
+            toast.showInfo('⚠️ Your message may contain harmful language. Please review before posting.');
           } else if (shield.strategy === 'Rewriting') {
             finalContent = shield.output;
             originalContent = content;
@@ -193,8 +212,13 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
             originalContent = content;
             toast.showInfo('🌫️ Some words in your post have been blurred.');
           }
-        } catch (shieldErr) {
-          console.warn('Shield check skipped:', shieldErr);
+          if (shield.support) {
+            toast.showInfo(shield.support);
+          }
+        } catch (shieldErr: unknown) {
+          console.warn('Shield check failed:', shieldErr);
+          toast.showError('Shield check failed. Make sure you are logged in and the backend is running.');
+          return;
         }
       }
 
@@ -215,10 +239,10 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         'like'
       );
 
-    } catch (err: any) {
-      if (err.message?.includes('flagged')) {
-        toast.showError(err.message);
-      } else if (err.message?.includes('login')) {
+    } catch (err: unknown) {
+      if (getErrMessage(err, '').includes('flagged')) {
+        toast.showError(getErrMessage(err));
+      } else if (isAuthError(err)) {
         toast.showError('Please login to create a post');
         setIsLoggedIn(false);
       } else {
@@ -250,8 +274,8 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
           ? { ...p, liked: result.isLiked, likes: result.likeCount }
           : p
       ));
-    } catch (err: any) {
-      if (err.message?.includes('login')) {
+    } catch (err: unknown) {
+      if (isAuthError(err)) {
         toast.showError('Please login to like posts');
         setIsLoggedIn(false);
       } else {
@@ -281,10 +305,23 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         if (shield.strategy === 'Filtering') {
           setShieldAlert(prev => ({
             ...prev,
-            [postId]: { type: 'block', message: '🚫 Comment blocked: your message contains highly toxic content.' }
+            [postId]: {
+              type: 'block',
+              message: shield.support
+                ? `🚫 Comment blocked: your message contains highly toxic content.\n${shield.support}`
+                : '🚫 Comment blocked: your message contains highly toxic content.',
+            },
           }));
           setSubmittingComment(prev => ({ ...prev, [postId]: false }));
           return;
+        } else if (shield.strategy === 'Warning') {
+          setShieldAlert(prev => ({
+            ...prev,
+            [postId]: {
+              type: 'warning',
+              message: shield.output.replace(/\*\*/g, '') || '⚠️ Potentially harmful content detected.',
+            },
+          }));
         } else if (shield.strategy === 'Rewriting') {
           finalContent = shield.output;
           originalContent = content;
@@ -300,8 +337,22 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
           finalContent = shield.output;
           originalContent = content;
         }
-      } catch (shieldErr) {
-        console.warn('Shield check skipped:', shieldErr);
+        if (shield.support) {
+          setShieldAlert(prev => ({
+            ...prev,
+            [postId]: {
+              type: prev[postId]?.type || 'support',
+              message: prev[postId]?.message
+                ? `${prev[postId]!.message}\n${shield.support}`
+                : shield.support!,
+            },
+          }));
+        }
+      } catch (shieldErr: unknown) {
+        console.warn('Shield check failed:', shieldErr);
+        toast.showError('Shield check failed. Make sure you are logged in and the backend is running.');
+        setSubmittingComment(prev => ({ ...prev, [postId]: false }));
+        return;
       }
 
       // Post the display (cleaned) content, but still send the ORIGINAL
@@ -319,11 +370,11 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         setCommentText(prev => ({ ...prev, [postId]: '' }));
         setShowCommentsForPost(prev => ({ ...prev, [postId]: true }));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Comment failed:', err);
-      if (err.message?.includes('flagged')) {
-        toast.showError(err.message);
-      } else if (err.message?.includes('login')) {
+      if (getErrMessage(err, '').includes('flagged')) {
+        toast.showError(getErrMessage(err));
+      } else if (isAuthError(err)) {
         toast.showError('Please login to comment');
         setIsLoggedIn(false);
       } else {
@@ -354,10 +405,10 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         }
         return newComments;
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Edit comment failed:', err);
-      if (err.message?.includes('flagged')) {
-        toast.showError(err.message);
+      if (getErrMessage(err, '').includes('flagged')) {
+        toast.showError(getErrMessage(err));
       } else {
         toast.showError('Failed to update comment. Please try again.');
       }
@@ -411,8 +462,8 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
           'like'
         );
       }
-    } catch (err: any) {
-      if (err.message?.includes('login')) {
+    } catch (err: unknown) {
+      if (isAuthError(err)) {
         toast.showError('Please login to share posts');
         setIsLoggedIn(false);
       } else {
@@ -438,7 +489,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         'like'
       );
       return Promise.resolve();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting post:', err);
       toast.showError('Failed to delete post. Please try again.');
       return Promise.reject(err);
@@ -449,7 +500,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
     try {
       const userData = getCurrentUserData();
       return userData?.id || null;
-    } catch (e) {
+    } catch {
       return null;
     }
   };
@@ -466,7 +517,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
           <h3 className={`${theme.text.primary} text-xl font-semibold mb-2`}>Login Required</h3>
           <p className={`${theme.text.muted} mb-6`}>Please login to view and interact with posts</p>
           <button
-            onClick={() => window.location.href = '/login'}
+            onClick={() => { window.location.href = '/auth/login'; }}
             className="px-6 py-2 rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white font-medium transition-all duration-300 hover:scale-105"
           >
             Go to Login
@@ -515,7 +566,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
           <button
             onClick={() => {
               if (isLoggedIn) loadPosts();
-              else window.location.href = '/login';
+              else window.location.href = '/auth/login';
             }}
             className="mt-3 px-4 py-2 rounded-full bg-gradient-to-r from-[#fd297b] to-[#ff655b] text-white text-sm"
           >
@@ -645,6 +696,8 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
                                 ? 'bg-red-500/15 text-red-400 border border-red-500/30'
                                 : shieldAlert[post.id]?.type === 'rewrite'
                                 ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : shieldAlert[post.id]?.type === 'warning'
+                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                                 : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
                             }`}>
                               {shieldAlert[post.id]?.message}

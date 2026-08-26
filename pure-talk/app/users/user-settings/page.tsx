@@ -272,7 +272,7 @@ function UserSettingsContent() {
             'like'
           );
 
-          router.push('/login');
+          router.push('/auth/login');
         } catch (err: any) {
           console.error('Error deleting account:', err);
           setError(err?.message || 'Failed to delete account');
