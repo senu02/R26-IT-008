@@ -196,22 +196,87 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
 
       if (content.trim()) {
         try {
+          // ======================================================
+          // Section 3.6 - Adaptive Emotional Shielding (Post)
+          //
+          // [EN] Before the post reaches the backend, AESM analyses
+          //      the content and returns a 'strategy'. The strategies
+          //      map to the 5 interventions in the research paper:
+          //
+          //   'Filtering'  -> Message Filtering: POST BLOCKED.
+          //                   Most harmful content is completely hidden.
+          //                   [SL] Wada harm content puraya block wenawa.
+          //
+          //   'Warning'    -> Warning Notification: Post allowed,
+          //                   user shown a caution toast message.
+          //                   [SL] Post allow, bat user lata warn karanawa.
+          //
+          //   'Rewriting'  -> Tone Rewriting: AI rewrites the post to
+          //                   neutral language. shield.output = clean
+          //                   version stored in DB. originalContent =
+          //                   what user typed, kept for behavior engine
+          //                   so rewriting doesn't launder toxic scores.
+          //                   [SL] AI neutral ekakata rewrote. shield.output
+          //                   = clean (DB save). originalContent = original
+          //                   (behavior engine ekata - scores adhu wenna
+          //                   denna bae widihata).
+          //
+          //   'Blurring'   -> Content Blurring: offensive words masked
+          //                   in the saved output (e.g. f***).
+          //                   [SL] Offensive words mask karanawa (e.g. f***).
+          //
+          //   'Safe'       -> No intervention. Passes through unchanged.
+          //                   [SL] Intervention nehe. Pass wenawa.
+          // ======================================================
           const shield = await adaptiveShieldingAPI.analyzeMessage(content);
+
+          // -- Strategy 1: FILTERING (Message Filtering / Hide) --
+          // [EN] Highest severity. Post completely rejected and hidden.
+          //      Optional emotional support response shown if available.
+          // [SL] Wada severity. Post puraya reject saha hide karanawa.
+          //      Support message thiyanawa nam dakwannawa.
           if (shield.strategy === 'Filtering') {
             if (shield.support) toast.showInfo(shield.support);
-            toast.showError('🚫 Post blocked: your message contains highly toxic content.');
-            return;
+            toast.showError('Post blocked: your message contains highly toxic content.');
+            return; // Early exit - post must NOT be submitted
+
+          // -- Strategy 2: WARNING (Warning Notification) --------
+          // [EN] Borderline content. Post allowed but user warned.
+          // [SL] Borderline content. Post pass, bat user warn karanawa.
           } else if (shield.strategy === 'Warning') {
-            toast.showInfo('⚠️ Your message may contain harmful language. Please review before posting.');
+            toast.showInfo('Your message may contain harmful language. Please review before posting.');
+
+          // -- Strategy 3: REWRITING (Tone Rewriting) ------------
+          // [EN] AI rewrites aggressive text to neutral tone.
+          //      finalContent = cleaned version (shown publicly).
+          //      originalContent = what user actually typed (sent
+          //      to behavior engine to prevent score laundering).
+          // [SL] AI aggressive text neutral ekakata rewrote.
+          //      finalContent = clean version (public).
+          //      originalContent = user type kala original (behavior
+          //      engine ekata - rewrite una nisat scores adhu wenna
+          //      detta bae widihata).
           } else if (shield.strategy === 'Rewriting') {
-            finalContent = shield.output;
-            originalContent = content;
-            toast.showInfo('✏️ Your post was auto-rewritten to keep things positive.');
+            finalContent = shield.output;  // AI-generated neutral version
+            originalContent = content;     // Original text preserved for scoring
+            toast.showInfo('Your post was auto-rewritten to keep things positive.');
+
+          // -- Strategy 4: BLURRING (Content Blurring) -----------
+          // [EN] Offensive words masked in output (e.g. f***).
+          //      Blurred version saved and shown; original tracked.
+          // [SL] Offensive words mask karanawa (e.g. f***).
+          //      Blurred version save saha dakwannawa. Original track.
           } else if (shield.strategy === 'Blurring') {
-            finalContent = shield.output;
-            originalContent = content;
-            toast.showInfo('🌫️ Some words in your post have been blurred.');
+            finalContent = shield.output;  // Blurred version (words masked)
+            originalContent = content;     // Retained for behavior scoring
+            toast.showInfo('Some words in your post have been blurred.');
           }
+
+          // -- Strategy 5: EMOTIONAL SUPPORT (if present) --------
+          // [EN] Backend optionally appends a supportive guidance
+          //      message for the affected user, shown as extra toast.
+          // [SL] Backend support message ekak pathkaranawa nam
+          //      eya extra info toast ekakata dakwannawa.
           if (shield.support) {
             toast.showInfo(shield.support);
           }
@@ -301,42 +366,108 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
       let finalContent = content;
       let originalContent = content;
       try {
+        // ======================================================
+        // Section 3.6 - Adaptive Emotional Shielding (Comment)
+        //
+        // [EN] Same AESM pipeline applied to comment submission.
+        //      Results shown as an inline shieldAlert banner below
+        //      the textarea (not a floating toast) so user clearly
+        //      sees which comment was intercepted.
+        //
+        // [SL] Posts walata wage mekama AESM pipeline comments
+        //      walata apply karannawa. Results eka textarea yata
+        //      inline shieldAlert banner ekakata dakwannawa -
+        //      floating toast neme, user lata kon comment affect
+        //      una da clearly dakwanna puluwan.
+        // ======================================================
         const shield = await adaptiveShieldingAPI.analyzeMessage(content, 'comment');
+
+        // -- Strategy 1: FILTERING (block/hide) ----------------
+        // [EN] Comment completely blocked. Red inline alert shown.
+        //      Returns early - comment is NOT submitted to backend.
+        // [SL] Comment puraya block wenawa. Red inline alert.
+        //      Early return - comment backend ekata yawanna nehe.
         if (shield.strategy === 'Filtering') {
           setShieldAlert(prev => ({
             ...prev,
             [postId]: {
               type: 'block',
               message: shield.support
-                ? `🚫 Comment blocked: your message contains highly toxic content.\n${shield.support}`
-                : '🚫 Comment blocked: your message contains highly toxic content.',
+                ? `Comment blocked: your message contains highly toxic content.\n${shield.support}`
+                : 'Comment blocked: your message contains highly toxic content.',
             },
           }));
           setSubmittingComment(prev => ({ ...prev, [postId]: false }));
-          return;
+          return; // Early exit - must not submit
+
+        // -- Strategy 2: WARNING (Warning Notification) --------
+        // [EN] Borderline comment. Amber alert shown; comment still submits.
+        // [SL] Borderline comment. Amber alert dakwannawa, bat submit allow.
         } else if (shield.strategy === 'Warning') {
           setShieldAlert(prev => ({
             ...prev,
             [postId]: {
               type: 'warning',
-              message: shield.output.replace(/\*\*/g, '') || '⚠️ Potentially harmful content detected.',
+              message: shield.output.replace(/\*\*/g, '') || 'Potentially harmful content detected.',
             },
           }));
+
+        // -- Strategy 3: REWRITING (Tone Rewriting) ------------
+        // [EN] AI rewrites comment to neutral tone. Blue alert shown.
+        //      The alert now also displays the rewritten text so the
+        //      user can see exactly what their comment was changed to.
+        //      shield.output = neutral text saved and shown publicly.
+        //      originalContent = original typed text, sent to behavior
+        //      engine to ensure toxic score is NOT laundered away.
+        // [SL] AI comment eka neutral ekakata rewrote. Blue alert.
+        //      Alert eke rewritten text eka dakwannawa — user lata
+        //      own comment eka mokakta change una da kiyala pennawa.
+        //      shield.output = neutral (public save).
+        //      originalContent = original (behavior engine ekata -
+        //      rewrote una nisat scores adhu wenna detta bae).
         } else if (shield.strategy === 'Rewriting') {
-          finalContent = shield.output;
-          originalContent = content;
+          finalContent = shield.output;   // Public-facing, AI-rewritten
+          originalContent = content;      // Original for toxicity scoring
+          // [EN] Show the rewritten text in the banner so the user
+          //      can read what their comment was changed to.
+          // [SL] Rewritten text eka banner eke dakwannawa — user lata
+          //      comment eka mokakta rewrite una da kiyala pennannawa.
           setShieldAlert(prev => ({
             ...prev,
-            [postId]: { type: 'rewrite', message: '✏️ Your comment was auto-rewritten to keep things positive.' }
+            [postId]: {
+              type: 'rewrite',
+              message: `✏️ Your comment was auto-rewritten to keep things positive.\n📝 Rewritten to: "${shield.output}"`,
+            }
           }));
+
+        // -- Strategy 4: BLURRING (Content Blurring) -----------
+        // [EN] Offensive words masked in output (e.g. f***).
+        //      Purple alert shows the blurred version so the user
+        //      can see which words were masked before it posts.
+        // [SL] Offensive words mask karanawa (e.g. f***).
+        //      Blurred version alert eke dakwannawa — user lata
+        //      kona words mask una da kiyala pennannawa.
         } else if (shield.strategy === 'Blurring') {
+          finalContent = shield.output;   // Masked words version
+          originalContent = content;      // Original retained for scoring
+          // [EN] Show the blurred output in the alert so the user
+          //      can see the masked version before it is posted.
+          // [SL] Blurred version alert eke dakwannawa — post wenna
+          //      age user lata mask una version pennannawa.
           setShieldAlert(prev => ({
             ...prev,
-            [postId]: { type: 'blur', message: '🌫️ Some words in your comment have been blurred.' }
+            [postId]: {
+              type: 'blur',
+              message: `🌫️ Some words in your comment have been blurred.\n📝 Posted as: "${shield.output}"`,
+            }
           }));
-          finalContent = shield.output;
-          originalContent = content;
         }
+
+        // -- Strategy 5: EMOTIONAL SUPPORT (if present) --------
+        // [EN] Backend optionally sends a supportive guidance message.
+        //      Merged into existing shieldAlert for that post.
+        // [SL] Backend support message ekak pathkaranawa nam eya
+        //      existing shieldAlert ekatat append karanawa.
         if (shield.support) {
           setShieldAlert(prev => ({
             ...prev,
@@ -691,7 +822,14 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
                             rows={2}
                           />
                           {shieldAlert[post.id] && (
-                            <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
+                            // [EN] Shield alert banner — color coded by strategy type.
+                            //      whitespace-pre-wrap ensures \n in the message string
+                            //      renders as a real line break (e.g. shows the rewritten
+                            //      text on a separate line below the main alert).
+                            // [SL] whitespace-pre-wrap nisat message eke \n eka
+                            //      actual line break ekakata wenawa — rewritten text eka
+                            //      second line ekata dakwanawa.
+                            <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium flex items-start gap-2 animate-fade-in-up ${
                               shieldAlert[post.id]?.type === 'block'
                                 ? 'bg-red-500/15 text-red-400 border border-red-500/30'
                                 : shieldAlert[post.id]?.type === 'rewrite'
@@ -700,7 +838,10 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
                                 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                                 : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
                             }`}>
-                              {shieldAlert[post.id]?.message}
+                              {/* whitespace-pre-wrap: \n renders as a real line break */}
+                              <span className="whitespace-pre-wrap leading-relaxed">
+                                {shieldAlert[post.id]?.message}
+                              </span>
                             </div>
                           )}
                           <div className="flex justify-end mt-2">

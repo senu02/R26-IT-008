@@ -48,11 +48,67 @@ def _load_artifacts():
 # Helper utilities
 # ─────────────────────────────────────────────
 def _normalize(text: str) -> str:
+    """
+    Normalize text before ML scoring.
+    Maps common Singlish words to their English equivalents so the
+    English-trained ML model can still detect toxicity.
+
+    [EN] Maps Singlish slang to English before scoring.
+    [SL] Singlish words English ekakata convert karannawa, ML model
+         eka correctly detect karanna.
+    """
     text = text.lower()
-    # Singlish / slang normalization
-    text = text.replace("oya", "you")
-    text = text.replace("pissu", "crazy")
-    text = text.replace("wesi", "bad")
+    # Singlish word-for-word normalization (order matters - longer first)
+    singlish_map = {
+        # Insults / slurs
+        "huththo":    "bastard",
+        "huththa":    "bastard",
+        "huthto":     "bastard",
+        "hutta":      "bastard",
+        "hutto":      "bastard",
+        "pakaya":     "idiot",
+        "pakayo":     "idiots",
+        "pakku":      "idiots",
+        "pako":       "idiot",
+        "ponnaya":    "idiot",
+        "ponnayo":    "idiots",
+        "ponnayek":   "idiot",
+        "balla":      "dog",
+        "ballo":      "dogs",
+        "balli":      "dog",
+        "modaya":     "idiot",
+        "moda":       "stupid",
+        "wesige":     "whore's",
+        "wesiyek":    "whore",
+        "wesi":       "bad",
+        "kari":       "bad",
+        "kariyo":     "bad people",
+        "pissu":      "crazy",
+        # Pronouns / common words
+        "oya":        "you",
+        "mama":       "i",
+        "api":        "we",
+        "eya":        "he",
+        "eyaa":       "she",
+        "ohu":        "he",
+        "oha":        "she",
+        "eka":        "it",
+        "meka":       "this",
+        "ara":        "that",
+        # Actions
+        "maranawa":   "kill",
+        "gahanawa":   "hit",
+        "denna":      "give",
+        "yanawa":     "go",
+        "enawa":      "come",
+        "karanna":    "do",
+        # Common negative phrases
+        "honda na":   "bad",
+        "nikan":      "just",
+    }
+    for singlish, english in singlish_map.items():
+        text = re.sub(r'\b' + re.escape(singlish) + r'\b', english, text)
+    # Strip non-alphanumeric after mapping
     text = re.sub(r"[^a-z0-9\s]", "", text)
     return text
 
@@ -118,31 +174,47 @@ _REPLACEMENTS = {
     "dick": "jerk",
     "pussy": "coward",
     
-    # Singlish
-    "pako": "friend",
-    "huththo": "friend",
-    "kari": "bad",
-    "ponnaya": "person",
-    "balla": "person",
-    "wesi": "person",
-    "puka": "back",
-    "pakaya": "person",
-    "pissu": "funny",
-    "moda": "silly",
-    "modaya": "silly person",
-    "huthto": "friend",
-    "wesige": "person's",
-    "pakayo": "friends",
-    "huththa": "friend",
-    "hutta": "friend",
-    "ponnayo": "people",
-    "kariyo": "people",
-    "ponnayek": "person",
-    "ballo": "people",
-    "balli": "person",
-    "wesiyek": "person",
-    "hutto": "friend",
-    "pakku": "friends",
+    # ── Singlish insults (rewrite target → neutral replacement) ──────
+    # [EN] These Singlish toxic words are replaced with neutral English
+    #      equivalents in the rewrite_text() and blur_text() functions.
+    # [SL] Meka Singlish toxic words neutral English ekakata replace karanawa.
+    "pako":      "friend",
+    "huththo":   "friend",
+    "huththa":   "friend",
+    "huthto":    "friend",
+    "hutta":     "friend",
+    "hutto":     "friend",
+    "kari":      "bad",
+    "kariyo":    "bad people",
+    "ponnaya":   "person",
+    "ponnayo":   "people",
+    "ponnayek":  "person",
+    "balla":     "person",
+    "ballo":     "people",
+    "balli":     "person",
+    "wesi":      "person",
+    "wesige":    "person's",
+    "wesiyek":   "person",
+    "puka":      "back",
+    "pakaya":    "person",
+    "pakayo":    "friends",
+    "pakku":     "friends",
+    "pissu":     "funny",
+    "moda":      "silly",
+    "modaya":    "silly person",
+    "maranawa":  "hurt",
+    "gahanawa":  "hit",
+    "nikan":     "just",
+    # Additional Singlish insult variants
+    "palayan":   "go away",
+    "yako":      "person",
+    "yakka":     "person",
+    "gon":       "stupid",
+    "gonwa":     "stupid person",
+    "hora":      "thief",
+    "durjanaya": "bad person",
+    "narakaya":  "bad person",
+    "naraka":    "bad",
 }
 
 
@@ -201,18 +273,25 @@ def emotional_support() -> str:
 # ─────────────────────────────────────────────
 # Main AESM Engine
 # ─────────────────────────────────────────────
-def aesm_engine(text: str, user_history: list = None) -> dict:
+def aesm_engine(text: str, user_history: list = None, language: str = "english") -> dict:
     """
     Run the Adaptive Emotional Shielding engine.
 
     Args:
         text:         The incoming message text.
         user_history: List of previous toxicity scores for this user.
+        language:     'english' (default) or 'singlish'.
+                      When 'singlish', thresholds are lowered by 0.10 so
+                      Singlish toxic words that score slightly below the
+                      English threshold still trigger the correct strategy.
+
+    [SL] language='singlish' nam thresholds 0.10 adhu karanawa.
+         Singlish toxic words ML model eke score adhu wenna puluwan
+         (English model nisat), bat threshold adhu kala epa miss wenna.
 
     Returns:
         dict with keys:
-            strategy     – one of: Filtering, Blurring, Warning, Rewriting,
-                           Emotional Support, Safe
+            strategy     – one of: Filtering, Blurring, Warning, Rewriting, Safe
             output       – the processed / final message string
             toxicity     – raw model score
             behavior     – behavioral score
@@ -225,23 +304,49 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
     behavior = get_behavior_score(user_history)
     final_score = (toxicity * 0.7) + (behavior * 0.3)
 
+    # ── Language-aware threshold adjustment ──────────────────────────
+    # [EN] The ML model was trained on English text. Singlish toxic words
+    #      often score 0.10-0.20 lower than their English equivalents because
+    #      the model hasn't seen them during training. Lowering thresholds
+    #      by 0.10 compensates for this systematic under-scoring.
+    # [SL] ML model English text walata train una. Singlish toxic words
+    #      English equivalents walata vada 0.10-0.20 adhu score karanawa.
+    #      Thresholds 0.10 adhu karala eka compensate karanawa.
+    threshold_offset = -0.10 if language == "singlish" else 0.0
+    FILTER_T  = 0.85 + threshold_offset   # e.g. 0.75 for Singlish
+    BLUR_T    = 0.65 + threshold_offset   # e.g. 0.55 for Singlish
+    WARNING_T = 0.45 + threshold_offset   # e.g. 0.35 for Singlish
+    REWRITE_T = 0.30 + threshold_offset   # e.g. 0.20 for Singlish
+
     lw_text = text.lower()
     needs_rewrite = any(
         re.search(r'\b' + re.escape(w) + r'\b', lw_text)
         for w in _REPLACEMENTS.keys()
     )
 
-    if final_score >= 0.85:
+    # ── Strategy selection (language-aware thresholds) ────────────────
+    # [EN] Each strategy maps to one of the 5 AESM interventions.
+    #      Thresholds shift down for Singlish to catch under-scored words.
+    # [SL] Hama strategy eka AESM eke 5 interventions ekakata map wenawa.
+    #      Singlish walata thresholds adhu shift wenawa.
+
+    # -- Filtering (Message Filtering / Hide) --------------------------
+    # [EN] Highest harm. Message completely hidden from the recipient.
+    # [SL] Wada harm. Message puraya hide wenawa.
+    if final_score >= FILTER_T:
         return {
             "strategy": "Filtering",
-            "output": "🚫 Message hidden due to high toxicity",
+            "output": "Message hidden due to high toxicity.",
             "support": emotional_support(),
             "toxicity": round(toxicity, 4),
             "behavior": round(behavior, 4),
             "final_score": round(final_score, 4),
         }
 
-    elif final_score >= 0.65:
+    # -- Blurring (Content Blurring) -----------------------------------
+    # [EN] Offensive words masked (e.g. f***). Message still delivered.
+    # [SL] Offensive words mask karanawa (e.g. f***). Message deliver wenawa.
+    elif final_score >= BLUR_T:
         return {
             "strategy": "Blurring",
             "output": blur_text(text),
@@ -251,17 +356,25 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
             "final_score": round(final_score, 4),
         }
 
-    elif final_score >= 0.45:
+    # -- Warning (Warning Notification) --------------------------------
+    # [EN] Borderline content. Message allowed but toxic words highlighted.
+    # [SL] Borderline content. Message pass, bat toxic words highlight.
+    elif final_score >= WARNING_T:
         return {
             "strategy": "Warning",
-            "output": f"⚠️ {highlight_toxic_words(text)}",
+            "output": f"{highlight_toxic_words(text)}",
             "support": emotional_support(),
             "toxicity": round(toxicity, 4),
             "behavior": round(behavior, 4),
             "final_score": round(final_score, 4),
         }
 
-    elif final_score >= 0.30 or needs_rewrite:
+    # -- Rewriting (Tone Rewriting) ------------------------------------
+    # [EN] Aggressive tone rewritten to neutral language by word-map.
+    #      Also triggers if any known toxic word is present (needs_rewrite).
+    # [SL] Aggressive tone neutral ekakata rewrite wenawa.
+    #      Known toxic word ekak thiyanawa nam always trigger wenawa.
+    elif final_score >= REWRITE_T or needs_rewrite:
         rewritten = rewrite_text(text)
         return {
             "strategy": "Rewriting",
@@ -273,11 +386,13 @@ def aesm_engine(text: str, user_history: list = None) -> dict:
             "final_score": round(final_score, 4),
         }
 
+    # -- Safe (No Intervention) ----------------------------------------
+    # [EN] Clean content. No shielding applied. Passes through unchanged.
+    # [SL] Clean content. Shielding nehe. Unchanged pass wenawa.
     else:
         return {
             "strategy": "Safe",
             "output": text,
-            "support": emotional_support(),
             "toxicity": round(toxicity, 4),
             "behavior": round(behavior, 4),
             "final_score": round(final_score, 4),
