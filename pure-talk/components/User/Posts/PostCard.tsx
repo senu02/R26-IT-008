@@ -217,15 +217,17 @@ const PostCard: React.FC<PostCardProps> = ({
         
         {/* Post Image */}
         {imageSrc && (
-          <div className="mt-2 px-4">
-            <div className="rounded-xl overflow-hidden bg-black/10">
+          <div className="mt-3 relative group">
+            <div className="overflow-hidden rounded-none">
               <img 
                 src={imageSrc}
                 alt="Post content" 
-                className="w-full max-h-[500px] object-contain"
+                className="w-full max-h-[600px] object-cover transition-transform duration-500 group-hover:scale-[1.01]"
                 onError={() => setImageLoadError(true)}
                 loading="lazy"
               />
+              {/* Subtle bottom gradient for polish */}
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
             </div>
           </div>
         )}

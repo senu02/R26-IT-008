@@ -7,7 +7,8 @@ import {
   Search, 
   Compass, 
   MessageCircle, 
-  Heart, 
+  Heart,
+  Bell,
   PlusSquare, 
   Users,
   Menu,
@@ -107,20 +108,20 @@ const Sidebar = () => {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col justify-between border-r border-rose-500/20 bg-[#090d16] text-slate-100 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300 shadow-[8px_0_35px_rgba(0,0,0,0.7)] py-4 overflow-hidden"
+        className="fixed left-0 top-0 z-50 flex h-screen w-[72px] shrink-0 flex-col justify-between border-r border-pink-500/30 bg-[#1e1040] text-slate-100 lg:w-[245px] lg:items-start xl:w-[245px] transition-colors duration-300 shadow-[8px_0_35px_rgba(99,60,180,0.4)] py-4 overflow-hidden"
       >
-        {/* Modern Dark Pattern Background Layers */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a0812] via-[#0d1424] to-[#070b14] opacity-95 pointer-events-none" />
-        <div className="absolute inset-0 bg-sidebar-dark-pattern opacity-40 pointer-events-none" />
-        <div className="absolute inset-0 bg-sidebar-grid-pattern opacity-30 pointer-events-none" />
+        {/* Warm Indigo-Rose Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#2d1b5e] via-[#1a1040] to-[#0f0a2e] opacity-98 pointer-events-none" />
+        <div className="absolute inset-0 bg-sidebar-dark-pattern opacity-30 pointer-events-none" />
+        <div className="absolute inset-0 bg-sidebar-grid-pattern opacity-20 pointer-events-none" />
         
-        {/* Ambient Glow Spotlights */}
-        <div className="absolute -top-24 -left-20 h-64 w-64 rounded-full bg-rose-600/20 blur-3xl pointer-events-none animate-pulse-slow" />
-        <div className="absolute top-1/2 -right-20 h-56 w-56 rounded-full bg-indigo-600/15 blur-3xl pointer-events-none animate-pulse-slow delay-1000" />
-        <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-red-900/25 blur-3xl pointer-events-none animate-pulse-slow delay-2000" />
+        {/* Ambient Glow Spotlights — pink + blue friendly tones */}
+        <div className="absolute -top-24 -left-20 h-64 w-64 rounded-full bg-pink-500/25 blur-3xl pointer-events-none animate-pulse-slow" />
+        <div className="absolute top-1/2 -right-20 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl pointer-events-none animate-pulse-slow delay-1000" />
+        <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-violet-600/25 blur-3xl pointer-events-none animate-pulse-slow delay-2000" />
         
-        {/* Glowing right edge line */}
-        <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-rose-500/40 via-red-500/20 to-transparent pointer-events-none" />
+        {/* Glowing right edge line — pink/violet */}
+        <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-pink-400/60 via-violet-500/30 to-transparent pointer-events-none" />
 
         {/* Top Header & Logo Area */}
         <div className="relative z-10 w-full shrink-0">
@@ -188,7 +189,7 @@ const Sidebar = () => {
           />
           <NavItem 
             href="/users/notifications" 
-            icon={<Heart className="h-6 w-6" />} 
+            icon={<Bell className="h-6 w-6" />} 
             label="Notifications" 
             active={pathname === '/notifications' || pathname === '/users/notifications'} 
             badge={unreadNotifications}
@@ -214,7 +215,7 @@ const Sidebar = () => {
         <div className="relative z-10 shrink-0 flex w-full flex-col px-2 pt-2">
           {/* Pop-up More Menu */}
           {showMoreMenu && (
-            <div className="absolute bottom-16 left-2 flex w-[230px] flex-col rounded-2xl bg-[#141b2d]/95 backdrop-blur-xl p-2 shadow-[0_10px_35px_rgba(0,0,0,0.9)] border border-rose-500/20 z-50 text-slate-100 sidebar-card-pattern">
+            <div className="absolute bottom-16 left-2 flex w-[230px] flex-col rounded-2xl bg-[#1e1040]/95 backdrop-blur-xl p-2 shadow-[0_10px_35px_rgba(99,60,180,0.5)] border border-pink-500/25 z-50 text-slate-100 sidebar-card-pattern">
               {/* Settings with submenu */}
               <div className="relative">
                 <button
@@ -298,11 +299,11 @@ const Sidebar = () => {
 
       {/* Notifications Sliding Drawer */}
       <div 
-        className={`fixed top-0 bottom-0 left-[72px] lg:left-[245px] w-[350px] sm:w-[400px] bg-[#090d16] border-r border-rose-500/20 text-slate-100 shadow-2xl z-40 transition-transform duration-300 ease-in-out overflow-hidden ${
+        className={`fixed top-0 bottom-0 left-[72px] lg:left-[245px] w-[350px] sm:w-[400px] bg-[#1e1040] border-r border-pink-500/25 text-slate-100 shadow-2xl z-40 transition-transform duration-300 ease-in-out overflow-hidden ${
           showNotifications ? 'translate-x-0' : '-translate-x-full hidden'
         }`}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a0812] via-[#0d1424] to-[#070b14] opacity-95 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#2d1b5e] via-[#1a1040] to-[#0f0a2e] opacity-95 pointer-events-none" />
         <div className="absolute inset-0 bg-sidebar-dark-pattern opacity-40 pointer-events-none" />
         <div className="relative z-10 h-full overflow-y-auto" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           <NotificationList />
