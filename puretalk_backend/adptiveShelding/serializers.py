@@ -10,6 +10,14 @@ class AnalyzeRequestSerializer(serializers.Serializer):
     content_type = serializers.ChoiceField(
         choices=["post", "comment"], default="post", required=False
     )
+    # Optional: language hint from the frontend.
+    # 'singlish' → Sinhala-English mixed text (lower ML threshold applied).
+    # 'english'  → standard English (default behaviour).
+    # [SL] Frontend eka language eka dennawa — 'singlish' nam lower
+    #      threshold eka apply karanawa, Singlish toxic words detect karanna.
+    language = serializers.ChoiceField(
+        choices=["english", "singlish"], default="english", required=False
+    )
 
 
 class ExplainRequestSerializer(serializers.Serializer):

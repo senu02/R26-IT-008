@@ -430,11 +430,63 @@ export interface ShieldAdminRecord {
   created_at: string;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Section 3.6 — Adaptive Emotional Shielding (AESM) API
+// ─────────────────────────────────────────────────────────────────
+//
+// [EN] The AESM API is the core frontend interface to the adaptive
+//      shielding engine. It sends the message text to the backend
+//      which returns a strategy (Filtering/Blurring/Warning/Rewriting/Safe)
+//      and the processed output. The frontend then applies the strategy
+//      visually (block, blur banner, warn banner, rewrite banner).
+//
+// [SL] AESM API eka adaptive shielding engine eke core frontend
+//      interface eka. Message text backend ekata pathkaranawa,
+//      strategy eka (Filtering/Blurring/Warning/Rewriting/Safe) saha
+//      processed output eka return karanawa. Frontend eka strategy eka
+//      visually apply karanawa (block, blur banner, warn banner, rewrite).
+// ─────────────────────────────────────────────────────────────────
+
+// [EN] Singlish word list used for auto-detection on the frontend.
+//      If any of these words appear in the message, we send
+//      `language: 'singlish'` so the backend lowers its thresholds.
+// [SL] Meka Singlish words list frontend eke auto-detection walata.
+//      Message eke meka words ekak thiyanawa nam `language: 'singlish'`
+//      pathkaranawa — backend eka lower thresholds apply karanawa.
+const SINGLISH_MARKERS = new Set([
+  'oya','mama','api','eya','ohu','oha','eka','meka','ara','wada',
+  'huththo','huththa','huthto','hutta','hutto','pakaya','pakayo',
+  'pakku','pako','ponnaya','ponnayo','ponnayek','balla','ballo',
+  'balli','modaya','moda','wesige','wesiyek','wesi','kari','kariyo',
+  'pissu','maranawa','gahanawa','palayan','yako','yakka','gon',
+  'gonwa','hora','naraka','narakaya','durjanaya','nikan','machang',
+  'putha','aiya','akka','nangi','mallige','bung','puta',
+]);
+
+// [EN] Returns 'singlish' if the text contains Singlish markers, else 'english'.
+// [SL] Text eke Singlish words thiyanawa nam 'singlish' return karanawa.
+function detectLanguage(text: string): 'singlish' | 'english' {
+  const words = text.toLowerCase().split(/\s+/);
+  return words.some(w => SINGLISH_MARKERS.has(w)) ? 'singlish' : 'english';
+}
+
 export const adaptiveShieldingAPI = {
+  // POST /api/shield/analyze/
+  //
+  // [EN] Core AESM endpoint. Auto-detects whether text is Singlish or
+  //      English and sends the appropriate language hint to the backend
+  //      so blur / rewrite / warning thresholds are correctly calibrated.
+  //
+  // [SL] Core AESM endpoint. Text eka Singlish da English da auto-detect
+  //      karala correct language hint backend ekata pathkaranawa — blur /
+  //      rewrite / warning thresholds correctly calibrate wenna.
   analyzeMessage: async (text: string, contentType: 'post' | 'comment' = 'post'): Promise<AnalyzeResult> => {
+    // [EN] Auto-detect language — sends 'singlish' if Singlish markers found.
+    // [SL] Language auto-detect — Singlish words thiyanawa nam 'singlish' pathkaranawa.
+    const language = detectLanguage(text);
     return await apiCall<AnalyzeResult>('/api/shield/analyze/', {
       method: 'POST',
-      body: JSON.stringify({ text, content_type: contentType }),
+      body: JSON.stringify({ text, content_type: contentType, language }),
     });
   },
 

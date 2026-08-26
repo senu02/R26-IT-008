@@ -52,6 +52,11 @@ class AnalyzeMessageView(APIView):
 
         text = serializer.validated_data["text"]
         content_type = serializer.validated_data.get("content_type", "post")
+        # [EN] Language hint from frontend — 'singlish' applies a lower
+        #      detection threshold so Singlish toxic words aren't missed.
+        # [SL] Frontend eka language hint eka dennawa — 'singlish' nam
+        #      lower threshold eka use karannawa, Singlish words catch karanna.
+        language = serializer.validated_data.get("language", "english")
 
         # ── Fetch user's recent toxicity history (last 20 messages) ──
         recent_records = ToxicityRecord.objects.filter(
@@ -60,8 +65,8 @@ class AnalyzeMessageView(APIView):
 
         user_history = [r.toxicity_score for r in recent_records]
 
-        # ── Run AESM engine ──
-        result = aesm_engine(text, user_history=user_history)
+        # ── Run AESM engine (language-aware) ──
+        result = aesm_engine(text, user_history=user_history, language=language)
 
         # LIME is admin-only via POST /api/shield/explain/ — omit here so
         # comment/post shield checks stay fast and do not time out in the browser.
