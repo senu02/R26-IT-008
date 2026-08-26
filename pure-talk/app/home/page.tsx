@@ -38,7 +38,7 @@ export default function Home() {
   return (
     <BackgroundWrapper isDark={isDark}>
       {/* Main Layout Container - Fixed height */}
-      <div className="flex h-screen w-full bg-[var(--background)] text-[var(--foreground)] font-sans overflow-hidden">
+      <div className="flex h-screen w-full max-w-[1440px] mx-auto bg-[var(--background)] text-[var(--foreground)] font-sans overflow-hidden">
         
         {/* Left Sidebar - Fixed */}
         <aside className="hidden md:block w-[72px] lg:w-[245px] shrink-0 h-full">
@@ -54,13 +54,13 @@ export default function Home() {
               <div 
                 className={`relative flex items-center w-full rounded-2xl transition-all duration-300 backdrop-blur-2xl border ${
                   isSearchFocused 
-                    ? 'bg-black/80 border-red-500/60 ring-2 ring-red-500/30 shadow-[0_0_25px_rgba(239,68,68,0.2)]' 
-                    : 'bg-[#1a1a1a]/90 border-white/10 hover:border-red-500/40 shadow-xl'
+                    ? 'bg-blue-900/40 border-blue-400/70 ring-2 ring-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.25)]' 
+                    : 'bg-blue-950/30 border-blue-500/20 hover:border-blue-400/50 shadow-[0_4px_24px_rgba(0,0,0,0.3)]'
                 }`}
               >
                 {/* Search Icon */}
-                <div className="pl-4 text-white/50 flex items-center pointer-events-none">
-                  <Search className={`h-5 w-5 transition-colors duration-300 ${isSearchFocused ? 'text-red-500' : 'text-white/40'}`} />
+                <div className="pl-4 flex items-center pointer-events-none">
+                  <Search className={`h-5 w-5 transition-colors duration-300 ${isSearchFocused ? 'text-black' : 'text-black/70'}`} />
                 </div>
 
                 {/* Input Field */}
@@ -71,7 +71,7 @@ export default function Home() {
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setIsSearchFocused(false)}
                   placeholder="Search posts, topics, or people..."
-                  className="w-full py-3.5 pl-3 pr-10 text-sm bg-transparent text-white placeholder:text-white/40 focus:outline-none tracking-wide font-sans"
+                  className="w-full py-3.5 pl-3 pr-10 text-sm bg-transparent text-black placeholder:text-black/60 focus:outline-none tracking-wide font-sans font-medium"
                 />
 
                 {/* Clear Button */}
@@ -79,7 +79,7 @@ export default function Home() {
                   <div className="absolute right-3 flex items-center">
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-all"
+                      className="p-1.5 rounded-full text-black/70 hover:text-black hover:bg-black/10 transition-all"
                       title="Clear search"
                     >
                       <X className="h-4 w-4" />
