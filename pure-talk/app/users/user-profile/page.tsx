@@ -68,7 +68,8 @@ function ProfilePageContent() {
 
   useEffect(() => {
     const checkTheme = () => {
-      setIsDark(document.documentElement.classList.contains('dark'));
+      const dark = document.documentElement.classList.contains('dark');
+      setIsDark(dark !== false);
     };
     checkTheme();
     const observer = new MutationObserver(checkTheme);
@@ -263,7 +264,7 @@ function ProfilePageContent() {
   };
 
   // Shared style fragments
-  const cardClass = 'bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-2xl hover:border-slate-700/60 transition-all text-slate-100';
+  const cardClass = 'bg-[#10151f]/95 backdrop-blur-xl border border-rose-500/20 shadow-[0_10px_35px_rgba(0,0,0,0.6)] rounded-3xl p-5 hover:border-rose-500/40 transition-all text-slate-100';
 
   if (loading) {
     return (
@@ -283,13 +284,14 @@ function ProfilePageContent() {
   }
 
   return (
-    <div className="flex bg-[#0b0f17] min-h-screen font-sans selection:bg-red-500 selection:text-white">
-      {/* Left Sidebar - Fixed */}
-      <Sidebar />
+    <BackgroundWrapper isDark={isDark}>
+      <div className="flex min-h-screen font-sans selection:bg-red-500 selection:text-white max-w-[1440px] mx-auto">
+        {/* Left Sidebar - Fixed */}
+        <Sidebar />
 
-      {/* Main Content Area */}
-      <div className="flex-1 lg:ml-[245px] min-h-screen bg-[#0b0f17] text-slate-100">
-        <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-6xl">
+        {/* Main Content Area */}
+        <div className="flex-1 lg:ml-[245px] min-h-screen text-slate-100">
+          <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-6xl">
           {/* Mobile padding */}
           <div className="lg:hidden h-12"></div>
 
@@ -377,12 +379,12 @@ function ProfilePageContent() {
                 {/* Name and Bio */}
                 <div className="mb-2">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-sm">
+                    <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
                       {user?.full_name || 'User Name'}
                     </h1>
                     {getRoleBadge()}
                   </div>
-                  <p className="text-sm text-slate-300 mt-1 max-w-lg font-medium leading-relaxed">
+                  <p className="text-sm text-slate-200 mt-1 max-w-lg font-medium leading-relaxed drop-shadow-sm">
                     {user?.bio || 'No bio added yet'}
                   </p>
                   {getAccountStatusDisplay()}
@@ -397,11 +399,11 @@ function ProfilePageContent() {
                   <UserPlus className="h-4 w-4" />
                   <span>Add Friend</span>
                 </button>
-                <button className="rounded-xl px-4 py-2.5 text-sm font-semibold border border-slate-700/80 bg-slate-900/80 backdrop-blur-md text-slate-200 hover:bg-slate-800 hover:text-white transition-all shadow-md hover:scale-105 flex items-center gap-2">
+                <button className="rounded-xl px-4 py-2.5 text-sm font-semibold border border-rose-500/30 bg-[#10151f]/80 backdrop-blur-md text-slate-100 hover:bg-[#10151f] hover:text-white transition-all shadow-md hover:scale-105 flex items-center gap-2">
                   <MessageCircle className="h-4 w-4 text-rose-400" />
                   <span>Message</span>
                 </button>
-                <button className="rounded-xl p-2.5 border border-slate-700/80 bg-slate-900/80 backdrop-blur-md text-slate-200 hover:bg-slate-800 hover:text-white transition-all shadow-md hover:scale-105">
+                <button className="rounded-xl p-2.5 border border-rose-500/30 bg-[#10151f]/80 backdrop-blur-md text-slate-100 hover:bg-[#10151f] hover:text-white transition-all shadow-md hover:scale-105">
                   <MoreHorizontal className="h-5 w-5" />
                 </button>
             </div>
@@ -409,28 +411,28 @@ function ProfilePageContent() {
         </div>
 
           {/* Quick Stats Bar */}
-          <div className="mb-8 grid grid-cols-3 gap-3 md:gap-6 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-4 md:p-5 shadow-2xl">
+          <div className="mb-8 grid grid-cols-3 gap-3 md:gap-6 bg-[#10151f]/95 backdrop-blur-xl border border-rose-500/20 rounded-2xl p-4 md:p-5 shadow-[0_10px_35px_rgba(0,0,0,0.6)]">
             <div className="flex flex-col items-center justify-center border-r border-slate-800/80 pr-2 md:pr-4">
-              <span className="text-xl md:text-3xl font-black bg-gradient-to-r from-red-500 to-rose-400 bg-clip-text text-transparent">
+              <span className="text-xl md:text-3xl font-black bg-gradient-to-r from-red-500 via-rose-400 to-pink-400 bg-clip-text text-transparent">
                 {friends.length}
               </span>
-              <span className="text-xs md:text-sm text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+              <span className="text-xs md:text-sm text-rose-400/90 font-bold uppercase tracking-wider mt-0.5">
                 Friends
               </span>
             </div>
             <div className="flex flex-col items-center justify-center border-r border-slate-800/80 px-2 md:px-4">
-              <span className="text-xl md:text-3xl font-black text-white">
+              <span className="text-xl md:text-3xl font-black text-slate-100">
                 {photosLoading ? '...' : userPhotos.length}
               </span>
-              <span className="text-xs md:text-sm text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+              <span className="text-xs md:text-sm text-slate-300 font-bold uppercase tracking-wider mt-0.5">
                 Photos
               </span>
             </div>
             <div className="flex flex-col items-center justify-center pl-2 md:pl-4">
-              <span className="text-xl md:text-3xl font-black text-rose-400">
+              <span className="text-xl md:text-3xl font-black text-emerald-400">
                 100%
               </span>
-              <span className="text-xs md:text-sm text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+              <span className="text-xs md:text-sm text-emerald-400/90 font-bold uppercase tracking-wider mt-0.5">
                 Verified
               </span>
             </div>
@@ -592,29 +594,29 @@ function ProfilePageContent() {
             <div className="lg:col-span-1 space-y-4">
               {/* Intro Card */}
               <div className={`rounded-2xl p-4 ${cardClass}`}>
-                <h3 className={`text-base font-semibold mb-3 ${isDark ? 'text-white' : 'text-[#262626]'}`}>Intro</h3>
-                <div className="space-y-3 text-sm">
+                <h3 className="text-base font-bold mb-3 text-slate-100">Intro</h3>
+                <div className="space-y-3 text-sm font-medium">
                   {user?.location && (
                     <div className="flex items-center gap-3">
-                      <MapPin className="h-4 w-4 text-slate-400" />
+                      <MapPin className="h-4 w-4 text-rose-400" />
                       <span className="text-slate-200">Lives in {user.location}</span>
                     </div>
                   )}
                   {user?.email && (
                     <div className="flex items-center gap-3">
-                      <Mail className="h-4 w-4 text-slate-400" />
+                      <Mail className="h-4 w-4 text-rose-400" />
                       <span className="text-slate-200">{user.email}</span>
                     </div>
                   )}
                   {user?.mobile_number && (
                     <div className="flex items-center gap-3">
-                      <Phone className="h-4 w-4 text-slate-400" />
+                      <Phone className="h-4 w-4 text-rose-400" />
                       <span className="text-slate-200">{user.mobile_number}</span>
                     </div>
                   )}
                   {user?.birthday && (
                     <div className="flex items-center gap-3">
-                      <Calendar className="h-4 w-4 text-slate-400" />
+                      <Calendar className="h-4 w-4 text-rose-400" />
                       <span className="text-slate-200">Born {new Date(user.birthday).toLocaleDateString()}</span>
                     </div>
                   )}
@@ -624,8 +626,8 @@ function ProfilePageContent() {
               {/* Friends Card - Dynamic from API */}
               <div className={`rounded-2xl p-4 ${cardClass}`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold text-slate-100">Friends</h3>
-                  <button className="text-sm font-semibold text-red-500 hover:text-red-400 transition-colors">
+                  <h3 className="text-base font-bold text-slate-100">Friends</h3>
+                  <button className="text-sm font-bold text-rose-400 hover:text-rose-300 transition-colors">
                     See All Friends
                   </button>
                 </div>
@@ -710,5 +712,6 @@ function ProfilePageContent() {
         </div>
       </div>
     </div>
+    </BackgroundWrapper>
   );
 }
