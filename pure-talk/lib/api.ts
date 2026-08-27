@@ -458,7 +458,7 @@ const SINGLISH_MARKERS = new Set([
   'huththo','huththa','huthto','hutta','hutto','pakaya','pakayo',
   'pakku','pako','ponnaya','ponnayo','ponnayek','balla','ballo',
   'balli','modaya','moda','wesige','wesiyek','wesi','kari','kariyo',
-  'pissu','maranawa','gahanawa','palayan','yako','yakka','gon',
+  'pissu','maranawa','gahanawa','palayan','palyan','yako','yakka','gon',
   'gonwa','hora','naraka','narakaya','durjanaya','nikan','machang',
   'putha','aiya','akka','nangi','mallige','bung','puta',
 ]);
