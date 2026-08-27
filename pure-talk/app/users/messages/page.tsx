@@ -20,9 +20,12 @@ import {
   Circle,
   Plus,
   Info,
-  X
+  X,
+  Loader2,
+  Users
 } from 'lucide-react';
 import { getCurrentUserData, getImageUrl } from '@/lib/api';
+import { friendsAPI, Friendship } from '@/app/services/friends/actions';
 
 // Interface definitions
 interface Message {
@@ -47,8 +50,8 @@ interface ChatContact {
   messages: Message[];
 }
 
-// Initial mock contacts & conversation data
-const INITIAL_CONTACTS: ChatContact[] = [
+// Initial fallback mock contacts if user has no added friends yet
+const FALLBACK_CONTACTS: ChatContact[] = [
   {
     id: 'user-1',
     name: 'Suranga Lakmal',
@@ -128,26 +131,6 @@ const INITIAL_CONTACTS: ChatContact[] = [
       },
     ],
   },
-  {
-    id: 'user-4',
-    name: 'Dinesh Chandimal',
-    username: 'dinesh_c',
-    avatar: 'https://i.pravatar.cc/150?img=60',
-    isOnline: false,
-    lastSeen: '1d ago',
-    unreadCount: 0,
-    lastMessage: 'Sounds good to me. Talk soon!',
-    lastMessageTime: 'Mon',
-    messages: [
-      {
-        id: 'm7',
-        senderId: 'user-4',
-        text: 'Sounds good to me. Talk soon!',
-        timestamp: 'Mon',
-        isRead: true,
-      },
-    ],
-  },
 ];
 
 export default function MessagesPage() {
@@ -161,7 +144,8 @@ export default function MessagesPage() {
 function MessagesContent() {
   const toast = useToast();
   const [isDark, setIsDark] = useState(true);
-  const [contacts, setContacts] = useState<ChatContact[]>(INITIAL_CONTACTS);
+  const [contacts, setContacts] = useState<ChatContact[]>(FALLBACK_CONTACTS);
+  const [loadingFriends, setLoadingFriends] = useState(true);
   const [selectedContactId, setSelectedContactId] = useState<string>('user-1');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'online'>('all');
@@ -175,6 +159,55 @@ function MessagesContent() {
 
   const theme = getTheme(isDark);
   const selectedContact = contacts.find((c) => c.id === selectedContactId) || contacts[0];
+
+  // Fetch real user friends from API on mount
+  useEffect(() => {
+    loadFriendsList();
+  }, []);
+
+  const loadFriendsList = async () => {
+    setLoadingFriends(true);
+    try {
+      const realFriends = await friendsAPI.getFriendsList();
+      if (realFriends && realFriends.length > 0) {
+        const fetchedContacts: ChatContact[] = realFriends.map((f, index) => {
+          const friendUser = f.friend_detail;
+          const friendName = friendUser?.full_name || friendUser?.email || `Friend ${index + 1}`;
+          const rawAvatar = friendUser?.profile_picture ? getImageUrl(friendUser.profile_picture) : null;
+          const avatar = rawAvatar || `https://ui-avatars.com/api/?background=2d1b5e&color=fff&size=128&name=${encodeURIComponent(friendName)}`;
+          const id = `friend-${f.id || friendUser?.id || index}`;
+
+          return {
+            id,
+            name: friendName,
+            username: friendUser?.email?.split('@')[0] || `user_${index + 1}`,
+            avatar,
+            isOnline: index % 2 === 0, // alternate online status for demo
+            lastSeen: index % 2 === 0 ? undefined : '15m ago',
+            unreadCount: index === 0 ? 1 : 0,
+            lastMessage: 'Hey! Connected on Pure Talk.',
+            lastMessageTime: 'Today',
+            messages: [
+              {
+                id: `msg-welcome-${id}`,
+                senderId: id,
+                text: `Hey! Nice to connect with you on Pure Talk. 👋`,
+                timestamp: 'Today',
+                isRead: true,
+              },
+            ],
+          };
+        });
+
+        setContacts(fetchedContacts);
+        setSelectedContactId(fetchedContacts[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load friends for messages:', err);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -262,9 +295,9 @@ function MessagesContent() {
     setTimeout(() => {
       const replies = [
         "Got it! Thanks for letting me know 👍",
-        "That sounds awesome! Let me review it.",
+        "That sounds awesome! Let me check it out.",
         "Sure thing! Let me know if you need anything else.",
-        "Awesome! Speak to you soon.",
+        "Awesome! Talk to you soon.",
       ];
       const randomReply = replies[Math.floor(Math.random() * replies.length)];
 
@@ -305,36 +338,37 @@ function MessagesContent() {
         <main className="flex-1 flex h-full overflow-hidden p-2 md:p-4 gap-4">
           {/* ================= LEFT CHATS LIST PANEL ================= */}
           <div
-            className={`w-full md:w-[340px] lg:w-[380px] shrink-0 flex flex-col rounded-3xl bg-[#10151f]/95 border border-rose-500/20 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] overflow-hidden transition-all duration-300 ${
+            className={`w-full md:w-[340px] lg:w-[380px] shrink-0 flex flex-col rounded-3xl bg-[#10151f]/95 border border-rose-500/25 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] overflow-hidden transition-all duration-300 ${
               mobileShowChat ? 'hidden md:flex' : 'flex'
             }`}
           >
             {/* Header & Search */}
-            <div className="p-4 border-b border-rose-500/15 space-y-3">
+            <div className="p-4 border-b border-rose-500/20 space-y-3 bg-gradient-to-b from-[#1c1038]/60 to-transparent">
               <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
+                <h1 className="text-xl font-extrabold text-white tracking-wide flex items-center gap-2">
                   <span>Messages</span>
                   <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
                 </h1>
                 <button
                   type="button"
-                  onClick={() => toast.showInfo('Start a new chat by selecting a friend')}
-                  className="p-2 rounded-xl bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 transition-colors border border-rose-500/20"
-                  title="New Conversation"
+                  onClick={loadFriendsList}
+                  className="p-2 rounded-xl bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 transition-all border border-rose-500/25 shadow-sm flex items-center gap-1 text-xs font-semibold"
+                  title="Refresh Friends List"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Refresh</span>
                 </button>
               </div>
 
               {/* Search Bar */}
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-400/80" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search chats or friends..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-rose-500/50 transition-all"
+                  placeholder="Search friends or messages..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/90 border border-rose-500/20 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-rose-500/60 focus:ring-2 focus:ring-rose-500/20 transition-all"
                 />
               </div>
 
@@ -344,10 +378,10 @@ function MessagesContent() {
                   <button
                     key={tab}
                     onClick={() => setFilterTab(tab)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                       filterTab === tab
-                        ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]'
-                        : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/60'
+                        ? 'bg-gradient-to-r from-red-600 via-rose-500 to-rose-600 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]'
+                        : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80'
                     }`}
                   >
                     {tab}
@@ -357,10 +391,15 @@ function MessagesContent() {
             </div>
 
             {/* Contacts List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin scrollbar-thumb-rose-500/20">
-              {filteredContacts.length === 0 ? (
-                <div className="text-center py-10 text-slate-500 text-sm">
-                  No conversations found
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin scrollbar-thumb-rose-500/20">
+              {loadingFriends ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
+                  <Loader2 className="h-6 w-6 animate-spin text-rose-400" />
+                  <span className="text-xs font-medium">Loading your friends list...</span>
+                </div>
+              ) : filteredContacts.length === 0 ? (
+                <div className="text-center py-12 text-slate-500 text-sm">
+                  No friends found
                 </div>
               ) : (
                 filteredContacts.map((contact) => {
@@ -374,8 +413,8 @@ function MessagesContent() {
                       }}
                       className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-200 ${
                         isSelected
-                          ? 'bg-gradient-to-r from-rose-600/25 via-rose-500/15 to-transparent border-l-4 border-rose-500 shadow-[inset_0_0_15px_rgba(244,63,94,0.15)]'
-                          : 'hover:bg-slate-900/60 border border-transparent'
+                          ? 'bg-gradient-to-r from-red-600/30 via-rose-500/20 to-transparent border-l-4 border-rose-500 shadow-[inset_0_0_15px_rgba(244,63,94,0.2)]'
+                          : 'hover:bg-slate-900/70 border border-transparent'
                       }`}
                     >
                       {/* Avatar with online status badge */}
@@ -383,29 +422,29 @@ function MessagesContent() {
                         <img
                           src={contact.avatar}
                           alt={contact.name}
-                          className="h-12 w-12 rounded-full object-cover border border-rose-500/30 shadow-md"
+                          className="h-12 w-12 rounded-full object-cover border-2 border-rose-500/40 shadow-md"
                         />
                         {contact.isOnline && (
-                          <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-[#10151f]" />
+                          <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-[#10151f] shadow-sm" />
                         )}
                       </div>
 
                       {/* Contact Info & Last Message */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className="truncate text-sm font-semibold text-white">
+                          <h3 className="truncate text-sm font-bold text-white">
                             {contact.name}
                           </h3>
-                          <span className="text-[11px] text-slate-400 shrink-0">
+                          <span className="text-[11px] text-slate-400 shrink-0 font-medium">
                             {contact.lastMessageTime}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <p className="truncate text-xs text-slate-400 font-normal">
+                          <p className="truncate text-xs text-slate-300 font-normal">
                             {contact.lastMessage}
                           </p>
                           {contact.unreadCount > 0 && (
-                            <span className="ml-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-extrabold text-white shadow-[0_0_8px_rgba(244,63,94,0.7)]">
+                            <span className="ml-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-600 px-1 text-[10px] font-extrabold text-white shadow-[0_0_10px_rgba(244,63,94,0.7)] animate-pulse">
                               {contact.unreadCount}
                             </span>
                           )}
@@ -420,14 +459,14 @@ function MessagesContent() {
 
           {/* ================= RIGHT ACTIVE CHAT CONVERSATION PANEL ================= */}
           <div
-            className={`flex-1 flex flex-col rounded-3xl bg-[#10151f]/95 border border-rose-500/20 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] overflow-hidden transition-all duration-300 ${
+            className={`flex-1 flex flex-col rounded-3xl bg-[#10151f]/95 border border-rose-500/25 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] overflow-hidden transition-all duration-300 ${
               mobileShowChat ? 'flex' : 'hidden md:flex'
             }`}
           >
             {selectedContact ? (
               <>
                 {/* Active Chat Header */}
-                <div className="flex items-center justify-between p-3.5 md:p-4 border-b border-rose-500/15 bg-slate-900/40">
+                <div className="flex items-center justify-between p-3.5 md:p-4 border-b border-rose-500/20 bg-gradient-to-r from-[#1c1038]/80 to-slate-900/60">
                   <div className="flex items-center gap-3">
                     {/* Mobile Back Button */}
                     <button
@@ -442,21 +481,21 @@ function MessagesContent() {
                       <img
                         src={selectedContact.avatar}
                         alt={selectedContact.name}
-                        className="h-11 w-11 rounded-full object-cover border border-rose-500/40"
+                        className="h-11 w-11 rounded-full object-cover border-2 border-rose-500/40 shadow-md"
                       />
                       {selectedContact.isOnline && (
                         <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[#10151f]" />
                       )}
                     </div>
                     <div>
-                      <h2 className="text-base font-bold text-white leading-tight">
+                      <h2 className="text-base font-extrabold text-white leading-tight">
                         {selectedContact.name}
                       </h2>
-                      <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                      <span className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
                         {selectedContact.isOnline ? (
                           <>
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Active now
+                            <span className="text-emerald-400 font-semibold">Active now</span>
                           </>
                         ) : (
                           `Last seen ${selectedContact.lastSeen || 'recently'}`
@@ -470,7 +509,7 @@ function MessagesContent() {
                     <button
                       type="button"
                       onClick={() => toast.showInfo(`Starting voice call with ${selectedContact.name}...`)}
-                      className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
+                      className="p-2.5 rounded-xl bg-slate-900/90 border border-rose-500/20 text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 hover:border-rose-500/40 transition-all shadow-sm"
                       title="Voice Call"
                     >
                       <Phone className="h-4 w-4" />
@@ -478,14 +517,14 @@ function MessagesContent() {
                     <button
                       type="button"
                       onClick={() => toast.showInfo(`Starting video call with ${selectedContact.name}...`)}
-                      className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
+                      className="p-2.5 rounded-xl bg-slate-900/90 border border-rose-500/20 text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 hover:border-rose-500/40 transition-all shadow-sm"
                       title="Video Call"
                     >
                       <Video className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
-                      className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white transition-all"
+                      className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-white transition-all shadow-sm"
                       title="Contact Info"
                     >
                       <Info className="h-4 w-4" />
@@ -497,7 +536,7 @@ function MessagesContent() {
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-rose-500/20">
                   {/* Date Badge Separator */}
                   <div className="flex items-center justify-center my-2">
-                    <span className="px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800/80 text-[11px] font-semibold text-slate-400">
+                    <span className="px-3.5 py-1 rounded-full bg-slate-900/90 border border-rose-500/20 text-[11px] font-bold text-rose-300/90 shadow-sm">
                       Today
                     </span>
                   </div>
@@ -513,14 +552,14 @@ function MessagesContent() {
                           <img
                             src={selectedContact.avatar}
                             alt="sender"
-                            className="h-7 w-7 rounded-full object-cover mb-1 border border-slate-700"
+                            className="h-8 w-8 rounded-full object-cover mb-1 border border-rose-500/30 shadow-sm"
                           />
                         )}
                         <div
                           className={`max-w-[75%] md:max-w-[65%] rounded-2xl p-3.5 shadow-md ${
                             isMe
-                              ? 'bg-gradient-to-r from-red-600 via-rose-600 to-rose-700 text-white rounded-br-none shadow-[0_4px_15px_rgba(225,29,72,0.3)]'
-                              : 'bg-slate-900/90 border border-slate-800 text-slate-100 rounded-bl-none'
+                              ? 'bg-gradient-to-r from-red-600 via-rose-600 to-rose-700 text-white rounded-br-none shadow-[0_4px_20px_rgba(225,29,72,0.35)]'
+                              : 'bg-[#182032] border border-rose-500/15 text-slate-100 rounded-bl-none shadow-[0_4px_15px_rgba(0,0,0,0.3)]'
                           }`}
                         >
                           {msg.image && (
@@ -531,17 +570,17 @@ function MessagesContent() {
                             />
                           )}
                           {msg.text && (
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words font-medium">
                               {msg.text}
                             </p>
                           )}
                           <div
-                            className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
+                            className={`flex items-center justify-end gap-1 mt-1.5 text-[10px] font-medium ${
                               isMe ? 'text-rose-200' : 'text-slate-400'
                             }`}
                           >
                             <span>{msg.timestamp}</span>
-                            {isMe && <CheckCheck className="h-3 w-3 text-rose-200" />}
+                            {isMe && <CheckCheck className="h-3.5 w-3.5 text-rose-200" />}
                           </div>
                         </div>
                       </div>
@@ -573,7 +612,7 @@ function MessagesContent() {
 
                 {/* Emoji Quick Bar */}
                 {showEmojiPicker && (
-                  <div className="px-4 py-2 bg-slate-900/80 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto">
+                  <div className="px-4 py-2 bg-slate-900/90 border-t border-rose-500/20 flex items-center gap-2 overflow-x-auto">
                     {EMOJIS.map((emoji) => (
                       <button
                         key={emoji}
@@ -582,7 +621,7 @@ function MessagesContent() {
                           setInputMessage((prev) => prev + emoji);
                           setShowEmojiPicker(false);
                         }}
-                        className="text-lg p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                        className="text-lg p-1.5 rounded-lg hover:bg-rose-500/20 transition-colors"
                       >
                         {emoji}
                       </button>
@@ -591,13 +630,13 @@ function MessagesContent() {
                 )}
 
                 {/* Bottom Input Area */}
-                <div className="p-3 md:p-4 border-t border-rose-500/15 bg-slate-900/60">
+                <div className="p-3 md:p-4 border-t border-rose-500/20 bg-[#0d1320]/90 backdrop-blur-md">
                   <div className="flex items-center gap-2">
                     {/* Attachment buttons */}
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-all"
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-all shadow-sm"
                       title="Attach Image"
                     >
                       <ImageIcon className="h-5 w-5" />
@@ -613,7 +652,7 @@ function MessagesContent() {
                     <button
                       type="button"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className={`p-2.5 rounded-xl border transition-all ${
+                      className={`p-2.5 rounded-xl border transition-all shadow-sm ${
                         showEmojiPicker
                           ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                           : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-amber-400'
@@ -632,7 +671,7 @@ function MessagesContent() {
                         if (e.key === 'Enter') handleSendMessage();
                       }}
                       placeholder={`Message ${selectedContact.name}...`}
-                      className="flex-1 px-4 py-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-rose-500/50 transition-all"
+                      className="flex-1 px-4 py-3 rounded-2xl bg-slate-900/90 border border-rose-500/20 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-rose-500/60 focus:ring-2 focus:ring-rose-500/20 transition-all font-medium"
                     />
 
                     {/* Send Button */}
