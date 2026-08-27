@@ -183,9 +183,10 @@ const Sidebar = () => {
             label="Reels" 
           />
           <NavItem 
-            href="#" 
+            href="/users/messages" 
             icon={<MessageCircle className="h-6 w-6" />} 
             label="Messages" 
+            active={pathname === '/messages' || pathname === '/users/messages'}
           />
           <NavItem 
             href="/users/notifications" 
