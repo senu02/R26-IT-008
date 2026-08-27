@@ -5,6 +5,28 @@ import { Flag, Search, X, Eye, Filter, ChevronLeft, ChevronRight } from 'lucide-
 import { useThemeColors } from '@/context/adminTheme';
 import { ToxicityLog, getSeverity, getLogStatus, getCategoryLabel } from '@/app/services/ToxicityDetection/actions';
 
+const ALL_TOXIC_KEYWORDS = [
+  'huththo','huththa','huthto','hutta','hutto','pakaya','pakayo','pakku','pako',
+  'ponnaya','ponnayo','ponnayek','balla','ballo','balli','wesige','wesiyek','wesi',
+  'kari','kariyo','modaya','moda','pissu','gon','gonwa','puka','maranawa','gahanawa',
+  'palayan','palyan','yako','yakka','hora','durjanaya','naraka','narakaya','fuck',
+  'fucking','shit','bitch','asshole','motherfucker','cunt','slut','whore','bastard',
+  'dick','pussy','hate','idiot','stupid','ugly','dumb','useless','worst','kill'
+];
+
+export function extractToxicWords(text: string): string[] {
+  if (!text) return [];
+  const lw = text.toLowerCase();
+  const found: string[] = [];
+  ALL_TOXIC_KEYWORDS.forEach((w) => {
+    const regex = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    if (regex.test(lw) && !found.includes(w)) {
+      found.push(w);
+    }
+  });
+  return found;
+}
+
 const SeverityBadge = ({ severity }: { severity: string }) => {
   const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
     Critical: { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30' },
@@ -203,7 +225,7 @@ export function ToxicityLogsTable({ logs, onReviewLog }: ToxicityLogsTableProps)
             <table className="w-full text-sm">
               <thead style={{ backgroundColor: colors.background.secondary }}>
                 <tr>
-                  {['User', 'Content', 'Type', 'Score', 'Severity', 'Status', 'Time', ''].map((h) => (
+                  {['User', 'Content', 'Detected Toxic Words', 'Type', 'Score', 'Severity', 'Status', 'Time', ''].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: colors.text.tertiary }}>{h}</th>
                   ))}
                 </tr>
@@ -213,6 +235,7 @@ export function ToxicityLogsTable({ logs, onReviewLog }: ToxicityLogsTableProps)
                   const severity = getSeverity(log.max_score);
                   const logStatus = getLogStatus(log);
                   const initial = (log.author_email?.[0] ?? 'U').toUpperCase();
+                  const detectedWords = extractToxicWords(log.analysed_text);
                   return (
                     <tr key={log.id} className="border-t transition-colors hover:bg-white/5" style={{ borderColor: colors.border.light }}>
                       <td className="px-4 py-3">
@@ -224,7 +247,22 @@ export function ToxicityLogsTable({ logs, onReviewLog }: ToxicityLogsTableProps)
                         </div>
                       </td>
                       <td className="px-4 py-3 max-w-xs">
-                        <p className="truncate text-xs" title={log.analysed_text} style={{ color: colors.text.secondary }}>{log.analysed_text}</p>
+                        <p className="truncate text-xs font-medium" title={log.analysed_text} style={{ color: colors.text.primary }}>{log.analysed_text}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1 max-w-[170px]">
+                          {detectedWords.length > 0 ? (
+                            detectedWords.map((w) => (
+                              <span key={w} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/30 whitespace-nowrap">
+                                ⚠️ {w}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs italic" style={{ color: colors.text.tertiary }}>
+                              {getCategoryLabel(log.flagged_labels)}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span style={{ color: colors.text.primary }}>{getCategoryLabel(log.flagged_labels)}</span>

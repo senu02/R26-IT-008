@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, RefreshCw } from 'lucide-react';
 import { useThemeColors } from '@/context/adminTheme';
 import { ToxicityLog, ReviewLogRequest } from '@/app/services/ToxicityDetection/actions';
+import { extractToxicWords } from './ToxicityLogsTable';
 
 const ScoreBar = ({ score }: { score: number }) => {
   const pct = Math.round(score * 100);
@@ -52,6 +53,16 @@ export function ReviewModal({ log, onClose, onSave }: ReviewModalProps) {
           <div>
             <p className="text-xs mb-1" style={{ color: colors.text.tertiary }}>Analysed content</p>
             <p className="text-sm p-3 rounded-lg" style={{ backgroundColor: colors.background.secondary, color: colors.text.secondary }}>{log.analysed_text}</p>
+            {extractToxicWords(log.analysed_text).length > 0 && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-xs font-semibold text-red-400">Detected Toxic Words:</span>
+                {extractToxicWords(log.analysed_text).map((w) => (
+                  <span key={w} className="px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                    ⚠️ {w}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
