@@ -6,14 +6,13 @@ import { ThemeProvider, useThemeColors } from '@/context/adminTheme';
 import toxicityAPI, { ToxicityLog, UserToxicityProfile, ReviewLogRequest } from '@/app/services/ToxicityDetection//actions';
 import { transformLogsToStats, transformLogsToTrendData, transformLogsToCategoryData, transformLogsToDailyData, transformProfilesToQuickMetrics } from '@/app/services/ToxicityDetection/actions';
 import { ToxicityStatsCards } from '@/components/Admin/ToxicityDetector/ToxicityStatsCard';
-import { ToxicityCharts } from '@/components/Admin/ToxicityDetector/ToxicityCharts';
+import { ToxicityCategoryFilter } from '@/components/Admin/ToxicityDetector/ToxicityCategoryFilter';
 import { ToxicityLogsTable } from '@/components/Admin/ToxicityDetector/ToxicityLogsTable';
 import { ToxicityUsersTable } from '@/components/Admin/ToxicityDetector/ToxicityUsersTable';
 import { SystemHealth } from '@/components/Admin/ToxicityDetector/SystemHealth';
 import { DailyActivityChart } from '@/components/Admin/ToxicityDetector/DailyActivityChart';
 import { ReviewModal } from '@/components/Admin/ToxicityDetector/ReviewModal';
-
-// ... rest of the code remains the same
+import { AudioToxicityTester } from '@/components/Admin/ToxicityDetector/AudioToxicityTester';
 
 function ToxicityDetectionContent() {
   const { colors } = useThemeColors();
@@ -26,6 +25,7 @@ function ToxicityDetectionContent() {
   const [logs, setLogs] = useState<ToxicityLog[]>([]);
   const [profiles, setProfiles] = useState<UserToxicityProfile[]>([]);
   const [activeTab, setActiveTab] = useState<'logs' | 'users'>('logs');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [reviewingLog, setReviewingLog] = useState<ToxicityLog | null>(null);
 
   const stats = useMemo(() => transformLogsToStats(logs), [logs]);
@@ -129,9 +129,14 @@ function ToxicityDetectionContent() {
 
       <ToxicityStatsCards stats={stats} quickMetrics={quickMetrics} recentToxicCount={recentToxicCount} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <ToxicityCharts trendData={trendData} categoryData={categoryData} dailyData={dailyData} />
-      </div>
+      <AudioToxicityTester />
+
+      <ToxicityCategoryFilter
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        categoryData={categoryData}
+        totalFlaggedCount={logs.filter((l) => l.is_toxic).length}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <DailyActivityChart dailyData={dailyData} />
@@ -147,7 +152,14 @@ function ToxicityDetectionContent() {
           ))}
         </div>
 
-        {activeTab === 'logs' && <ToxicityLogsTable logs={logs} onReviewLog={setReviewingLog} />}
+        {activeTab === 'logs' && (
+          <ToxicityLogsTable
+            logs={logs}
+            onReviewLog={setReviewingLog}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+        )}
         {activeTab === 'users' && <ToxicityUsersTable profiles={profiles} onToggleFlag={handleToggleFlag} />}
       </div>
     </div>

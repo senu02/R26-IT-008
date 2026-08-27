@@ -2,6 +2,8 @@ import os
 import pickle
 import numpy as np
 import logging
+import tempfile
+import speech_recognition as sr
 
 logger = logging.getLogger(__name__)
 
@@ -174,3 +176,107 @@ def is_toxic(text: str) -> bool:
     """Quick boolean check."""
     result = analyse_toxicity(text)
     return result.get('is_toxic', False)
+
+
+def transcribe_and_analyse_audio(audio_file, language: str = 'en-US') -> dict:
+    """
+    Transcribes an uploaded audio file using SpeechRecognition and checks toxicity of the text.
+    """
+    recognizer = sr.Recognizer()
+    temp_path = None
+    transcribed_text = ""
+
+    try:
+        # Determine extension
+        extension = '.wav'
+        if hasattr(audio_file, 'name') and audio_file.name:
+            _, ext = os.path.splitext(audio_file.name)
+            if ext:
+                extension = ext.lower()
+
+        # Write uploaded file to temporary file for speech_recognition
+        with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as tmp:
+            if hasattr(audio_file, 'chunks'):
+                for chunk in audio_file.chunks():
+                    tmp.write(chunk)
+            elif hasattr(audio_file, 'read'):
+                tmp.write(audio_file.read())
+            elif isinstance(audio_file, (bytes, bytearray)):
+                tmp.write(audio_file)
+            elif isinstance(audio_file, str) and os.path.exists(audio_file):
+                temp_path = audio_file
+
+            if temp_path is None:
+                temp_path = tmp.name
+
+        # Perform Speech-to-Text
+        try:
+            with sr.AudioFile(temp_path) as source:
+                audio_data = recognizer.record(source)
+                transcribed_text = recognizer.recognize_google(audio_data, language=language)
+        except sr.UnknownValueError:
+            return {
+                'transcribed_text': '',
+                'is_toxic': False,
+                'labels': {},
+                'flagged_labels': [],
+                'max_score': 0.0,
+                'error': 'Speech could not be understood from the audio file.'
+            }
+        except sr.RequestError as e:
+            return {
+                'transcribed_text': '',
+                'is_toxic': False,
+                'labels': {},
+                'flagged_labels': [],
+                'max_score': 0.0,
+                'error': f'Speech recognition service error: {e}'
+            }
+        except Exception as e:
+            logger.warning(f"Standard AudioFile failed ({e}). Attempting Whisper fallback...")
+            try:
+                import whisper
+                model = whisper.load_model("tiny")
+                res_w = model.transcribe(temp_path)
+                transcribed_text = res_w.get('text', '').strip()
+                if not transcribed_text:
+                    return {
+                        'transcribed_text': '',
+                        'is_toxic': False,
+                        'labels': {},
+                        'flagged_labels': [],
+                        'max_score': 0.0,
+                        'error': 'Speech could not be understood from the audio file.'
+                    }
+            except Exception as w_err:
+                logger.error(f"Whisper fallback error: {w_err}")
+                return {
+                    'transcribed_text': '',
+                    'is_toxic': False,
+                    'labels': {},
+                    'flagged_labels': [],
+                    'max_score': 0.0,
+                    'error': f'Unsupported audio format or corrupt file. Please upload standard WAV audio. ({e})'
+                }
+
+        # Run toxicity detection on transcribed text
+        analysis = analyse_toxicity(transcribed_text)
+        analysis['transcribed_text'] = transcribed_text
+        return analysis
+
+    except Exception as e:
+        logger.error(f"Audio toxicity pipeline exception: {e}")
+        return {
+            'transcribed_text': '',
+            'is_toxic': False,
+            'labels': {},
+            'flagged_labels': [],
+            'max_score': 0.0,
+            'error': str(e)
+        }
+    finally:
+        if temp_path and os.path.exists(temp_path) and temp_path != getattr(audio_file, 'name', None):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass

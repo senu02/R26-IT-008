@@ -1,0 +1,8 @@
+{
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/puretalk_backend"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/puretalk_backend"
+  ]
+}

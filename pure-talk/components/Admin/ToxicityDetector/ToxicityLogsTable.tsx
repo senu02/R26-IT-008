@@ -88,9 +88,11 @@ const Pagination = ({ page, total, pageSize, onChange }: { page: number; total: 
 interface ToxicityLogsTableProps {
   logs: ToxicityLog[];
   onReviewLog: (log: ToxicityLog) => void;
+  selectedCategory?: string;
+  onSelectCategory?: (category: string) => void;
 }
 
-export function ToxicityLogsTable({ logs, onReviewLog }: ToxicityLogsTableProps) {
+export function ToxicityLogsTable({ logs, onReviewLog, selectedCategory = 'all', onSelectCategory }: ToxicityLogsTableProps) {
   const { colors } = useThemeColors();
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -104,6 +106,18 @@ export function ToxicityLogsTable({ logs, onReviewLog }: ToxicityLogsTableProps)
     if (severityFilter !== 'all' && getSeverity(log.max_score) !== severityFilter) return false;
     if (statusFilter !== 'all' && getLogStatus(log) !== statusFilter) return false;
     if (contentTypeFilter !== 'all' && log.content_type !== contentTypeFilter) return false;
+    if (selectedCategory && selectedCategory !== 'all') {
+      const matchCat = log.flagged_labels.some((lbl) => {
+        const cat = lbl.toLowerCase();
+        if (selectedCategory === 'hate') return cat.includes('hate') || cat.includes('identity');
+        if (selectedCategory === 'harassment') return cat.includes('toxic') || cat.includes('harass');
+        if (selectedCategory === 'profanity') return cat.includes('profan') || cat.includes('obscene') || cat.includes('swear');
+        if (selectedCategory === 'threats') return cat.includes('threat');
+        if (selectedCategory === 'spam') return cat.includes('spam') || cat.includes('insult');
+        return true;
+      });
+      if (!matchCat) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!log.analysed_text.toLowerCase().includes(q) && !log.author_email?.toLowerCase().includes(q)) return false;

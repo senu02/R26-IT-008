@@ -42,11 +42,13 @@ _llm_available = False  # flip to True once you wire in real API calls
 
 # ── Local fallback imports (imported lazily to avoid circular refs) ───────
 def _local_blur(text: str) -> str:
+    # pyrefly: ignore [missing-import]
     from .engine import blur_text
     return blur_text(text)
 
 
 def _local_rewrite(text: str) -> str:
+    # pyrefly: ignore [missing-import]
     from .engine import rewrite_text
     return rewrite_text(text)
 
