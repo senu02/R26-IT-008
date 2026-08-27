@@ -9,6 +9,7 @@ import { ToxicityStatsCards } from '@/components/Admin/ToxicityDetector/Toxicity
 import { ToxicityCharts } from '@/components/Admin/ToxicityDetector/ToxicityCharts';
 import { ToxicityLogsTable } from '@/components/Admin/ToxicityDetector/ToxicityLogsTable';
 import { ToxicityUsersTable } from '@/components/Admin/ToxicityDetector/ToxicityUsersTable';
+import { ToxicWordsTable } from '@/components/Admin/ToxicityDetector/ToxicWordsTable';
 import { SystemHealth } from '@/components/Admin/ToxicityDetector/SystemHealth';
 import { DailyActivityChart } from '@/components/Admin/ToxicityDetector/DailyActivityChart';
 import { ReviewModal } from '@/components/Admin/ToxicityDetector/ReviewModal';
@@ -25,7 +26,7 @@ function ToxicityDetectionContent() {
 
   const [logs, setLogs] = useState<ToxicityLog[]>([]);
   const [profiles, setProfiles] = useState<UserToxicityProfile[]>([]);
-  const [activeTab, setActiveTab] = useState<'logs' | 'users'>('logs');
+  const [activeTab, setActiveTab] = useState<'logs' | 'users' | 'words'>('logs');
   const [reviewingLog, setReviewingLog] = useState<ToxicityLog | null>(null);
 
   const stats = useMemo(() => transformLogsToStats(logs), [logs]);
@@ -140,15 +141,16 @@ function ToxicityDetectionContent() {
 
       <div>
         <div className="flex border-b mb-4" style={{ borderColor: colors.border.primary }}>
-          {(['logs', 'users'] as const).map((tab) => (
+          {(['logs', 'users', 'words'] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors" style={{ borderBottomColor: activeTab === tab ? colors.primary.main : 'transparent', color: activeTab === tab ? colors.primary.main : colors.text.secondary }}>
-              {tab === 'logs' ? `Flagged content (${logs.filter(l => l.is_toxic).length})` : `User profiles (${profiles.length})`}
+              {tab === 'logs' ? `Flagged content (${logs.filter(l => l.is_toxic).length})` : tab === 'users' ? `User profiles (${profiles.length})` : `Categorized toxic words (37)`}
             </button>
           ))}
         </div>
 
         {activeTab === 'logs' && <ToxicityLogsTable logs={logs} onReviewLog={setReviewingLog} />}
         {activeTab === 'users' && <ToxicityUsersTable profiles={profiles} onToggleFlag={handleToggleFlag} />}
+        {activeTab === 'words' && <ToxicWordsTable />}
       </div>
     </div>
   );
