@@ -215,82 +215,18 @@ export interface ProfilesParams { warning_level?: WarningLevel; is_suspended?: b
 export interface EventsParams { user_id?: string; event_type?: EventType; content_type?: ContentType; page?: number; page_size?: number; }
 export interface SuspendRequest { hours?: number; reason?: string; }
 
-// ─────────────────────────────────────────────────────────────────
-// Section 3.7 — Explainable AI (XAI) Integration Types
-// ─────────────────────────────────────────────────────────────────
-//
-// [EN] To improve transparency and trust in the automated moderation
-//      system, XAI techniques are integrated to explain machine learning
-//      predictions. Two methods are supported:
-//
-//        • SHAP (Shapley Additive Explanations) — currently implemented.
-//          Assigns each feature a contribution value to the final risk
-//          prediction. For example: a high toxic_count pushes the risk score
-//          UP, while a low severity_score pulls it DOWN.
-//
-//        • LIME (Local Interpretable Model-Agnostic Explanations) — planned.
-//          Perturbs input features and observes output changes to build a
-//          local linear approximation of the model's decision boundary.
-//
-//      These explanations are displayed to system administrators and
-//      moderators to improve accountability in moderation decisions.
-//
-// [SL] Automated moderation system eke transparency saha trust improve
-//      karanna XAI techniques integrate karala thiyanawa. ML predictions
-//      explain karannawa.
-//
-//        • SHAP — ekkath feature eka final risk prediction ekata
-//          keeyadena contribution eka assign karannawa. Udhaaranayak
-//          widihata kiyanna nam: high toxic_count eka risk score UP
-//          karannawa, low severity_score eka DOWN karannawa.
-//
-//        • LIME — planned. Input features manipulate karala output
-//          changes observe karala model ge decision boundary eka
-//          local linear approximation ekakata explain karannawa.
-//
-//      Meka explanations system admins saha moderators lata dakwannawa,
-//      moderation decisions eke accountability improve karanna.
-// ─────────────────────────────────────────────────────────────────
-
-/**
- * [EN] Represents a single SHAP explanation for one behavioural feature.
- *      Each feature (e.g. toxic_count, severity_score) gets a SHAP value
- *      that shows how much it contributed to the overall risk score.
- *
- * [SL] Eka behavioural feature ekakata (e.g. toxic_count, severity_score)
- *      SHAP explanation eka represent karannawa. SHAP value eka
- *      overall risk score ekakata feature eka keeyadena tharuwata
- *      contribute kala da kiyala dakwannawa.
- */
 export interface ShapFeatureExplanation {
   /** [EN] The SHAP value — magnitude of this feature's contribution. [SL] Feature eke contribution eke size. */
   shap_value: number;
 
-  /**
-   * [EN] Direction of impact on the risk score.
-   *      'increases_risk' → this feature pushed the score higher.
-   *      'decreases_risk' → this feature pulled the score lower.
-   * [SL] Risk score ekata impact direction eka.
-   *      'increases_risk' → meka score eka wada karanawa.
-   *      'decreases_risk' → meka score eka adhu karanawa.
-   */
+ 
   direction: 'increases_risk' | 'decreases_risk';
 
   /** [EN] Categorical impact rating for quick dashboard display. [SL] Dashboard walata fast display ekakata impact category. */
   impact: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
-/**
- * [EN] Full XAI explanation returned by the backend for a given user profile.
- *      Used by the admin dashboard to show moderators WHY a particular
- *      shielding strategy was triggered for that user.
- *      Currently uses SHAP; LIME support will be added in a future iteration.
- *
- * [SL] Backend eka user profile ekakata full XAI explanation return karannawa.
- *      Admin dashboard eke moderators lata dakkannawa meka user ekakata
- *      shielding strategy eka trigger wuna HINDA kiyala.
- *      Ekkath SHAP use karannawa; LIME future iteration ekakata add wenawa.
- */
+
 export interface XaiExplanation {
   /** [EN] Email of the user being explained. [SL] Explain karanne meka user ge email. */
   user_email: string;
@@ -313,28 +249,10 @@ export interface XaiExplanation {
   /** [EN] Whether the ML model is active (vs. rule-based fallback). [SL] ML model active da (rule-based fallback da). */
   ml_active: boolean;
 
-  /**
-   * [EN] Map of feature name → SHAP explanation.
-   *      null if SHAP could not be computed (e.g. insufficient data).
-   * [SL] Feature name → SHAP explanation map eka.
-   *      Data nathnam null return wenawa.
-   */
   shap_explanation: Record<string, ShapFeatureExplanation> | null;
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Section 3.6 + 3.7 — API Methods
-// BehaviorViewSet → /api/behavior/...
-// SNAViewSet      → /api/behavior/sna/...
-//
-// [EN] The behaviorAPI object exposes all endpoints for behavioural
-//      profiling, event tracking, user suspension, Social Network
-//      Analysis (SNA), and XAI explanations.
-//
-// [SL] behaviorAPI object eka behavioural profiling, event tracking,
-//      user suspension, Social Network Analysis (SNA), saha XAI
-//      explanations walata endpoints hama ekama expose karannawa.
-// ─────────────────────────────────────────────────────────────────
+
 
 export const behaviorAPI = {
   // GET /api/behavior/my-status/
@@ -358,22 +276,7 @@ export const behaviorAPI = {
     return apiCall<UserBehaviorProfile>(`/behavior/profiles/${profileId}/`, { method: 'GET' });
   },
 
-  // ── Section 3.7: XAI Explanation (SHAP) ─────────────────────
-  // GET /api/behavior/profiles/{id}/xai-explanation/
-  //
-  // [EN] Fetches the SHAP-based XAI explanation for a given user's
-  //      behavioural risk profile. The explanation shows WHICH features
-  //      (e.g. toxic_count, severity_score, warning_level) had the
-  //      biggest influence on the predicted risk score, and in which
-  //      direction (increases_risk / decreases_risk).
-  //      Displayed in the admin dashboard for moderator transparency.
-  //
-  // [SL] User eke behavioural risk profile ekakata SHAP-based XAI
-  //      explanation fetch karannawa. Explanation eka dakwannawa MOKAKDA
-  //      features (e.g. toxic_count, severity_score, warning_level)
-  //      predicted risk score ekata wada bala thiyanawa kiyala, saha
-  //      eya increases_risk da decreases_risk da kiyala.
-  //      Admin dashboard eke moderator transparency walata dakwannawa.
+
   async getXaiExplanation(profileId: string): Promise<XaiExplanation> {
     return apiCall<XaiExplanation>(`/behavior/profiles/${profileId}/xai-explanation/`, { method: 'GET' });
   },
@@ -434,17 +337,7 @@ export const behaviorAPI = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────────
-// Transform / Display Helpers
-//
-// [EN] Pure utility functions that transform raw API data into
-//      display-ready formats for charts, tables, and labels.
-//      No API calls are made here.
-//
-// [SL] Meka pure utility functions. Raw API data eka charts, tables,
-//      saha labels walata display-ready formats ekakata transform
-//      karannawa. Mehemath API calls nehe.
-// ─────────────────────────────────────────────────────────────────
+
 
 export const WARNING_LEVEL_ORDER: WarningLevel[] = ['none', 'mild', 'moderate', 'severe', 'banned'];
 
@@ -464,22 +357,7 @@ export function getNodeTypeColor(type: NodeType): string {
   return { toxic: '#ef4444', at_risk: '#f97316', normal: '#22c55e' }[type] ?? '#6b7280';
 }
 
-/**
- * [EN] Mirrors the backend OFFENSE_MULTIPLIER logic from models.py.
- *      As a user accumulates more toxic offences, the system progressively
- *      lowers the toxicity threshold required to trigger an intervention.
- *      This is a core mechanic of the adaptive shielding strategy (3.6):
- *      repeat offenders are scrutinised more strictly.
- *
- * [SL] Backend eke models.py eke OFFENSE_MULTIPLIER logic eka mirror karannawa.
- *      User ge toxic offences eka wada wena wita, intervention trigger
- *      karanna ona toxicity threshold eka progressively adhu karannawa.
- *      Meka adaptive shielding strategy (3.6) eke core mechanic ekak:
- *      repeat offenders lata wada strict widihata check karannawa.
- *
- *  Multiplier map: 0 offences → 1.0x | 1 → 1.3x | 2 → 1.8x | 3 → 2.5x | 4+ → 4.0x
- *  [SL] 0 violations → 1.0x | 1 → 1.3x | 2 → 1.8x | 3 → 2.5x | 4+ → 4.0x
- */
+
 export function computeEffectiveThreshold(toxicCount: number, severityScore: number): number {
   const BASE = 0.5;
   const multiplierMap: Record<number, number> = { 0: 1.0, 1: 1.3, 2: 1.8, 3: 2.5 };
@@ -527,17 +405,7 @@ export function transformEventsToTypeBreakdown(events: BehaviorEvent[]) {
   };
 }
 
-/**
- * [EN] Computes average category scores across all non-allowed behavioural events.
- *      Category weights mirror backend services.py CATEGORY_WEIGHTS.
- *      Used in the XAI dashboard (Section 3.7) to show which toxicity
- *      categories drove the most harm across the platform.
- *
- * [SL] Non-allowed behavioural events hama ekakata average category scores
- *      calculate karannawa. Backend services.py CATEGORY_WEIGHTS mirror karannawa.
- *      XAI dashboard eke (Section 3.7) dakkannawa mona toxicity categories
- *      wada harm karanawa kiyala.
- */
+
 export function transformEventsToCategoryAverages(events: BehaviorEvent[]) {
   const CATEGORIES = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'];
   const LABELS     = ['Toxic', 'Severe Toxic', 'Obscene', 'Threat', 'Insult', 'Identity Hate'];
