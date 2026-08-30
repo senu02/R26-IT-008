@@ -25,12 +25,8 @@ function ToxicityDetectionContent() {
 
   const [logs, setLogs] = useState<ToxicityLog[]>([]);
   const [profiles, setProfiles] = useState<UserToxicityProfile[]>([]);
-<<<<<<< HEAD
-  const [activeTab, setActiveTab] = useState<'logs' | 'users'>('logs');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-=======
   const [activeTab, setActiveTab] = useState<'logs' | 'users' | 'words'>('logs');
->>>>>>> origin/main
   const [reviewingLog, setReviewingLog] = useState<ToxicityLog | null>(null);
 
   const stats = useMemo(() => transformLogsToStats(logs), [logs]);
