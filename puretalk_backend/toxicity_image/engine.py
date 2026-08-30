@@ -17,6 +17,7 @@ IMG_SIZE = (224, 224)
 # Lazy singletons — loaded once on first request, reused forever
 _h5_model  = None
 _pkl_model = None
+_feature_extractor = None
 
 
 # ─── Model Loaders ────────────────────────────────────────────────────────────
@@ -35,6 +36,17 @@ def _load_pkl_model():
         with open(PKL_MODEL_PATH, "rb") as f:
             _pkl_model = pickle.load(f)
     return _pkl_model
+
+
+def _get_feature_extractor():
+    global _feature_extractor
+    if _feature_extractor is None:
+        try:
+            from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+            _feature_extractor = MobileNetV2(weights='imagenet', include_top=False, pooling='avg')
+        except Exception:
+            _feature_extractor = None
+    return _feature_extractor
 
 
 # ─── Preprocessing ────────────────────────────────────────────────────────────
@@ -69,7 +81,7 @@ def _preprocess_image(image_file) -> np.ndarray:
 
 def predict_toxic_image(
     image_file,
-    model: str = "h5",
+    model: str = "pkl",
     threshold: float = 0.5
 ) -> dict:
     """
@@ -77,7 +89,7 @@ def predict_toxic_image(
 
     Args:
         image_file : Django UploadedFile | file path str | raw bytes
-        model      : "h5"  → toxic_mobilenetv2_model.h5  (default)
+        model      : "h5"  → toxic_mobilenetv2_model.h5
                      "pkl" → toxic_model.pkl
         threshold  : Score >= threshold means TOXIC. Default 0.5.
 
@@ -90,18 +102,45 @@ def predict_toxic_image(
             "model_used" : str,
         }
     """
-    arr = _preprocess_image(image_file)
+    if hasattr(image_file, 'seek'):
+        image_file.seek(0)
 
-    loaded_model = _load_pkl_model() if model == "pkl" else _load_h5_model()
-    raw_score    = float(loaded_model.predict(arr, verbose=0)[0][0])
+    pkl_obj = _load_pkl_model()
+    extractor = _get_feature_extractor()
 
-    is_toxic   = raw_score >= threshold
+    if isinstance(pkl_obj, dict) and 'classifier' in pkl_obj and extractor is not None:
+        try:
+            if isinstance(image_file, (str, os.PathLike)):
+                img = Image.open(image_file)
+            elif isinstance(image_file, bytes):
+                img = Image.open(io.BytesIO(image_file))
+            else:
+                img = Image.open(image_file)
+
+            img = img.convert("RGB").resize(IMG_SIZE)
+            from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+            arr = preprocess_input(np.array(img, dtype=np.float32))
+            feat = extractor.predict(np.expand_dims(arr, 0), verbose=0)
+            clf = pkl_obj['classifier']
+            toxic_score = float(clf.predict_proba(feat)[0][1])
+        except Exception:
+            arr = _preprocess_image(image_file)
+            h5_model = _load_h5_model()
+            raw_score = float(h5_model.predict(arr, verbose=0)[0][0])
+            toxic_score = max(0.0, min(1.0, 1.0 - raw_score))
+    else:
+        arr = _preprocess_image(image_file)
+        loaded_model = _load_pkl_model() if model == "pkl" and not isinstance(pkl_obj, dict) else _load_h5_model()
+        raw_score = float(loaded_model.predict(arr, verbose=0)[0][0])
+        toxic_score = max(0.0, min(1.0, 1.0 - raw_score))
+
+    is_toxic   = toxic_score >= threshold
     label      = "TOXIC" if is_toxic else "SAFE"
-    confidence = raw_score * 100 if is_toxic else (1 - raw_score) * 100
+    confidence = toxic_score * 100 if is_toxic else (1.0 - toxic_score) * 100
 
     return {
         "is_toxic"   : is_toxic,
-        "score"      : round(raw_score, 4),
+        "score"      : round(toxic_score, 4),
         "label"      : label,
         "confidence" : round(confidence, 2),
         "model_used" : model,
