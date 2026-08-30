@@ -21,6 +21,8 @@ export interface User {
   city?: string;
   location?: string;
   bio?: string;
+  liked_categories?: string[];
+  disliked_categories?: string[];
   profile_picture?: string | null;
   cover_image?: string | null;
   role?: 'user' | 'moderator' | 'admin' | 'super_admin';

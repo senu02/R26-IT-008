@@ -28,7 +28,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'email', 'password', 'confirm_password',
             'full_name', 'mobile_number', 'birthday', 'gender',
-            'country', 'city', 'profile_picture', 'cover_image'
+            'country', 'city', 'profile_picture', 'cover_image',
+            'liked_categories', 'disliked_categories'
         )
         extra_kwargs = {
             'password': {'write_only': True},
@@ -41,7 +42,20 @@ class RegisterSerializer(serializers.ModelSerializer):
             'gender': {'required': False},
             'country': {'required': False},
             'city': {'required': False},
+            'liked_categories': {'required': False},
+            'disliked_categories': {'required': False},
         }
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        import json
+        for field in ['liked_categories', 'disliked_categories']:
+            if field in data and isinstance(data[field], str):
+                try:
+                    data[field] = json.loads(data[field])
+                except Exception:
+                    data[field] = [x.strip() for x in data[field].split(',') if x.strip()]
+        return super().to_internal_value(data)
 
     def validate(self, data):
         if data.get('password') != data.get('confirm_password'):
@@ -87,6 +101,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_picture', 'cover_image', 'display_name', 
             'date_joined', 'role', 'account_status', 'bio',
             'website', 'work', 'education', 'relationship_status',
+            'liked_categories', 'disliked_categories',
             'is_admin', 'is_moderator', 'last_active'
         )
         read_only_fields = ('id', 'date_joined', 'age', 'display_name', 'role', 'account_status', 'last_active')
@@ -112,7 +127,8 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'email', 'full_name', 'mobile_number', 'birthday', 'gender',
             'country', 'city', 'role', 'account_status', 'bio', 'website',
-            'work', 'education', 'relationship_status', 'is_active'
+            'work', 'education', 'relationship_status', 'liked_categories',
+            'disliked_categories', 'is_active'
         )
     
     def validate_role(self, value):
