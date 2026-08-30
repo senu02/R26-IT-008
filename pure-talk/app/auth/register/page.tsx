@@ -243,8 +243,8 @@ const Register: React.FC = () => {
     } catch (error: any) {
       console.error('Registration error:', error);
       
-      if (error.response?.data) {
-        const errorData = error.response.data;
+      const errorData = error.data || error.response?.data;
+      if (errorData) {
         const errors: Record<string, string> = {};
         
         if (errorData.email) errors.email = Array.isArray(errorData.email) ? errorData.email[0] : errorData.email;

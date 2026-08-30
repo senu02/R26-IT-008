@@ -97,7 +97,9 @@ async function apiCall<T>(
   
   const headers: Record<string, string> = {};
 
-  if (token) {
+  const isAuthEndpoint = endpoint === '/login/' || endpoint === '/register/';
+
+  if (token && !isAuthEndpoint) {
     headers['Authorization'] = `Token ${token}`;
   }
 
@@ -129,7 +131,7 @@ async function apiCall<T>(
       };
     }
 
-    if (response.status === 401) {
+    if (response.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_role');
