@@ -180,8 +180,8 @@ export default function VideoTable({
                       <p className="font-medium text-sm line-clamp-1 max-w-[200px]" style={{ color: colors.text.primary }}>{video.title}</p>
                       <p className="text-xs mt-1 line-clamp-1 max-w-[200px]" style={{ color: colors.text.secondary }}>{video.description?.substring(0, 50)}</p>
                       {video.is_flagged && !video.is_blocked && (
-                        <span className="inline-flex items-center gap-1 text-xs mt-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: colors.status.warning + '20', color: colors.status.warning }}>
-                          <FaFlag className="w-2 h-2" /> Flagged
+                        <span className="inline-flex items-center gap-1 text-xs mt-1 px-2 py-0.5 rounded font-semibold border border-amber-500/30" style={{ backgroundColor: colors.status.warning + '25', color: colors.status.warning }}>
+                          <FaFlag className="w-2.5 h-2.5" /> Toxic Image / Flagged
                         </span>
                       )}
                       {video.is_blocked && (
