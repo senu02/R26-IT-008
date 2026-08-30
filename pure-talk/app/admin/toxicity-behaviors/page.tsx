@@ -632,7 +632,7 @@ const SNACard = ({ summary }: { summary: SNASummary | null }) => {
                 className="text-xs px-2 py-0.5 rounded-full"
                 style={{ backgroundColor: '#ef444418', color: '#ef4444' }}
               >
-                {c.username ?? c}
+                {c.username || `User #${c.user_id ?? '?'}`}
               </span>
             ))}
           </div>
@@ -1283,17 +1283,19 @@ function ToxicityBehaviorContent() {
               <div className="p-5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
                   {[
-                    { title: 'Top by degree', items: snaSummary.top_degree },
-                    { title: 'Top by betweenness', items: snaSummary.top_betweenness },
-                    { title: 'Top toxic ratio', items: snaSummary.top_toxic_ratio },
-                  ].map(({ title, items }) => (
+                    { title: 'Top by degree', items: snaSummary.top_degree, field: 'degree_centrality' },
+                    { title: 'Top by betweenness', items: snaSummary.top_betweenness, field: 'betweenness_centrality' },
+                    { title: 'Top toxic ratio', items: snaSummary.top_toxic_ratio, field: 'toxic_ratio' },
+                  ].map(({ title, items, field }) => (
                     <div key={title} className="rounded-lg p-4" style={{ backgroundColor: colors.background.secondary }}>
                       <h4 className="text-xs font-medium mb-3" style={{ color: colors.text.secondary }}>{title}</h4>
                       {(items ?? []).slice(0, 5).map((item: any, i: number) => (
                         <div key={i} className="flex items-center justify-between py-1.5 text-xs border-b last:border-0" style={{ borderColor: colors.border.primary }}>
-                          <span style={{ color: colors.text.primary }}>{item.username ?? item}</span>
+                          <span style={{ color: colors.text.primary }}>
+                            {item.username || `User #${item.user_id ?? '?'}`}
+                          </span>
                           <span style={{ color: colors.text.tertiary }}>
-                            {typeof item === 'object' ? Object.values(item).filter((v) => typeof v === 'number')[0]?.toFixed(3) : ''}
+                            {typeof item[field] === 'number' ? item[field].toFixed(3) : '—'}
                           </span>
                         </div>
                       ))}
