@@ -12,6 +12,7 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import TextVectorization
 
+# pyrefly: ignore [missing-import]
 from . import llm_helper  # LLM-enhanced helpers (mocked in unit tests)
 
 # ─────────────────────────────────────────────
@@ -151,8 +152,6 @@ _SINGLISH_NORMALIZE_MAP: dict = {
     "eka":       "it",
     "ara":       "that",
     # Neutral actions
-    "maranawa":  "kill",
-    "gahanawa":  "hit",
     "denna":     "give",
     "yanawa":    "go",
     "enawa":     "come",

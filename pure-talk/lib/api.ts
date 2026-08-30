@@ -115,8 +115,18 @@ async function apiCall<T>(
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    } catch (networkError: any) {
+      console.error(`Network Error calling ${endpoint}:`, networkError);
+      throw {
+        status: 0,
+        message: 'Cannot connect to backend server. Please make sure Django server is running on http://localhost:8000.',
+        data: {},
+      };
+    }
+
     if (response.status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
@@ -129,7 +139,7 @@ async function apiCall<T>(
       const error: any = {
         status: response.status,
         data: errorData,
-        message: errorData.error || errorData.message || errorData.detail || 'An error occurred',
+        message: errorData.error || errorData.message || errorData.detail || `Server returned error ${response.status}`,
       };
       throw error;
     }

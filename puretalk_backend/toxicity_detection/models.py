@@ -13,6 +13,7 @@ class ToxicityLog(models.Model):
     CONTENT_TYPES = [
         ('post', 'Post'),
         ('comment', 'Comment'),
+        ('audio', 'Audio Speech'),
     ]
 
     # Generic link — only one of these will be non-null
