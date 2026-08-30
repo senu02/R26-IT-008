@@ -1,0 +1,190 @@
+﻿python : WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+At line:1 char:1
++ python manage.py test adptiveShelding --verbosity=2 2>&1 | Out-File - ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARNING: All lo...itten to STDERR:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+I0000 00:00:1787822285.830217    6256 port.cc:153] oneDNN custom operations are on. You may see slightly different 
+numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the 
+environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1787822289.842748    6256 port.cc:153] oneDNN custom operations are on. You may see slightly different 
+numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the 
+environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+Found 48 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: corsheaders, messages, rest_framework, staticfiles
+  Apply all migrations: admin, adptiveShelding, auth, contenttypes, friends, knox, notifications, posts, sessions, stories, toxicity_behavior, toxicity_detection, toxicity_image, users, videos
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying users.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying adptiveShelding.0001_initial... OK
+  Applying friends.0001_initial... OK
+  Applying knox.0001_initial... OK
+  Applying knox.0002_auto_20150916_1425... OK
+  Applying knox.0003_auto_20150916_1526... OK
+  Applying knox.0004_authtoken_expires... OK
+  Applying knox.0005_authtoken_token_key... OK
+  Applying knox.0006_auto_20160818_0932... OK
+  Applying knox.0007_auto_20190111_0542... OK
+  Applying knox.0008_remove_authtoken_salt... OK
+  Applying knox.0009_extend_authtoken_field... OK
+  Applying notifications.0001_initial... OK
+  Applying posts.0001_initial... OK
+  Applying sessions.0001_initial... OK
+  Applying stories.0001_initial... OK
+  Applying toxicity_behavior.0001_initial... OK
+  Applying toxicity_behavior.0002_alter_userbehaviorprofile_options_and_more... OK
+  Applying toxicity_detection.0001_initial... OK
+  Applying toxicity_detection.0002_rename_toxlog_toxic_date_idx_toxicity_de_is_toxi_45e40b_idx_and_more... OK
+  Applying toxicity_image.0001_initial... OK
+  Applying toxicity_image.0002_imagetoxicitylog_delete_toxicimagelog_and_more... OK
+C:\Users\asus\AppData\Local\Programs\Python\Python313\Lib\site-packages\sklearn\base.py:463: 
+InconsistentVersionWarning: Trying to unpickle estimator DecisionTreeClassifier from version 1.6.1 when using version 
+1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\asus\AppData\Local\Programs\Python\Python313\Lib\site-packages\sklearn\base.py:463: 
+InconsistentVersionWarning: Trying to unpickle estimator RandomForestClassifier from version 1.6.1 when using version 
+1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\asus\AppData\Local\Programs\Python\Python313\Lib\site-packages\sklearn\base.py:463: 
+InconsistentVersionWarning: Trying to unpickle estimator LabelEncoder from version 1.6.1 when using version 1.8.0. 
+This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+SHAP not available: No module named 'pandas'
+test_empty_user_history (adptiveShelding.tests.AESMEngineScoreTests.test_empty_user_history)
+Empty list history \u2192 behavior=0.0. ... ok
+test_no_user_history_defaults_to_empty 
+(adptiveShelding.tests.AESMEngineScoreTests.test_no_user_history_defaults_to_empty)
+user_history=None \u0da7 error \u0db1\u0dd0\u0dad\u0dd2\u0dc0 handle \u0daf? ... ok
+test_score_weighted_formula (adptiveShelding.tests.AESMEngineScoreTests.test_score_weighted_formula)
+final_score = toxicity*0.7 + behavior*0.3 formula correct \u0daf? ... ok
+test_scores_present_in_all_strategies 
+(adptiveShelding.tests.AESMEngineScoreTests.test_scores_present_in_all_strategies)
+\u0dc3\u0dd2\u0dba\u0dbd\u0dd4 responses \u0da7 toxicity, behavior, final_score \u0daf? ... ok
+test_scores_rounded_to_4dp (adptiveShelding.tests.AESMEngineScoreTests.test_scores_rounded_to_4dp)
+Scores 4 decimal places \u0da7 round \u0daf? ... ok
+test_blurring_boundary_lower (adptiveShelding.tests.AESMEngineStrategyTests.test_blurring_boundary_lower)
+Score exactly 0.65 \u2192 Blurring strategy. ... ok
+test_blurring_strategy (adptiveShelding.tests.AESMEngineStrategyTests.test_blurring_strategy)
+Moderately toxic message \u2192 Blurring strategy. ... ok
+test_filtering_strategy_at_exact_boundary 
+(adptiveShelding.tests.AESMEngineStrategyTests.test_filtering_strategy_at_exact_boundary)
+Score exactly 0.85 \u2192 Filtering strategy (boundary test). ... ok
+test_filtering_strategy_high_toxicity 
+(adptiveShelding.tests.AESMEngineStrategyTests.test_filtering_strategy_high_toxicity)
+Very toxic message \u2192 Filtering strategy. ... ok
+test_rewriting_includes_new_toxicity 
+(adptiveShelding.tests.AESMEngineStrategyTests.test_rewriting_includes_new_toxicity)
+Rewriting result eke new_toxicity key \u0daf? ... ok
+test_rewriting_strategy_mild (adptiveShelding.tests.AESMEngineStrategyTests.test_rewriting_strategy_mild)
+Mildly toxic message \u2192 Rewriting strategy. ... ok
+test_rewriting_strategy_moderate (adptiveShelding.tests.AESMEngineStrategyTests.test_rewriting_strategy_moderate)
+Moderately toxic message \u2192 Rewriting (score < 0.45). ... ok
+test_safe_strategy_clean_message (adptiveShelding.tests.AESMEngineStrategyTests.test_safe_strategy_clean_message)
+Clean message \u2192 Safe strategy. ... ok
+test_safe_strategy_includes_support (adptiveShelding.tests.AESMEngineStrategyTests.test_safe_strategy_includes_support)
+Safe result eke support key \u0daf? ... ok
+test_toxic_word_triggers_rewrite_on_low_score 
+(adptiveShelding.tests.AESMEngineStrategyTests.test_toxic_word_triggers_rewrite_on_low_score)
+Known toxic word + low ML score \u2192 still Rewriting. ... ok
+test_warning_strategy (adptiveShelding.tests.AESMEngineStrategyTests.test_warning_strategy)
+Warning threshold (0.45 to 0.65) -> Warning strategy. ... ok
+test_all_max_scores (adptiveShelding.tests.BehaviorScoreTests.test_all_max_scores)
+All-max history \u2192 1.0 score. ... ok
+test_all_zero_scores (adptiveShelding.tests.BehaviorScoreTests.test_all_zero_scores)
+All-zero history \u2192 0.0 score. ... ok
+test_average_of_multiple_scores (adptiveShelding.tests.BehaviorScoreTests.test_average_of_multiple_scores)
+Multiple scores correctly averaged \u0daf? ... ok
+test_empty_history_returns_zero (adptiveShelding.tests.BehaviorScoreTests.test_empty_history_returns_zero)
+History \u0db1\u0dd0\u0dad\u0dd2 user \u0da7 score 0.0 \u0daf? ... ok
+test_single_score (adptiveShelding.tests.BehaviorScoreTests.test_single_score)
+Single history item \u2192 same value return. ... ok
+test_clean_words_unchanged (adptiveShelding.tests.BlurTextTests.test_clean_words_unchanged)
+Non-toxic words unchanged \u0db8 pass \u0daf? ... ok
+test_empty_string (adptiveShelding.tests.BlurTextTests.test_empty_string)
+Empty string \u2192 empty string. ... ok
+test_mixed_toxic_and_clean_words (adptiveShelding.tests.BlurTextTests.test_mixed_toxic_and_clean_words)
+Toxic + clean words mix correctly handled \u0daf? ... ok
+test_punctuation_preserved (adptiveShelding.tests.BlurTextTests.test_punctuation_preserved)
+Punctuation unchanged when toxic word blurred \u0daf? ... ok
+test_singlish_toxic_word_blurred (adptiveShelding.tests.BlurTextTests.test_singlish_toxic_word_blurred)
+Singlish toxic word blur \u0dc0\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_toxic_words_blurred (adptiveShelding.tests.BlurTextTests.test_toxic_words_blurred)
+Known toxic words **** \u0dc0\u0dbd\u0da7 replace \u0daf? ... ok
+test_empty_text_does_not_crash (adptiveShelding.tests.EdgeCaseTests.test_empty_text_does_not_crash)
+Empty string input \u2192 crash \u0db1\u0ddc\u0dc0\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_high_behavior_pushes_strategy_up (adptiveShelding.tests.EdgeCaseTests.test_high_behavior_pushes_strategy_up)
+Low toxicity but high behavior history \u2192 higher strategy selected. ... ok
+test_only_special_characters (adptiveShelding.tests.EdgeCaseTests.test_only_special_characters)
+Special chars only text \u2192 crash \u0db1\u0ddc\u0dc0\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_unicode_emoji_text (adptiveShelding.tests.EdgeCaseTests.test_unicode_emoji_text)
+Emoji \u0d87\u0dad\u0dd2 text \u2192 crash \u0db1\u0ddc\u0dc0\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_very_long_text (adptiveShelding.tests.EdgeCaseTests.test_very_long_text)
+Long text (1000+ chars) \u2192 crash \u0db1\u0ddc\u0dc0\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_contains_emoji (adptiveShelding.tests.EmotionalSupportTests.test_contains_emoji)
+Support message eke emoji \u0daf? ... ok
+test_not_empty (adptiveShelding.tests.EmotionalSupportTests.test_not_empty)
+Empty string \u0db1\u0ddc\u0dc0\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_returns_string (adptiveShelding.tests.EmotionalSupportTests.test_returns_string)
+String return \u0daf? ... ok
+test_empty_string (adptiveShelding.tests.NormalizeTextTests.test_empty_string)
+Empty input \u2192 empty output. ... ok
+test_lowercase_conversion (adptiveShelding.tests.NormalizeTextTests.test_lowercase_conversion)
+Uppercase text lowercase \u0d9a\u0dd9\u0dbb\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_numbers_preserved (adptiveShelding.tests.NormalizeTextTests.test_numbers_preserved)
+Numbers text eke remain \u0dc0\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_singlish_oya_replaced (adptiveShelding.tests.NormalizeTextTests.test_singlish_oya_replaced)
+'oya' \u2192 'you' replace \u0d9a\u0dd9\u0dbb\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_singlish_pissu_replaced (adptiveShelding.tests.NormalizeTextTests.test_singlish_pissu_replaced)
+'pissu' \u2192 'crazy' replace \u0d9a\u0dd9\u0dbb\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_singlish_wesi_replaced (adptiveShelding.tests.NormalizeTextTests.test_singlish_wesi_replaced)
+'wesi' \u2192 'bad' replace \u0d9a\u0dd9\u0dbb\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_special_chars_removed (adptiveShelding.tests.NormalizeTextTests.test_special_chars_removed)
+Special characters strip \u0d9a\u0dd9\u0dbb\u0dd9\u0db1\u0dc0\u0dcf \u0daf? ... ok
+test_empty_string (adptiveShelding.tests.RewriteTextTests.test_empty_string)
+Empty string \u2192 suffix only. ... ok
+test_known_toxic_word_replaced (adptiveShelding.tests.RewriteTextTests.test_known_toxic_word_replaced)
+'hate' \u2192 'dislike' replace \u0daf? ... ok
+test_positive_suffix_appended (adptiveShelding.tests.RewriteTextTests.test_positive_suffix_appended)
+Positive suffix message append \u0daf? ... ok
+test_punctuation_preserved (adptiveShelding.tests.RewriteTextTests.test_punctuation_preserved)
+Punctuation attached words correctly replaced \u0daf? ... ok
+test_singlish_word_replaced (adptiveShelding.tests.RewriteTextTests.test_singlish_word_replaced)
+Singlish toxic word gentle alternative \u0d91\u0d9a\u0d9a\u0da7 replace \u0daf? ... ok
+test_unknown_words_preserved (adptiveShelding.tests.RewriteTextTests.test_unknown_words_preserved)
+_REPLACEMENTS \u0dbd\u0dd2\u0dc3\u0dca\u0da7\u0dca \u0db1\u0dd0\u0dad\u0dd2 words unchanged \u0daf? ... ok
+
+----------------------------------------------------------------------
+Ran 48 tests in 0.043s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+  Applying videos.0001_initial... OK
+System check identified no issues (0 silenced).

@@ -152,6 +152,14 @@ def _toxicity_response(result):
     return None
 
 
+def _aesm_already_processed(content: str, enforcement_text: str) -> bool:
+    """True when the frontend AESM shield already sanitized the display text."""
+    return (
+        bool(enforcement_text.strip())
+        and enforcement_text.strip() != (content or '').strip()
+    )
+
+
 def _run_image_toxicity_check(image_files, author, post):
     """
     Run image toxicity scan on every uploaded image file.
@@ -278,7 +286,13 @@ class PostViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         # ── Toxicity check on the text content ───────────────────────────
+        # Use the ORIGINAL typed text for enforcement when the frontend's
+        # AESM shield has rewritten/blurred the content before saving —
+        # otherwise a rewritten (now "clean") message would score low on
+        # toxicity and the user's profile would be credited as a clean
+        # message, even though what they actually typed was toxic.
         content = request.data.get('content', '') or ''
+        enforcement_text = request.data.get('original_content', '') or content
         if content.strip():
             # We need the post object to link the log, so save first then check.
             # This keeps the flow simple: save → check → if toxic & blocking,
@@ -286,15 +300,14 @@ class PostViewSet(viewsets.ModelViewSet):
             post = serializer.save()
 
             result = _run_toxicity_check(
-                text=content,
+                text=enforcement_text,
                 author=request.user,
                 post=post,
                 content_type='post',
             )
 
-            blocked = _toxicity_response(result)
+            blocked = None if _aesm_already_processed(content, enforcement_text) else _toxicity_response(result)
             if blocked:
-                # Soft-delete the post so it isn't visible
                 post.status = PostStatus.REPORTED
                 post.save(update_fields=['status'])
                 return blocked
@@ -331,14 +344,15 @@ class PostViewSet(viewsets.ModelViewSet):
 
         # ── Toxicity check on updated content ────────────────────────────
         new_content = request.data.get('content', '') or ''
+        enforcement_text = request.data.get('original_content', '') or new_content
         if new_content.strip():
             result = _run_toxicity_check(
-                text=new_content,
+                text=enforcement_text,
                 author=request.user,
                 post=post,
                 content_type='post',
             )
-            blocked = _toxicity_response(result)
+            blocked = None if _aesm_already_processed(new_content, enforcement_text) else _toxicity_response(result)
             if blocked:
                 return blocked
         # ─────────────────────────────────────────────────────────────────
@@ -646,6 +660,7 @@ class CommentViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         content = request.data.get('content', '') or ''
+        enforcement_text = request.data.get('original_content', '') or content
 
         # ── Toxicity check ─────────────────────────────────────────────
         if content.strip():
@@ -653,13 +668,13 @@ class CommentViewSet(viewsets.ModelViewSet):
             comment = serializer.save()
 
             result = _run_toxicity_check(
-                text=content,
+                text=enforcement_text,
                 author=request.user,
                 comment=comment,
                 content_type='comment',
             )
 
-            blocked = _toxicity_response(result)
+            blocked = None if _aesm_already_processed(content, enforcement_text) else _toxicity_response(result)
             if blocked:
                 comment.is_active = False
                 comment.save(update_fields=['is_active'])

@@ -484,7 +484,7 @@ const StoryRowContent = () => {
                 disabled={uploading}
                 className={`flex h-[66px] w-[66px] cursor-pointer items-center justify-center rounded-full bg-[var(--background)] transition disabled:opacity-60 ${
                   hasStories
-                    ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-[2px]'
+                    ? 'bg-gradient-to-br from-rose-600 via-red-500 to-orange-400 p-[2px]'
                     : 'border-2 border-dashed border-[var(--ig-border)] hover:border-[var(--ig-muted)]'
                 }`}
                 aria-label={hasStories ? 'View your stories' : 'Add to your story'}
@@ -550,7 +550,7 @@ const StoryRowContent = () => {
                 onClick={() => openStoryViewer(stories, 0)}
                 className="flex shrink-0 flex-col items-center gap-1.5 cursor-pointer rounded-lg p-0 text-left opacity-90 transition hover:opacity-100 relative"
               >
-                <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-[2px] transition-transform hover:scale-[1.02]">
+                <span className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-600 via-red-500 to-orange-400 p-[2px] transition-transform hover:scale-[1.02]">
                   <span className="absolute inset-[2px] rounded-full bg-[var(--background)]" />
                   <img
                     src={storyHelpers.getAvatar(latestStory)}

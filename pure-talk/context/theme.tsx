@@ -36,10 +36,10 @@ export const darkTheme: ThemeColors = {
     muted: 'text-white/40',
   },
   surface: {
-    glass: 'bg-white/5',
+    glass: 'bg-[var(--bg-card)]',
     glassHover: 'hover:bg-white/10',
-    border: 'border border-white/10',
-    borderHover: 'hover:border-white/20',
+    border: 'border border-[var(--border-color)]',
+    borderHover: 'hover:border-rose-500/30',
   },
   accent: {
     primary: 'text-blue-500',

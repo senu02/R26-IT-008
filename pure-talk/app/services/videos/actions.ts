@@ -38,7 +38,7 @@ async function videoApiCall<T>(
     if (response.status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
-      window.location.href = '/login';
+      window.location.href = '/auth/login';
       throw new Error('Session expired. Please login again.');
     }
 

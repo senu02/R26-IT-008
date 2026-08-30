@@ -124,7 +124,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       localStorage.removeItem('user_data');
       localStorage.removeItem('Token');
       localStorage.removeItem('user');
-      router.push('/login');
+      router.push('/auth/login');
     } finally {
       setIsLoggingOut(false);
       setProfileOpen(false);

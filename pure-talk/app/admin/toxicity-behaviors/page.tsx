@@ -46,6 +46,7 @@ import behaviorAPI, {
   WarningLevel,
   EventType,
   SuspendRequest,
+  XaiExplanation,
   getWarningLevelLabel,
   getWarningLevelColor,
   getEventTypeColor,
@@ -336,6 +337,18 @@ const ProfileDrawer = ({
 }) => {
   const { colors } = useThemeColors();
   const [liftLoading, setLiftLoading] = useState(false);
+  const [xaiData, setXaiData] = useState<XaiExplanation | null>(null);
+  const [xaiLoading, setXaiLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setXaiLoading(true);
+    behaviorAPI.getXaiExplanation(profile.id)
+      .then((data) => { if (!cancelled) setXaiData(data); })
+      .catch(() => { if (!cancelled) setXaiData(null); })
+      .finally(() => { if (!cancelled) setXaiLoading(false); });
+    return () => { cancelled = true; };
+  }, [profile.id]);
 
   const userEvents = events.filter((e) => e.user === profile.user).slice(0, 8);
 
@@ -469,6 +482,48 @@ const ProfileDrawer = ({
               </div>
             </div>
           )}
+
+          {/* SHAP XAI explanation */}
+          <div
+            className="rounded-lg p-4"
+            style={{ backgroundColor: colors.surface.primary, border: `0.5px solid ${colors.border.primary}` }}
+          >
+            <h3 className="text-xs font-medium mb-3 flex items-center gap-2" style={{ color: colors.text.secondary }}>
+              <Activity size={13} /> SHAP Explanation (Behavior Model)
+            </h3>
+            {xaiLoading ? (
+              <div className="flex justify-center py-4"><RefreshCw size={16} className="animate-spin" style={{ color: colors.text.tertiary }} /></div>
+            ) : xaiData?.shap_explanation ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2 text-xs mb-2">
+                  <span style={{ color: colors.text.primary }}>Risk: <strong>{xaiData.risk_level}</strong></span>
+                  <span style={{ color: colors.text.tertiary }}>·</span>
+                  <span style={{ color: colors.text.secondary }}>{xaiData.behavior_type}</span>
+                  <span style={{ color: colors.text.tertiary }}>·</span>
+                  <span style={{ color: colors.text.tertiary }}>{xaiData.model_used}</span>
+                </div>
+                {Object.entries(xaiData.shap_explanation).map(([feat, info]) => (
+                  <div key={feat} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
+                    <span style={{ color: colors.text.primary }}>{feat.replace(/_/g, ' ')}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        info.impact === 'HIGH' ? 'bg-red-500/15 text-red-400'
+                        : info.impact === 'MEDIUM' ? 'bg-amber-500/15 text-amber-400'
+                        : 'bg-white/5 text-white/50'
+                      }`}>{info.impact}</span>
+                      <span className={`font-mono ${info.direction === 'increases_risk' ? 'text-red-400' : 'text-green-400'}`}>
+                        {info.shap_value > 0 ? '+' : ''}{info.shap_value.toFixed(4)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: colors.text.tertiary }}>
+                {xaiData?.ml_active === false ? 'ML model not loaded — SHAP unavailable.' : 'No SHAP explanation available.'}
+              </p>
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">

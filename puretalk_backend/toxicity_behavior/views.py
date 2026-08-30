@@ -239,6 +239,31 @@ class BehaviorViewSet(viewsets.GenericViewSet):
             }
         })
 
+    @action(detail=False, methods=['get'], url_path=r'profiles/(?P<profile_id>[^/.]+)/xai-explanation')
+    def profile_xai_explanation(self, request, profile_id=None):
+        """SHAP explanation for a user's behavioral risk model (admin only)."""
+        if not request.user.is_staff:
+            return Response({'error': 'Admin access required'}, status=403)
+
+        profile = get_object_or_404(UserBehaviorProfile, id=profile_id)
+
+        if profile.user.role in ['admin', 'super_admin']:
+            return Response({'error': 'Cannot analyze admin users'}, status=403)
+
+        status_data = get_user_status(profile.user)
+        ml = status_data.get('ml_analysis', {})
+
+        return Response({
+            'user_email': profile.user.email,
+            'method': 'SHAP',
+            'risk_level': ml.get('risk_level'),
+            'risk_score': ml.get('risk_score'),
+            'behavior_type': ml.get('behavior_type'),
+            'model_used': ml.get('model_used'),
+            'ml_active': ml.get('ml_active'),
+            'shap_explanation': ml.get('shap_explanation'),
+        })
+
     @action(detail=False, methods=['post'], url_path=r'profiles/(?P<profile_id>[^/.]+)/suspend')
     def suspend_user(self, request, profile_id=None):
         """Manually suspend a user (admin only)"""

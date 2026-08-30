@@ -161,13 +161,13 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
             <div className="flex space-x-2">
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${theme.surface.glassHover} ${theme.text.muted} hover:text-green-500 transition-colors`}
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all font-medium"
               >
-                <Image className="w-5 h-5" />
+                <Image className="w-5 h-5 text-emerald-400" />
                 <span className="text-sm hidden sm:inline">Photo/Video</span>
               </button>
-              <button className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${theme.surface.glassHover} ${theme.text.muted} hover:text-blue-500 transition-colors`}>
-                <Smile className="w-5 h-5" />
+              <button className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all font-medium">
+                <Smile className="w-5 h-5 text-amber-400" />
                 <span className="text-sm hidden sm:inline">Feeling/Activity</span>
               </button>
             </div>
