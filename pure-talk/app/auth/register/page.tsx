@@ -22,16 +22,47 @@ interface FormData {
   mobile_number: string;
   country: string;
   city: string;
+  liked_categories: string[];
+  disliked_categories: string[];
   profile_image: File | null;
   cover_image: File | null;
 }
 
 const STEP_LABELS = [
-  { num: 1, title: 'Your Identity',   sub: 'Tell the community who you are' },
-  { num: 2, title: 'Secure Account',  sub: 'Create a strong password' },
-  { num: 3, title: 'Location Info',   sub: 'Where are you from?' },
-  { num: 4, title: 'Profile Vibe',    sub: 'Photos make your profile shine' },
-  { num: 5, title: "You're Ready!",   sub: 'Review and join the conversation' },
+  { num: 1, title: 'Your Identity',       sub: 'Tell the community who you are' },
+  { num: 2, title: 'Secure Account',      sub: 'Create a strong password' },
+  { num: 3, title: 'Location Info',       sub: 'Where are you from?' },
+  { num: 4, title: 'Content Preferences', sub: 'What posts do you like & dislike to see?' },
+  { num: 5, title: 'Profile Vibe',        sub: 'Photos make your profile shine' },
+  { num: 6, title: "You're Ready!",       sub: 'Review and join the conversation' },
+];
+
+const LIKED_CATEGORY_OPTIONS = [
+  { id: 'Tech & Innovation', label: '🚀 Tech & Innovation' },
+  { id: 'Gaming & Esports', label: '🎮 Gaming & Esports' },
+  { id: 'Sports & Fitness', label: '⚽ Sports & Fitness' },
+  { id: 'Movies & Entertainment', label: '🎬 Movies & Entertainment' },
+  { id: 'Music & Arts', label: '🎵 Music & Arts' },
+  { id: 'News & World Affairs', label: '📰 News & World Affairs' },
+  { id: 'Travel & Nature', label: '🌴 Travel & Nature' },
+  { id: 'Food & Culinary', label: '🍕 Food & Culinary' },
+  { id: 'Memes & Humor', label: '🤣 Memes & Humor' },
+  { id: 'Fashion & Lifestyle', label: '💄 Fashion & Lifestyle' },
+  { id: 'Business & Finance', label: '📈 Business & Finance' },
+  { id: 'Science & Education', label: '📚 Science & Education' },
+];
+
+const DISLIKED_CATEGORY_OPTIONS = [
+  { id: 'Toxicity & Insults', label: '⚠️ Toxicity & Insults' },
+  { id: 'Hate Speech & Harassment', label: '🤬 Hate Speech & Harassment' },
+  { id: 'Adult / NSFW Content', label: '🌶️ Adult / NSFW Content' },
+  { id: 'Violence & Aggression', label: '🥊 Violence & Aggression' },
+  { id: 'Political Arguments', label: '🏛️ Political Arguments' },
+  { id: 'Clickbait & Spam', label: '📢 Clickbait & Spam' },
+  { id: 'Gambling & Crypto Scams', label: '💰 Gambling & Crypto Scams' },
+  { id: 'Depressing / Triggering', label: '😢 Depressing / Triggering Content' },
+  { id: 'Spoilers & Rumors', label: '🤫 Spoilers & Rumors' },
+  { id: 'AI Generated Spam', label: '🤖 AI Generated Spam' },
 ];
 
 const Register: React.FC = () => {
@@ -41,6 +72,7 @@ const Register: React.FC = () => {
     first_name: '', last_name: '', email: '',
     password: '', confirmPassword: '', birthday: '', gender: '', bio: '', 
     mobile_number: '', country: '', city: '',
+    liked_categories: [], disliked_categories: [],
     profile_image: null, cover_image: null,
   });
 
@@ -57,6 +89,44 @@ const Register: React.FC = () => {
   const [isAppleLoad,    setIsAppleLoad]    = useState(false);
   const [isModalOpen,    setIsModalOpen]    = useState(false);
   const [fieldErrors,    setFieldErrors]    = useState<Record<string, string>>({});
+  const [customLikedInput, setCustomLikedInput] = useState('');
+  const [customDislikedInput, setCustomDislikedInput] = useState('');
+
+  const toggleLikedCategory = (catId: string) => {
+    setFormData(f => ({
+      ...f,
+      liked_categories: f.liked_categories.includes(catId)
+        ? f.liked_categories.filter(c => c !== catId)
+        : [...f.liked_categories, catId]
+    }));
+  };
+
+  const toggleDislikedCategory = (catId: string) => {
+    setFormData(f => ({
+      ...f,
+      disliked_categories: f.disliked_categories.includes(catId)
+        ? f.disliked_categories.filter(c => c !== catId)
+        : [...f.disliked_categories, catId]
+    }));
+  };
+
+  const addCustomLikedCategory = () => {
+    if (!customLikedInput.trim()) return;
+    const val = customLikedInput.trim();
+    if (!formData.liked_categories.includes(val)) {
+      setFormData(f => ({ ...f, liked_categories: [...f.liked_categories, val] }));
+    }
+    setCustomLikedInput('');
+  };
+
+  const addCustomDislikedCategory = () => {
+    if (!customDislikedInput.trim()) return;
+    const val = customDislikedInput.trim();
+    if (!formData.disliked_categories.includes(val)) {
+      setFormData(f => ({ ...f, disliked_categories: [...f.disliked_categories, val] }));
+    }
+    setCustomDislikedInput('');
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -150,6 +220,12 @@ const Register: React.FC = () => {
       if (formData.bio && formData.bio.trim()) {
         fd.append('bio', formData.bio);
       }
+      if (formData.liked_categories && formData.liked_categories.length > 0) {
+        fd.append('liked_categories', JSON.stringify(formData.liked_categories));
+      }
+      if (formData.disliked_categories && formData.disliked_categories.length > 0) {
+        fd.append('disliked_categories', JSON.stringify(formData.disliked_categories));
+      }
       
       if (formData.profile_image) {
         fd.append('profile_picture', formData.profile_image);
@@ -167,8 +243,8 @@ const Register: React.FC = () => {
     } catch (error: any) {
       console.error('Registration error:', error);
       
-      if (error.response?.data) {
-        const errorData = error.response.data;
+      const errorData = error.data || error.response?.data;
+      if (errorData) {
         const errors: Record<string, string> = {};
         
         if (errorData.email) errors.email = Array.isArray(errorData.email) ? errorData.email[0] : errorData.email;
@@ -193,7 +269,8 @@ const Register: React.FC = () => {
           if (errors.email || errors.first_name || errors.full_name) setStep(1);
           else if (errors.password || errors.confirmPassword) setStep(2);
           else if (errors.mobile_number || errors.country || errors.city) setStep(3);
-          else if (errors.profile_image || errors.cover_image || errors.bio) setStep(4);
+          else if (errors.liked_categories || errors.disliked_categories) setStep(4);
+          else if (errors.profile_image || errors.cover_image || errors.bio) setStep(5);
         } else {
           setApiError(`Registration failed: ${JSON.stringify(errorData).substring(0, 200)}`);
         }
@@ -338,9 +415,9 @@ const Register: React.FC = () => {
 
               <div>
 
-                {/* Progress - 5 steps */}
+                {/* Progress - 6 steps */}
                 <div className="flex justify-between items-center mb-6 pb-5 border-b border-white/10">
-                  {[1,2,3,4,5].map((n) => (
+                  {[1,2,3,4,5,6].map((n) => (
                     <React.Fragment key={n}>
                       <div
                         className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-mono font-bold transition-all duration-500 ${
@@ -351,7 +428,7 @@ const Register: React.FC = () => {
                       >
                         {step > n ? <FaCheck size={11} /> : n}
                       </div>
-                      {n < 5 && (
+                      {n < 6 && (
                         <div className="flex-1 mx-1.5">
                           <div className={`h-0.5 rounded-full transition-all duration-500 ${step > n ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-white/10'}`} />
                         </div>
@@ -392,7 +469,7 @@ const Register: React.FC = () => {
                   )}
                 </AnimatePresence>
 
-                <form onSubmit={step === 5 ? handleSubmit : (e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
+                <form onSubmit={step === 6 ? handleSubmit : (e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
 
                   {/* STEP 1 — Identity */}
                   {step === 1 && (
@@ -621,8 +698,123 @@ const Register: React.FC = () => {
                     </motion.div>
                   )}
 
-                  {/* STEP 4 — Photos + Bio */}
+                  {/* STEP 4 — Content Preferences */}
                   {step === 4 && (
+                    <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                      {/* Liked Categories */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
+                            <span>👍 Posts You LIKE to See</span>
+                            <span className="text-white/40 font-normal">({formData.liked_categories.length} selected)</span>
+                          </label>
+                        </div>
+                        <p className="text-xs text-white/50 mb-3">Select the topics and categories you enjoy in your feed:</p>
+                        <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1">
+                          {LIKED_CATEGORY_OPTIONS.map(cat => {
+                            const selected = formData.liked_categories.includes(cat.id);
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => toggleLikedCategory(cat.id)}
+                                className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border ${
+                                  selected
+                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-md font-semibold'
+                                    : 'bg-black/40 text-white/70 border-white/10 hover:border-white/30'
+                                }`}
+                              >
+                                {cat.label}
+                                {selected && <FaCheck size={10} className="text-emerald-400 ml-1" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Custom Liked Category */}
+                        <div className="flex gap-2 mt-3">
+                          <input
+                            type="text"
+                            value={customLikedInput}
+                            onChange={(e) => setCustomLikedInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomLikedCategory(); } }}
+                            placeholder="Add custom topic (e.g. Photography)..."
+                            className="flex-1 px-3 py-2 text-xs rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={addCustomLikedCategory}
+                            className="px-4 py-2 text-xs font-mono uppercase rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Disliked Categories */}
+                      <div className="border-t border-white/10 pt-5">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-[11px] font-mono uppercase tracking-wider text-red-400 font-bold flex items-center gap-1.5">
+                            <span>👎 Posts You DISLIKE to See</span>
+                            <span className="text-white/40 font-normal">({formData.disliked_categories.length} selected)</span>
+                          </label>
+                        </div>
+                        <p className="text-xs text-white/50 mb-3">Select post topics you want PureTalk AI to hide or reduce in your feed:</p>
+                        <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1">
+                          {DISLIKED_CATEGORY_OPTIONS.map(cat => {
+                            const selected = formData.disliked_categories.includes(cat.id);
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => toggleDislikedCategory(cat.id)}
+                                className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border ${
+                                  selected
+                                    ? 'bg-red-500/20 text-red-300 border-red-500/50 shadow-md font-semibold'
+                                    : 'bg-black/40 text-white/70 border-white/10 hover:border-white/30'
+                                }`}
+                              >
+                                {cat.label}
+                                {selected && <X size={11} className="text-red-400 ml-1" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Custom Disliked Category */}
+                        <div className="flex gap-2 mt-3">
+                          <input
+                            type="text"
+                            value={customDislikedInput}
+                            onChange={(e) => setCustomDislikedInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomDislikedCategory(); } }}
+                            placeholder="Add custom topic to avoid..."
+                            className="flex-1 px-3 py-2 text-xs rounded-xl border border-white/10 bg-black/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-red-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={addCustomDislikedCategory}
+                            className="px-4 py-2 text-xs font-mono uppercase rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl flex gap-3 items-start bg-white/5 border border-white/10">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-red-500/20 text-red-400">
+                          <Heart className="w-3 h-3" fill="currentColor" />
+                        </div>
+                        <div className="text-xs text-white/60">
+                          <p className="font-mono uppercase font-bold mb-0.5 text-white">AI Personalization</p>
+                          <p>PureTalk uses your preferences to curate an enjoyable feed filtered specifically for you.</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* STEP 5 — Photos + Bio */}
+                  {step === 5 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                       <div>
                         <label className="block text-[11px] font-mono uppercase tracking-wider mb-2 text-white/60">Profile photo</label>
@@ -698,8 +890,8 @@ const Register: React.FC = () => {
                     </motion.div>
                   )}
 
-                  {/* STEP 5 — Review */}
-                  {step === 5 && (
+                  {/* STEP 6 — Review */}
+                  {step === 6 && (
                     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
                         <div className="flex items-center gap-3 mb-3">
@@ -715,7 +907,7 @@ const Register: React.FC = () => {
                             {formData.bio && <p className="text-xs mt-0.5 line-clamp-1 text-white/50">{formData.bio}</p>}
                           </div>
                         </div>
-                        <div className="space-y-1.5 text-xs border-t pt-3 border-white/10 font-mono">
+                        <div className="space-y-2 text-xs border-t pt-3 border-white/10 font-mono">
                           {[
                             ['Email', formData.email],
                             ...(formData.mobile_number ? [['Mobile', formData.mobile_number]] : []),
@@ -731,6 +923,38 @@ const Register: React.FC = () => {
                               <span className="font-medium capitalize truncate text-white">{v}</span>
                             </div>
                           ))}
+
+                          {/* Liked Categories display */}
+                          <div className="flex flex-col gap-1 pt-1 border-t border-white/5">
+                            <span className="text-emerald-400 uppercase text-[10px] font-bold">👍 Liked Post Topics:</span>
+                            {formData.liked_categories.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {formData.liked_categories.map(c => (
+                                  <span key={c} className="px-2 py-0.5 text-[10px] rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-white/30 italic text-[11px]">None specified</span>
+                            )}
+                          </div>
+
+                          {/* Disliked Categories display */}
+                          <div className="flex flex-col gap-1 pt-1 border-t border-white/5">
+                            <span className="text-red-400 uppercase text-[10px] font-bold">👎 Disliked Post Topics:</span>
+                            {formData.disliked_categories.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {formData.disliked_categories.map(c => (
+                                  <span key={c} className="px-2 py-0.5 text-[10px] rounded-md bg-red-500/20 text-red-300 border border-red-500/30">
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-white/30 italic text-[11px]">None specified</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -777,8 +1001,8 @@ const Register: React.FC = () => {
                       className="flex-1 py-3.5 rounded-full text-xs font-mono uppercase tracking-widest font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg"
                     >
                       {isLoading
-                        ? <><Loader2 className="animate-spin" size={17} />{step === 5 ? 'Creating profile…' : 'Saving…'}</>
-                        : step === 5 ? 'Join PureTalk' : 'Continue →'
+                        ? <><Loader2 className="animate-spin" size={17} />{step === 6 ? 'Creating profile…' : 'Saving…'}</>
+                        : step === 6 ? 'Join PureTalk' : 'Continue →'
                       }
                     </button>
                   </div>

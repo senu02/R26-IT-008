@@ -25,7 +25,8 @@ import {
   Loader2,
   Video,
   AlertTriangle,
-  Activity
+  Activity,
+  Mic
 } from 'lucide-react';
 import { useThemeColors } from '@/context/adminTheme';
 import { authAPI } from '@/lib/api';
@@ -40,6 +41,7 @@ const menuItems = [
   { icon: <Users         size={18} />, label: 'User Management',       href: '/admin/user-management',      badge: null  },
   { icon: <Video         size={18} />, label: 'Videos',                href: '/admin/videos',               badge: null  },
   { icon: <AlertTriangle size={18} />, label: 'Toxicity Detection',    href: '/admin/toxicity-detection',   badge: 'AI'  },
+  { icon: <Mic           size={18} />, label: 'Audio Toxicity Scan',   href: '/admin/audio-toxicity',       badge: 'AI'  },
   { icon: <Activity      size={18} />, label: 'Toxicity Behaviors',    href: '/admin/toxicity-behaviors',   badge: null  },
   { icon: <ShieldAlert   size={18} />, label: 'Adaptive Shielding',    href: '/admin/adaptive-shielding',   badge: 'AI'  },
   { icon: <BarChart3     size={18} />, label: 'Analytics',             href: '/admin/analytics',            badge: 'New' },

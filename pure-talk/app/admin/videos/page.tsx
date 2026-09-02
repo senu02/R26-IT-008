@@ -523,7 +523,7 @@ export default function AdminVideosPage() {
             </div>
             <div className="p-4 space-y-4">
               {selectedVideo.video_url ? (
-                <div className="rounded-lg overflow-hidden bg-black">
+                <div className="rounded-lg overflow-hidden bg-black relative">
                   <video 
                     key={selectedVideo.video_url}
                     controls 
@@ -534,11 +534,29 @@ export default function AdminVideosPage() {
                     <source src={selectedVideo.video_url} type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
+                  {selectedVideo.is_flagged && (
+                    <div className="absolute top-2 right-2 px-3 py-1 rounded-md bg-amber-600/90 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-10">
+                      <FaExclamationTriangle className="w-3.5 h-3.5" /> Toxic Image / Content Flagged
+                    </div>
+                  )}
+                </div>
+              ) : selectedVideo.thumbnail_url ? (
+                <div className="rounded-lg overflow-hidden bg-black relative">
+                  <img 
+                    src={selectedVideo.thumbnail_url} 
+                    alt={selectedVideo.title}
+                    className="w-full max-h-[350px] object-contain mx-auto"
+                  />
+                  {selectedVideo.is_flagged && (
+                    <div className="absolute top-2 right-2 px-3 py-1 rounded-md bg-amber-600/90 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-10">
+                      <FaExclamationTriangle className="w-3.5 h-3.5" /> Toxic Image Flagged
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-lg bg-gray-800 p-8 text-center">
                   <FaExclamationTriangle className="w-12 h-12 mx-auto mb-2 text-yellow-500" />
-                  <p style={{ color: colors.text.secondary }}>Video URL not available</p>
+                  <p style={{ color: colors.text.secondary }}>Media file not available</p>
                 </div>
               )}
               
@@ -598,10 +616,15 @@ export default function AdminVideosPage() {
               </div>
               
               {selectedVideo.is_flagged && (
-                <div className="p-3 rounded-lg" style={{ backgroundColor: colors.status.warning + '20' }}>
-                  <p className="text-sm font-medium" style={{ color: colors.status.warning }}>⚠️ Flagged Information</p>
-                  <p className="text-sm mt-1" style={{ color: colors.text.secondary }}>Reason: {selectedVideo.flagged_reason || 'No reason provided'}</p>
-                  <p className="text-xs mt-1" style={{ color: colors.text.tertiary }}>Flagged at: {formatDateUtil(selectedVideo.flagged_at!)}</p>
+                <div className="p-3.5 rounded-lg border border-amber-500/30" style={{ backgroundColor: colors.status.warning + '20' }}>
+                  <div className="flex items-center gap-2 font-bold text-sm" style={{ color: colors.status.warning }}>
+                    <FaExclamationTriangle className="w-4 h-4" />
+                    <span>⚠️ Toxic Image / Content Flagged for Moderation</span>
+                  </div>
+                  <p className="text-sm mt-1" style={{ color: colors.text.secondary }}>Reason: {selectedVideo.flagged_reason || 'Flagged by toxicity detection system'}</p>
+                  {selectedVideo.flagged_at && (
+                    <p className="text-xs mt-1" style={{ color: colors.text.tertiary }}>Flagged at: {formatDateUtil(selectedVideo.flagged_at)}</p>
+                  )}
                 </div>
               )}
               

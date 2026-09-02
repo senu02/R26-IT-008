@@ -21,6 +21,8 @@ export interface User {
   city?: string;
   location?: string;
   bio?: string;
+  liked_categories?: string[];
+  disliked_categories?: string[];
   profile_picture?: string | null;
   cover_image?: string | null;
   role?: 'user' | 'moderator' | 'admin' | 'super_admin';
@@ -95,7 +97,9 @@ async function apiCall<T>(
   
   const headers: Record<string, string> = {};
 
-  if (token) {
+  const isAuthEndpoint = endpoint === '/login/' || endpoint === '/register/';
+
+  if (token && !isAuthEndpoint) {
     headers['Authorization'] = `Token ${token}`;
   }
 
@@ -115,9 +119,19 @@ async function apiCall<T>(
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    
-    if (response.status === 401) {
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    } catch (networkError: any) {
+      console.error(`Network Error calling ${endpoint}:`, networkError);
+      throw {
+        status: 0,
+        message: 'Cannot connect to backend server. Please make sure Django server is running on http://localhost:8000.',
+        data: {},
+      };
+    }
+
+    if (response.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_role');
@@ -129,7 +143,7 @@ async function apiCall<T>(
       const error: any = {
         status: response.status,
         data: errorData,
-        message: errorData.error || errorData.message || errorData.detail || 'An error occurred',
+        message: errorData.error || errorData.message || errorData.detail || `Server returned error ${response.status}`,
       };
       throw error;
     }

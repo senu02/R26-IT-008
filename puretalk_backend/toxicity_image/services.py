@@ -41,7 +41,9 @@ def _get_model():
     # Locate the .h5 file
     base_dir = Path(settings.BASE_DIR)
     candidate_paths = [
+        base_dir / 'model' / 'toxicity_image' / 'toxic_mobilenetv2_model.h5',
         base_dir / 'model' / 'toxicity_image' / 'best_toxic_model.h5',
+        base_dir / 'toxic_mobilenetv2_model.h5',
         base_dir / 'best_toxic_model.h5',
     ]
 
@@ -76,60 +78,25 @@ def _get_model():
 
 def analyse_image(image_file) -> dict:
     """
-    Run toxicity inference on an image file-like object.
-
-    Args:
-        image_file: A Django InMemoryUploadedFile / file-like object.
-
-    Returns:
-        {
-            "is_toxic": bool,
-            "confidence_score": float,   # probability of the predicted class
-            "toxic_probability": float,  # P(toxic)
-            "non_toxic_probability": float,
-            "model_available": bool,
-        }
+    Run toxicity inference on an image file-like object using MobileNetV2 & PKL model.
     """
-    model = _get_model()
-
-    if model is None:
-        return {
-            "is_toxic": False,
-            "confidence_score": 0.0,
-            "toxic_probability": 0.0,
-            "non_toxic_probability": 1.0,
-            "model_available": False,
-        }
-
     try:
-        import tensorflow as tf
-        from PIL import Image
-
-        # Read image bytes and convert to RGB
-        image_bytes = image_file.read()
-        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-        img = img.resize(IMG_SIZE)
-
-        # Normalise to [0, 1] — same as training rescale=1./255
-        img_array = np.array(img, dtype=np.float32) / 255.0
-        img_array = np.expand_dims(img_array, axis=0)  # shape: (1, 224, 224, 3)
-
-        # Inference
-        prediction = model.predict(img_array, verbose=0)
-        toxic_prob = float(prediction[0][0])  # sigmoid output
-        non_toxic_prob = 1.0 - toxic_prob
-
-        is_toxic = toxic_prob >= TOXIC_THRESHOLD
-        confidence = toxic_prob if is_toxic else non_toxic_prob
+        from .engine import predict_toxic_image
+        if hasattr(image_file, 'seek'):
+            image_file.seek(0)
+        res = predict_toxic_image(image_file, model="pkl")
+        toxic_prob = float(res.get("score", 0.0))
+        is_toxic = res.get("is_toxic", False)
+        confidence = float(res.get("confidence", 0.0)) / 100.0
+        non_toxic_prob = round(1.0 - toxic_prob, 4)
 
         return {
             "is_toxic": is_toxic,
             "confidence_score": round(confidence, 4),
             "toxic_probability": round(toxic_prob, 4),
-            "non_toxic_probability": round(non_toxic_prob, 4),
+            "non_toxic_probability": non_toxic_prob,
             "model_available": True,
         }
-
     except Exception as exc:
         logger.error("Image toxicity inference failed: %s", exc)
         return {

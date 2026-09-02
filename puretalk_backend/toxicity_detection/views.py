@@ -4,18 +4,23 @@ from django.shortcuts import render
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
+# pyrefly: ignore [missing-import]
 from .models import ToxicityLog, UserToxicityProfile
+# pyrefly: ignore [missing-import]
 from .serializers import ToxicityLogSerializer, UserToxicityProfileSerializer
-from .services import analyse_toxicity
+# pyrefly: ignore [missing-import]
+from .services import analyse_toxicity, transcribe_and_analyse_audio
 
 
 class ToxicityViewSet(viewsets.GenericViewSet):
     """
     Endpoints:
         POST /api/toxicity/check/          — check arbitrary text (admin/debug use)
+        POST /api/toxicity/check-audio/    — check audio by converting to text
         GET  /api/toxicity/logs/           — list all logs (admin)
         GET  /api/toxicity/logs/{id}/      — single log detail (admin)
         POST /api/toxicity/logs/{id}/review/ — admin review / override
@@ -25,7 +30,7 @@ class ToxicityViewSet(viewsets.GenericViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     # ------------------------------------------------------------------ #
-    #  Text check                                                          #
+    #  Text & Audio checks                                                #
     # ------------------------------------------------------------------ #
 
     @action(detail=False, methods=['post'], url_path='check')
@@ -34,12 +39,6 @@ class ToxicityViewSet(viewsets.GenericViewSet):
         Analyse any text snippet.
         Body: { "text": "..." }
         """
-        if not request.user.is_staff:
-            return Response(
-                {"error": "Admin access required"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         text = request.data.get('text', '').strip()
         if not text:
             return Response(
@@ -48,6 +47,48 @@ class ToxicityViewSet(viewsets.GenericViewSet):
             )
 
         result = analyse_toxicity(text)
+        return Response(result)
+
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='check-audio',
+        parser_classes=[MultiPartParser, FormParser, JSONParser]
+    )
+    def check_audio(self, request):
+        """
+        Analyse an uploaded audio file for toxicity by converting it to text.
+        Multipart data: 'audio' file
+        """
+        audio_file = request.FILES.get('audio') or request.FILES.get('file')
+        if not audio_file:
+            return Response(
+                {"error": "Audio file is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        language = request.data.get('language', 'en-US')
+        result = transcribe_and_analyse_audio(audio_file, language=language)
+
+        if result.get('error') and not result.get('transcribed_text'):
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+        # Log entry for audit
+        if result.get('transcribed_text'):
+            try:
+                ToxicityLog.objects.create(
+                    author=request.user if request.user and request.user.is_authenticated else None,
+                    analysed_text=result['transcribed_text'],
+                    is_toxic=result.get('is_toxic', False),
+                    max_score=result.get('max_score', 0.0),
+                    label_scores=result.get('labels', {}),
+                    flagged_labels=result.get('flagged_labels', []),
+                    content_type='audio'
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("Failed to save ToxicityLog for audio: %s", e)
+
         return Response(result)
 
     # ------------------------------------------------------------------ #

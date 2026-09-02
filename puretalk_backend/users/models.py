@@ -60,6 +60,10 @@ class CustomUser(AbstractUser):
     country = models.CharField(max_length=100, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     
+    # Post Preferences (Liked & Disliked categories)
+    liked_categories = models.JSONField(default=list, blank=True, null=True)
+    disliked_categories = models.JSONField(default=list, blank=True, null=True)
+    
     # Role and Status Fields
     role = models.CharField(
         max_length=20, 

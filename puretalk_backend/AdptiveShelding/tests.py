@@ -22,6 +22,7 @@ Run:
 from unittest.mock import patch, MagicMock
 from django.test import TestCase
 
+# pyrefly: ignore [missing-import]
 from .engine import (
     _normalize,
     get_behavior_score,

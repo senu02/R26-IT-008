@@ -51,7 +51,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export interface ToxicityLog {
   id: string;
-  content_type: 'post' | 'comment';
+  content_type: 'post' | 'comment' | 'audio';
   post: string | null;
   comment: string | null;
   author: string;
@@ -98,6 +98,24 @@ export interface ToxicityCheckResponse {
   flagged_labels: string[];
 }
 
+export interface AudioToxicityCheckResponse {
+  transcribed_text: string;
+  is_toxic: boolean;
+  max_score: number;
+  labels: Record<string, number>;
+  flagged_labels: string[];
+  error: string | null;
+}
+
+export interface ImageToxicityCheckResponse {
+  is_toxic: boolean;
+  confidence_score: number;
+  toxic_probability: number;
+  non_toxic_probability: number;
+  model_available: boolean;
+  message: string;
+}
+
 export interface ReviewLogRequest {
   overridden: boolean;
   review_notes: string;
@@ -116,7 +134,7 @@ export interface PaginatedResponse<T> {
 
 export interface ToxicityLogsParams {
   is_toxic?: boolean;
-  content_type?: 'post' | 'comment';
+  content_type?: 'post' | 'comment' | 'audio';
   user_id?: string;
   reviewed?: boolean;
   page?: number;
@@ -136,6 +154,7 @@ export interface UserProfilesParams {
 // But the @action url_paths define exact sub-paths:
 //
 //   POST /api/toxicity/check/
+//   POST /api/toxicity/check-audio/
 //   GET  /api/toxicity/logs/
 //   GET  /api/toxicity/logs/{log_id}/         (detail=True with url_path override)
 //   POST /api/toxicity/logs/{log_id}/review/
@@ -159,6 +178,30 @@ export const toxicityAPI = {
     return apiCall<ToxicityCheckResponse>('/toxicity/check/', {
       method: 'POST',
       body: JSON.stringify({ text }),
+    });
+  },
+
+  // POST /api/toxicity/check-audio/
+  async checkAudio(audioFile: File | Blob, language: string = 'en-US'): Promise<AudioToxicityCheckResponse> {
+    const formData = new FormData();
+    const fileName = audioFile instanceof File ? audioFile.name : 'recorded_audio.wav';
+    formData.append('audio', audioFile, fileName);
+    formData.append('language', language);
+
+    return apiCall<AudioToxicityCheckResponse>('/toxicity/check-audio/', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  // POST /api/toxicity-image/quick-check/
+  async checkImage(imageFile: File): Promise<ImageToxicityCheckResponse> {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    return apiCall<ImageToxicityCheckResponse>('/toxicity-image/quick-check/', {
+      method: 'POST',
+      body: formData,
     });
   },
 
