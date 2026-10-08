@@ -176,6 +176,52 @@ class Video(models.Model):
         self.save(update_fields=['is_blocked', 'blocked_reason', 'blocked_at'])
 
 
+class VideoTextScan(models.Model):
+    STATUS_CHOICES = [
+        ('processing', 'Processing'),
+        ('complete', 'Complete'),
+        ('partial', 'Partial'),
+        ('failed', 'Failed'),
+    ]
+
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='text_scans')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')
+    is_toxic = models.BooleanField(default=False)
+    max_score = models.FloatField(default=0.0)
+    flagged_labels = models.JSONField(default=list)
+    action = models.CharField(max_length=40, default='allow')
+    analysis_version = models.CharField(max_length=40, default='video_text_v1')
+    sampling_interval = models.FloatField(default=2.0)
+    observation_count = models.PositiveIntegerField(default=0)
+    modality_results = models.JSONField(default=dict, blank=True)
+    error = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class VideoTextObservation(models.Model):
+    scan = models.ForeignKey(VideoTextScan, on_delete=models.CASCADE, related_name='observations')
+    timestamp_seconds = models.FloatField()
+    frame_number = models.PositiveIntegerField()
+    extracted_text = models.TextField()
+    ocr_confidence = models.FloatField(default=0.0)
+    text_labels = models.JSONField(default=dict)
+    flagged_labels = models.JSONField(default=list)
+    toxicity_score = models.FloatField(default=0.0)
+    is_toxic = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp_seconds']
+        indexes = [
+            models.Index(fields=['scan', 'timestamp_seconds']),
+            models.Index(fields=['is_toxic', '-created_at']),
+        ]
+
+
 class VideoLike(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='video_likes')
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='likes')

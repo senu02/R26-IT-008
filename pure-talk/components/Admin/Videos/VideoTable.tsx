@@ -25,6 +25,8 @@ interface Video {
   flagged_reason: string | null;
   flagged_at: string | null;
   is_blocked: boolean;
+  analysis_status?: string;
+  suggested_action?: string;
   blocked_reason: string | null;
   blocked_at: string | null;
   created_at: string;
@@ -121,7 +123,7 @@ export default function VideoTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px]">
+      <table className="w-full min-w-[900px]" style={{ color: colors.text.primary }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${colors.border.primary}` }}>
             <th className="p-3 text-left w-12">
@@ -136,6 +138,7 @@ export default function VideoTable({
             <th className="p-3 text-left">Creator</th>
             <th className="p-3 text-left">Views</th>
             <th className="p-3 text-left">Privacy</th>
+            <th className="p-3 text-left">Analysis</th>
             <th className="p-3 text-left">Date</th>
             <th className="p-3 text-left">Actions</th>
           </tr>
@@ -247,6 +250,16 @@ export default function VideoTable({
                     {video.privacy === 'only_me' && <FaLock className="w-2 h-2" />}
                     {video.privacy === 'only_me' ? 'Only Me' : video.privacy}
                   </span>
+                </td>
+                <td className="p-3">
+                  <div className="text-xs space-y-1">
+                    <span className="block capitalize" style={{ color: video.analysis_status === 'complete' ? colors.status.success : colors.status.warning }}>
+                      {({ complete: 'Analysed', partial: 'Partial analysis', failed: 'Analysis failed', processing: 'Analysing' } as Record<string, string>)[video.analysis_status || ''] || 'Not analysed'}
+                    </span>
+                    {video.suggested_action && <span className="block font-semibold capitalize" style={{ color: video.suggested_action === 'block' ? colors.status.error : video.suggested_action === 'approve' ? colors.status.success : colors.status.warning }}>
+                      {video.suggested_action.replaceAll('_', ' ')}
+                    </span>}
+                  </div>
                 </td>
                 <td className="p-3">
                   <div className="flex items-center gap-1">

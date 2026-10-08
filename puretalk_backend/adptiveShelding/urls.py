@@ -6,15 +6,12 @@ from .views import (
     UserToxicityHistoryView,
     UserBehaviorScoreView,
     AdminAllRecordsView,
-    ShieldChatbotAssistantView,
 )
 
 urlpatterns = [
-    path("analyze/",        AnalyzeMessageView.as_view(),          name="aesm-analyze"),
-    path("explain/",        ExplainMessageView.as_view(),          name="aesm-explain"),
-    path("history/",        UserToxicityHistoryView.as_view(),     name="aesm-history"),
-    path("behavior-score/", UserBehaviorScoreView.as_view(),       name="aesm-behavior-score"),
-    path("admin-records/",  AdminAllRecordsView.as_view(),         name="aesm-admin-records"),
-    path("chatbot/",        ShieldChatbotAssistantView.as_view(),  name="aesm-chatbot"),
+    path("analyze/",        AnalyzeMessageView.as_view(),      name="aesm-analyze"),
+    path("explain/",        ExplainMessageView.as_view(),      name="aesm-explain"),
+    path("history/",        UserToxicityHistoryView.as_view(), name="aesm-history"),
+    path("behavior-score/", UserBehaviorScoreView.as_view(),   name="aesm-behavior-score"),
+    path("admin-records/",  AdminAllRecordsView.as_view(),     name="aesm-admin-records"),
 ]
-

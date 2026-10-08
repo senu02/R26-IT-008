@@ -2,25 +2,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { Search, X } from 'lucide-react';
 import { BackgroundWrapper, getTheme, animationStyles } from '@/context/theme';
 import Sidebar from '@/components/User/Sidebar';
 import StoryRow from '@/components/Home/StoryRow';
 import PostSection from '@/components/User/Posts/PostSection';
 import RightSidebar from '@/components/Home/RightSidebar';
+import UserVideoPosts from '@/components/User/Posts/UserVideoPosts';
 
 export default function Home() {
-  const [isDark, setIsDark] = useState(true);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const theme = getTheme(isDark);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      setIsDark(savedTheme === 'dark');
-    }
     setMounted(true);
   }, []);
 
@@ -38,7 +37,7 @@ export default function Home() {
   return (
     <BackgroundWrapper isDark={isDark}>
       {/* Main Layout Container - Fixed height */}
-      <div className="flex h-screen w-full max-w-[1440px] mx-auto bg-[var(--background)] text-[var(--foreground)] font-sans overflow-hidden">
+      <div className={`flex h-screen w-full max-w-[1440px] mx-auto bg-[var(--background)] ${theme.text.primary} font-sans overflow-hidden`}>
         
         {/* Left Sidebar - Fixed */}
         <aside className="hidden md:block w-[72px] lg:w-[245px] shrink-0 h-full">
@@ -60,7 +59,7 @@ export default function Home() {
               >
                 {/* Search Icon */}
                 <div className="pl-4 flex items-center pointer-events-none">
-                  <Search className={`h-5 w-5 transition-colors duration-300 ${isSearchFocused ? 'text-black' : 'text-black/70'}`} />
+                  <Search className={`h-5 w-5 transition-colors duration-300 ${isSearchFocused ? theme.text.primary : theme.text.secondary}`} />
                 </div>
 
                 {/* Input Field */}
@@ -71,7 +70,7 @@ export default function Home() {
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setIsSearchFocused(false)}
                   placeholder="Search posts, topics, or people..."
-                  className="w-full py-3.5 pl-3 pr-10 text-sm bg-transparent text-black placeholder:text-black/60 focus:outline-none tracking-wide font-sans font-medium"
+                  className={`w-full py-3.5 pl-3 pr-10 text-sm bg-transparent ${theme.text.primary} focus:outline-none tracking-wide font-sans font-medium`}
                 />
 
                 {/* Clear Button */}
@@ -79,7 +78,7 @@ export default function Home() {
                   <div className="absolute right-3 flex items-center">
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="p-1.5 rounded-full text-black/70 hover:text-black hover:bg-black/10 transition-all"
+                      className={`p-1.5 rounded-full ${theme.text.secondary} hover:bg-black/10 transition-all`}
                       title="Clear search"
                     >
                       <X className="h-4 w-4" />
@@ -112,6 +111,7 @@ export default function Home() {
             {/* Feed Posts */}
             <div className="space-y-6 pb-20">
               <PostSection theme={theme} isDark={isDark} searchQuery={searchQuery} />
+              <UserVideoPosts theme={theme} feed />
             </div>
           </div>
         </main>

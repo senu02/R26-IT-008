@@ -20,7 +20,9 @@ import {
   History,
   User,
   Clock,
-  Filter
+  Filter,
+  Eye,
+  X
 } from 'lucide-react';
 import { ThemeProvider, useThemeColors } from '@/context/adminTheme';
 import { toxicityAPI, AudioToxicityCheckResponse, ToxicityLog } from '@/app/services/ToxicityDetection/actions';
@@ -87,7 +89,8 @@ function AudioToxicityContent() {
   // Logs Table State
   const [logs, setLogs] = useState<ToxicityLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
-  const [filterToxic, setFilterToxic] = useState<boolean | undefined>(undefined);
+  const [filterMode, setFilterMode] = useState<'all' | 'toxic' | 'monitor' | 'victim'>('all');
+  const [selectedLog, setSelectedLog] = useState<ToxicityLog | null>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -95,14 +98,14 @@ function AudioToxicityContent() {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [audioUrl, filterToxic]);
+  }, [audioUrl, filterMode]);
 
   const fetchLogs = async () => {
     setLoadingLogs(true);
     try {
       const res = await toxicityAPI.getLogs({
         content_type: 'audio',
-        is_toxic: filterToxic,
+        is_toxic: filterMode === 'toxic' ? true : undefined,
       });
       setLogs(res.results || []);
     } catch {
@@ -111,6 +114,15 @@ function AudioToxicityContent() {
       setLoadingLogs(false);
     }
   };
+
+  const visibleLogs = logs.filter((log) => {
+    if (filterMode === 'monitor') return log.action === 'warn_and_monitor' || log.latent_toxicity;
+    if (filterMode === 'victim') {
+      return log.action === 'possible_victim_report'
+        || log.fusion_result?.action_flags?.possible_victim_report;
+    }
+    return true;
+  });
 
   const startTimer = () => {
     setRecordingTime(0);
@@ -545,6 +557,90 @@ function AudioToxicityContent() {
               )}
             </div>
 
+            {/* Research Fusion Summary */}
+            {result.fusion && (
+              <div className="p-5 rounded-2xl border space-y-4" style={{ backgroundColor: colors.background.primary, borderColor: colors.border.primary }}>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.text.primary }}>
+                      Audio Research Decision
+                    </h3>
+                    <p className="text-[11px] mt-1" style={{ color: colors.text.secondary }}>
+                      Weighted late fusion of transcript toxicity and vocal emotion.
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${
+                    result.fusion.action === 'flag_toxic_content'
+                      ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                      : result.fusion.action === 'possible_victim_report'
+                      ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                      : result.fusion.action === 'warn_and_monitor'
+                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  }`}>
+                    {result.fusion.action.replaceAll('_', ' ')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl border" style={{ borderColor: colors.border.primary }}>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Dominant emotion</p>
+                    <p className="mt-1 text-sm font-bold capitalize" style={{ color: colors.text.primary }}>
+                      {result.fusion.dominant_emotion || 'Unavailable'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl border" style={{ borderColor: colors.border.primary }}>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Fusion weights</p>
+                    <p className="mt-1 text-sm font-bold" style={{ color: colors.text.primary }}>
+                      Text {Math.round(result.fusion.weights.text * 100)}% / Audio {Math.round(result.fusion.weights.audio_emotion * 100)}%
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl border" style={{ borderColor: colors.border.primary }}>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Monitoring signal</p>
+                    <p className={`mt-1 text-sm font-bold ${result.fusion.action_flags.latent_toxicity ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {result.fusion.action_flags.latent_toxicity ? 'Latent toxicity' : 'No latent signal'}
+                    </p>
+                  </div>
+                </div>
+
+                {result.audio_emotion?.probabilities && Object.keys(result.audio_emotion.probabilities).length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: colors.text.secondary }}>Emotion probabilities</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                      {Object.entries(result.audio_emotion.probabilities).map(([emotion, score]) => (
+                        <div key={emotion} className="p-2.5 rounded-lg border" style={{ borderColor: colors.border.primary }}>
+                          <div className="flex justify-between gap-2 text-[10px]">
+                            <span className="capitalize truncate" style={{ color: colors.text.secondary }}>{emotion}</span>
+                            <span className="font-bold" style={{ color: colors.text.primary }}>{Math.round(score * 100)}%</span>
+                          </div>
+                          <div className="h-1.5 mt-2 rounded-full bg-black/20 overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, score * 100))}%`, backgroundColor: colors.primary.main }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: colors.text.secondary }}>Fused toxicity labels</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    {Object.entries(result.fusion.fused_labels).map(([label, score]) => (
+                      <div key={label} className="p-2.5 rounded-lg border" style={{ borderColor: colors.border.primary }}>
+                        <div className="flex justify-between gap-2 text-[10px]">
+                          <span className="capitalize truncate" style={{ color: colors.text.secondary }}>{label.replaceAll('_', ' ')}</span>
+                          <span className={`font-bold ${score >= 0.5 ? 'text-red-400' : ''}`} style={score < 0.5 ? { color: colors.text.primary } : undefined}>{Math.round(score * 100)}%</span>
+                        </div>
+                        <div className="h-1.5 mt-2 rounded-full bg-black/20 overflow-hidden">
+                          <div className={`h-full rounded-full ${score >= 0.5 ? 'bg-red-500' : 'bg-amber-400'}`} style={{ width: `${Math.min(100, Math.max(0, score * 100))}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Transcribed Speech Box with Highlighted Words */}
             <div className="p-5 rounded-2xl border space-y-3" style={{ backgroundColor: colors.background.primary, borderColor: colors.border.primary }}>
               <div className="flex items-center justify-between">
@@ -659,20 +755,36 @@ function AudioToxicityContent() {
           {/* Filter Tabs */}
           <div className="flex items-center gap-1.5 self-start sm:self-auto">
             <button
-              onClick={() => setFilterToxic(undefined)}
+              onClick={() => setFilterMode('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filterToxic === undefined ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                filterMode === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
               }`}
             >
               All Logs
             </button>
             <button
-              onClick={() => setFilterToxic(true)}
+              onClick={() => setFilterMode('toxic')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filterToxic === true ? 'bg-red-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                filterMode === 'toxic' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
               }`}
             >
               Toxic Flags Only
+            </button>
+            <button
+              onClick={() => setFilterMode('monitor')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                filterMode === 'monitor' ? 'bg-amber-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Monitor Signals
+            </button>
+            <button
+              onClick={() => setFilterMode('victim')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                filterMode === 'victim' ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Victim Reports
             </button>
           </div>
         </div>
@@ -693,12 +805,22 @@ function AudioToxicityContent() {
                   <th className="py-3 px-3 font-semibold">User</th>
                   <th className="py-3 px-3 font-semibold">Transcribed Speech Text</th>
                   <th className="py-3 px-3 font-semibold">Verdict</th>
+                  <th className="py-3 px-3 font-semibold">Research action</th>
+                  <th className="py-3 px-3 font-semibold">Emotion</th>
+                  <th className="py-3 px-3 font-semibold">Latent signal</th>
                   <th className="py-3 px-3 font-semibold">Max Score</th>
+                  <th className="py-3 px-3 font-semibold">Details</th>
                   <th className="py-3 px-3 font-semibold">Timestamp</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: colors.border.primary }}>
-                {logs.map((log) => (
+                {visibleLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-xs" style={{ color: colors.text.secondary }}>
+                      No audio logs match this research filter.
+                    </td>
+                  </tr>
+                ) : visibleLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-white/05 transition-colors">
                     <td className="py-3 px-3 font-medium" style={{ color: colors.text.primary }}>
                       <div className="flex items-center gap-2">
@@ -720,8 +842,39 @@ function AudioToxicityContent() {
                         </span>
                       )}
                     </td>
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold capitalize bg-slate-500/10 border" style={{ borderColor: colors.border.primary, color: colors.text.secondary }}>
+                        {(log.decision_status || log.action || 'legacy_result').replaceAll('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 capitalize" style={{ color: colors.text.secondary }}>
+                      {log.fusion_result?.dominant_emotion || 'Unknown'}
+                    </td>
+                    <td className="py-3 px-3">
+                      {log.latent_toxicity ? (
+                        <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          Monitor
+                        </span>
+                      ) : (
+                        <span className="text-[10px]" style={{ color: colors.text.secondary }}>None</span>
+                      )}
+                    </td>
                     <td className="py-3 px-3 font-mono font-bold" style={{ color: log.is_toxic ? '#ef4444' : colors.text.primary }}>
-                      {Math.round(log.max_score * 100)}%
+                      <div>{Math.round(log.max_score * 100)}% fused</div>
+                      {log.original_max_score !== null && log.original_max_score !== undefined && (
+                        <div className="text-[10px] font-normal text-gray-400">
+                          {Math.round(log.original_max_score * 100)}% text
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 px-3">
+                      <button
+                        onClick={() => setSelectedLog(log)}
+                        className="px-2 py-1 rounded-md text-[10px] font-bold border flex items-center gap-1 hover:opacity-80"
+                        style={{ borderColor: colors.border.primary, color: colors.primary.main }}
+                      >
+                        <Eye size={12} /> View
+                      </button>
                     </td>
                     <td className="py-3 px-3 text-gray-400">
                       <div className="flex items-center gap-1">
@@ -736,6 +889,80 @@ function AudioToxicityContent() {
           </div>
         )}
       </div>
+
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => setSelectedLog(null)}>
+          <div
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border p-6 space-y-5 shadow-2xl"
+            style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold" style={{ color: colors.text.primary }}>Audio analysis details</h2>
+                <p className="text-xs mt-1" style={{ color: colors.text.secondary }}>
+                  Auditable transcript and emotion evidence for this historical result.
+                </p>
+              </div>
+              <button onClick={() => setSelectedLog(null)} aria-label="Close details" className="p-1.5 rounded-lg hover:bg-white/10" style={{ color: colors.text.secondary }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-xl border" style={{ borderColor: colors.border.primary, backgroundColor: colors.background.primary }}>
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Transcript</p>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: colors.text.primary }}>{selectedLog.analysed_text || 'No transcript stored.'}</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl border" style={{ borderColor: colors.border.primary }}>
+                <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Text score</p>
+                <p className="mt-1 text-lg font-bold" style={{ color: colors.text.primary }}>
+                  {selectedLog.original_max_score == null ? 'Unavailable' : `${Math.round(selectedLog.original_max_score * 100)}%`}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl border" style={{ borderColor: colors.border.primary }}>
+                <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Audio evidence</p>
+                <p className="mt-1 text-lg font-bold" style={{ color: colors.text.primary }}>
+                  {selectedLog.fusion_result?.audio_max_evidence == null ? 'Unavailable' : `${Math.round(selectedLog.fusion_result.audio_max_evidence * 100)}%`}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl border" style={{ borderColor: colors.border.primary }}>
+                <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Final fused score</p>
+                <p className="mt-1 text-lg font-bold text-red-400">
+                  {selectedLog.fusion_result?.fused_max_score == null ? `${Math.round(selectedLog.max_score * 100)}%` : `${Math.round(selectedLog.fusion_result.fused_max_score * 100)}%`}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: colors.text.secondary }}>Per-label contribution</p>
+              {selectedLog.fusion_result?.label_breakdown ? (
+                <div className="overflow-x-auto rounded-xl border" style={{ borderColor: colors.border.primary }}>
+                  <table className="w-full text-left text-xs">
+                    <thead><tr className="border-b" style={{ borderColor: colors.border.primary, color: colors.text.secondary }}>
+                      <th className="p-3">Label</th><th className="p-3">Text</th><th className="p-3">Audio evidence</th><th className="p-3">Audio contribution</th><th className="p-3">Final</th>
+                    </tr></thead>
+                    <tbody>
+                      {Object.entries(selectedLog.fusion_result.label_breakdown).map(([label, breakdown]) => (
+                        <tr key={label} className="border-b last:border-0" style={{ borderColor: colors.border.primary }}>
+                          <td className="p-3 capitalize" style={{ color: colors.text.primary }}>{label.replaceAll('_', ' ')}</td>
+                          <td className="p-3" style={{ color: colors.text.secondary }}>{Math.round(breakdown.text_score * 100)}%</td>
+                          <td className="p-3" style={{ color: colors.text.secondary }}>{Math.round(breakdown.audio_evidence * 100)}%</td>
+                          <td className="p-3 text-amber-400">+{Math.round(breakdown.audio_contribution * 100)}%</td>
+                          <td className="p-3 font-bold" style={{ color: breakdown.final_score >= 0.5 ? '#ef4444' : colors.text.primary }}>{Math.round(breakdown.final_score * 100)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs" style={{ color: colors.text.secondary }}>Detailed fusion breakdown unavailable for this legacy result.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

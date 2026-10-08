@@ -1,5 +1,6 @@
 // app/lib/videoActions.ts
 import { getCurrentUserData } from '@/lib/api';
+import type { AudioToxicityCheckResponse } from '@/app/services/ToxicityDetection/actions';
 
 // Base API URL - make sure this matches your Django backend
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -104,6 +105,9 @@ export interface Video {
   can_delete: boolean;
   is_blocked: boolean;
   is_blocked_display: string;
+  blocked_reason?: string | null;
+  analysis_status?: string;
+  suggested_action?: string;
 }
 
 export interface VideoComment {
@@ -127,6 +131,49 @@ export interface VideoComment {
   replies_count: number;
   can_view: boolean;
   can_delete: boolean;
+}
+
+export interface VideoTextScan {
+  id: number;
+  video: number;
+  status: 'processing' | 'complete' | 'partial' | 'failed';
+  is_toxic: boolean;
+  max_score: number;
+  flagged_labels: string[];
+  action: string;
+  analysis_version: string;
+  sampling_interval: number;
+  observation_count: number;
+  error: string | null;
+  modality_results?: {
+    visible_text?: {
+      status: 'complete' | 'failed';
+      is_toxic: boolean;
+      max_score: number;
+      flagged_labels: string[];
+      observation_count: number;
+      error: string | null;
+    };
+    audio?: {
+      status: 'complete' | 'partial' | 'failed' | 'not_present';
+      error: string | null;
+      has_audio?: boolean;
+      track_count?: number;
+      duration_seconds?: number;
+      language?: string;
+      analysis?: AudioToxicityCheckResponse;
+    };
+  };
+  observations: Array<{
+    timestamp_seconds: number;
+    frame_number: number;
+    extracted_text: string;
+    ocr_confidence: number;
+    text_labels: Record<string, number>;
+    flagged_labels: string[];
+    toxicity_score: number;
+    is_toxic: boolean;
+  }>;
 }
 
 export interface VideoReport {
@@ -231,6 +278,37 @@ export const videoActions = {
         success: false,
         error: error.message || 'Failed to fetch video',
       };
+    }
+  },
+
+  scanVideoText: async (id: number): Promise<{ success: boolean; data?: VideoTextScan; error?: string }> => {
+    try {
+      const response = await videoApiCall<VideoTextScan>(`/api/videos/videos/${id}/scan-text/`, {
+        method: 'POST',
+      });
+      return { success: true, data: response };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to scan video text' };
+    }
+  },
+
+  getVideoTextScan: async (id: number): Promise<{ success: boolean; data?: VideoTextScan | null; error?: string }> => {
+    try {
+      const response = await videoApiCall<VideoTextScan | { scan: null }>(`/api/videos/videos/${id}/text-scan/`);
+      return { success: true, data: 'scan' in response ? response.scan : response };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to load video text scan' };
+    }
+  },
+
+  scanVideoToxicity: async (id: number): Promise<{ success: boolean; data?: VideoTextScan; error?: string }> => {
+    try {
+      const response = await videoApiCall<VideoTextScan>(`/api/videos/videos/${id}/scan-toxicity/`, {
+        method: 'POST',
+      });
+      return { success: true, data: response };
+    } catch (error: unknown) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to analyse video toxicity' };
     }
   },
 

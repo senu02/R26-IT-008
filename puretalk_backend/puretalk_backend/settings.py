@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'stories',
     'toxicity_detection',
     'toxicity_behavior',
-    'adptiveShelding',
+    'AdptiveShelding',
     'toxicity_image',
     'notifications',
 ]

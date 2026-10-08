@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { getCurrentUserData, getImageUrl } from '@/lib/api';
 import { friendsAPI, Friendship } from '@/app/services/friends/actions';
-import ShieldChatbotWidget from '@/app/components/ShieldChatbotWidget';
 
 // Interface definitions
 interface Message {
@@ -695,10 +694,7 @@ function MessagesContent() {
             )}
           </div>
         </main>
-        {/* Floating AI Toxicity Assistant Chatbot Widget */}
-        <ShieldChatbotWidget />
       </div>
     </BackgroundWrapper>
   );
 }
-

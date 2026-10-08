@@ -1,0 +1,4 @@
+{
+  "include": ["puretalk_backend"],
+  "extraPaths": ["puretalk_backend"]
+}

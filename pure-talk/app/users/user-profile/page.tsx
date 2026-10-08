@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/User/Sidebar';
 import { BackgroundWrapper } from '@/context/theme';
 import PostsPage from '@/app/users/posts/page';
+import UserVideoPosts from '@/components/User/Posts/UserVideoPosts';
 import { getTheme } from '@/context/theme';
 import { ToastProvider, useToast } from '@/context/userToast';
 import { 
@@ -588,6 +589,7 @@ function ProfilePageContent() {
                 onlyImages={true} 
                 hideFilterTabs={true} 
               />
+              <UserVideoPosts theme={theme} userId={user?.id} />
             </div>
 
             {/* Right Column */}

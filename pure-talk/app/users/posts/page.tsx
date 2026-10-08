@@ -3,6 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import PostSection from '@/components/User/Posts/PostSection';
+import UserVideoPosts from '@/components/User/Posts/UserVideoPosts';
+import { getCurrentUserData } from '@/app/services/posts/actions';
 import { getTheme, type ThemeColors } from '@/context/theme';
 
 export default function PostsPage() {
@@ -57,6 +59,7 @@ export default function PostsPage() {
 
         {/* Main Post Section */}
         <PostSection theme={theme} isDark={isDark} />
+        <UserVideoPosts theme={theme} userId={getCurrentUserData()?.id} />
       </div>
     </div>
   );

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ThemeColors } from '@/context/theme';
 import { getCurrentUserAvatar, getCurrentUserData, getFallbackAvatarUrl } from '@/app/services/posts/actions';
-import { Image, Smile, SendHorizontal, X, Mic, Square, AlertTriangle, CheckCircle, FileAudio, Loader2 } from 'lucide-react';
+import { Image, Smile, SendHorizontal, X, Mic, Square, AlertTriangle, CheckCircle, FileAudio, Loader2, Video as VideoIcon } from 'lucide-react';
 import { useToast } from '@/context/userToast';
 import { toxicityAPI, AudioToxicityCheckResponse } from '@/app/services/ToxicityDetection/actions';
+import { videoActions } from '@/app/services/videos/actions';
 import Tesseract from 'tesseract.js';
 
 interface CreatePostProps {
@@ -19,6 +20,8 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
   const [userName, setUserName] = useState('');
   const [avatarError, setAvatarError] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -41,6 +44,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
   const audioChunksRef = useRef<Blob[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
@@ -224,6 +228,29 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
     }
   };
 
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) {
+      toast.showError('Video size should be less than 100MB');
+      return;
+    }
+    if (!file.type.startsWith('video/')) {
+      toast.showError('Please select a video file');
+      return;
+    }
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setSelectedVideo(file);
+    setVideoPreview(URL.createObjectURL(file));
+  };
+
+  const removeVideo = () => {
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setSelectedVideo(null);
+    setVideoPreview(null);
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  };
+
   const convertToWavBlob = async (rawAudio: File | Blob): Promise<Blob> => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -379,9 +406,31 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
       return;
     }
 
-    if ((content.trim() || selectedImage || selectedAudio) && !isSubmitting) {
+    if ((content.trim() || selectedImage || selectedAudio || selectedVideo) && !isSubmitting) {
       setIsSubmitting(true);
       try {
+        if (selectedVideo) {
+          const formData = new FormData();
+          formData.append('title', content.trim() || selectedVideo.name.replace(/\.[^/.]+$/, ''));
+          formData.append('description', content.trim());
+          formData.append('video_file', selectedVideo);
+          formData.append('privacy', 'public');
+          formData.append('allow_comments', 'true');
+          formData.append('allow_sharing', 'true');
+          const upload = await videoActions.uploadVideo(formData);
+          if (!upload.success) {
+            toast.showError(upload.error || 'Failed to upload video.');
+            return;
+          }
+          toast.showInfo('Video uploaded successfully.');
+          setContent('');
+          setSelectedVideo(null);
+          if (videoPreview) URL.revokeObjectURL(videoPreview);
+          setVideoPreview(null);
+          setIsFocused(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+        }
         await onPost(content, selectedImage || undefined);
         setContent('');
         removeImage();
@@ -508,6 +557,18 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
           )}
 
           {/* Audio & Speech Toxicity Preview Section */}
+          {selectedVideo && videoPreview && (
+            <div className="mt-3 p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-white">
+                <span className="flex items-center gap-2 truncate"><VideoIcon size={16} className="text-sky-400" />{selectedVideo.name}</span>
+                <button onClick={removeVideo} className="p-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white"><X size={14} /></button>
+              </div>
+              <video controls src={videoPreview} className="w-full max-h-64 rounded-lg bg-black" />
+              <p className="text-[11px] text-slate-400">Video text toxicity scanning is available to moderators after upload.</p>
+            </div>
+          )}
+
+          {/* Audio & Speech Toxicity Preview Section */}
           {selectedAudio && (
             <div className="mt-3 p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-2">
               <div className="flex items-center justify-between">
@@ -589,6 +650,14 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
                 <span className="text-sm hidden sm:inline">Photo/Video</span>
               </button>
 
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500/20 transition-all font-medium"
+              >
+                <VideoIcon className="w-5 h-5" />
+                <span className="text-sm hidden sm:inline">Video</span>
+              </button>
+
               <button 
                 onClick={() => audioInputRef.current?.click()}
                 className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-all font-medium"
@@ -624,7 +693,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
               <button
                 onClick={handleSubmit}
                 disabled={
-                  (!content.trim() && !selectedImage && !selectedAudio) ||
+                  (!content.trim() && !selectedImage && !selectedAudio && !selectedVideo) ||
                   isSubmitting ||
                   audioToxicityResult?.is_toxic ||
                   imageToxicityResult?.isToxic ||
@@ -653,6 +722,13 @@ const CreatePost: React.FC<CreatePostProps> = ({ theme, isDark, onPost }) => {
         type="file"
         accept="image/*"
         onChange={handleImageSelect}
+        className="hidden"
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+        onChange={handleVideoSelect}
         className="hidden"
       />
       <input

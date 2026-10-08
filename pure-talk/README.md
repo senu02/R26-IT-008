@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PureTalk frontend
 
-## Getting Started
+This directory contains the Next.js frontend for PureTalk. The backend is in
+`../puretalk_backend` and runs separately on port 8000 during development.
 
-First, run the development server:
+## Requirements
 
-```bash
+- Node.js 20 or newer
+- npm (included with Node.js)
+- A running PureTalk backend at `http://localhost:8000`
+
+## Install and run
+
+Open a terminal in this directory and run:
+
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` in a browser. Keep the frontend terminal running.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The development command comes from the `scripts` section of `package.json`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```json
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "eslint"
+}
+```
 
-## Learn More
+Use `npm run build` to create a production build and `npm run start` to serve a
+completed production build.
 
-To learn more about Next.js, take a look at the following resources:
+The frontend uses `http://localhost:8000` as its local backend by default. The
+API service files also support `NEXT_PUBLIC_API_URL` when a different backend
+address is required. Check each service's expected base path before setting
+that variable because some services add `/api` themselves.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the repository-level `README.md` for complete first-time setup and project
+handoff instructions.

@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from .models import (
     Video, VideoLike, VideoComment, CommentLike, 
-    VideoView, VideoReport
+    VideoView, VideoReport, VideoTextScan
 )
 from .serializers import (
     VideoSerializer, VideoDetailSerializer, VideoCreateSerializer,
@@ -185,7 +185,11 @@ class VideoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        response_serializer = VideoSerializer(
+            serializer.instance,
+            context={'request': request},
+        )
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -217,6 +221,57 @@ class VideoViewSet(viewsets.ModelViewSet):
             {"message": "Video deleted successfully"},
             status=status.HTTP_204_NO_CONTENT
         )
+
+    @action(detail=True, methods=['post'], url_path='scan-text')
+    def scan_text(self, request, pk=None):
+        """Run the isolated visible-text OCR scan for an existing video."""
+        if not request.user.is_moderator:
+            return Response(
+                {'error': 'Moderator access required'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        video = self.get_object()
+        from .text_scan import scan_video_text
+        result = scan_video_text(video)
+        return Response(
+            result,
+            status=(
+                status.HTTP_200_OK
+                if result['status'] != 'failed'
+                else status.HTTP_422_UNPROCESSABLE_ENTITY
+            ),
+        )
+
+    @action(detail=True, methods=['post'], url_path='scan-toxicity')
+    def scan_toxicity(self, request, pk=None):
+        """Analyse screen text and the video's audio without changing moderation."""
+        if not request.user.is_moderator:
+            return Response({'error': 'Moderator access required'}, status=status.HTTP_403_FORBIDDEN)
+        language = request.data.get('language', 'en-US')
+        if not isinstance(language, str) or not language.strip() or len(language) > 35:
+            return Response({'error': 'A valid speech language is required'}, status=status.HTTP_400_BAD_REQUEST)
+        from .video_scan import scan_video
+        # Analysis failures are persisted outcomes, returned for the review UI.
+        return Response(scan_video(self.get_object(), language=language.strip()))
+
+    @action(detail=True, methods=['get'], url_path='text-scan')
+    def text_scan(self, request, pk=None):
+        """Return the latest visible-text scan and its OCR observations."""
+        if not request.user.is_moderator:
+            return Response(
+                {'error': 'Moderator access required'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        video = self.get_object()
+        scan = video.text_scans.prefetch_related('observations').first()
+        if scan is None:
+            return Response({'scan': None})
+
+        observations = list(scan.observations.all())
+        from .text_scan import _scan_result
+        return Response(_scan_result(scan, observations))
     
     @action(detail=True, methods=['post'], url_path='like')
     def like_video(self, request, pk=None):
@@ -326,6 +381,20 @@ class VideoViewSet(viewsets.ModelViewSet):
         
         reason = request.data.get('reason', 'Blocked by admin')
         video.block_video(reason=reason, moderator=request.user)
+        try:
+            from notifications.services import notify_user
+            from notifications.models import NotificationType
+            notify_user(
+                user=video.user,
+                notification_type=NotificationType.BLOCKED,
+                title='Your video was blocked',
+                message=f'Your video “{video.title}” was blocked because it violates the community rules. Reason: {reason}',
+                related_user=request.user,
+                metadata={'video_id': video.id, 'reason': reason, 'content_type': 'video'},
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Failed to notify video owner after block')
         
         return Response({
             "message": "Video blocked successfully",

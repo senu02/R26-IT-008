@@ -32,6 +32,7 @@ import {
   type ShieldAdminRecord, 
   type User 
 } from '@/lib/api';
+import { toxicityAPI, type ToxicityLog } from '@/app/services/ToxicityDetection/actions';
 
 ChartJS.register(
   CategoryScale,
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
   const [shieldRecords, setShieldRecords] = useState<ShieldAdminRecord[]>([]);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [totalFeedPostsCount, setTotalFeedPostsCount] = useState<number>(0);
+  const [audioToxicityLogs, setAudioToxicityLogs] = useState<ToxicityLog[]>([]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -84,6 +86,9 @@ export default function AdminDashboard() {
       const feedPosts = await postsAPI.getFeed().catch(() => []);
       setTotalFeedPostsCount(feedPosts.length || 0);
 
+      const audioLogs = await toxicityAPI.getLogs({ content_type: 'audio', page_size: 200 }).catch(() => ({ results: [] }));
+      setAudioToxicityLogs(audioLogs.results || []);
+
     } catch (err) {
       console.error('Error fetching admin dashboard data:', err);
     } finally {
@@ -101,6 +106,9 @@ export default function AdminDashboard() {
   const activeUsersCount = userStats?.active_users || usersList.filter(u => u.account_status === 'active' || u.is_active).length || 0;
   const totalPosts = userStats?.posts_count || totalFeedPostsCount || 0;
   const totalShieldEvents = shieldRecords.length;
+  const audioToxicCount = audioToxicityLogs.filter((log) => log.is_toxic).length;
+  const audioMonitorCount = audioToxicityLogs.filter((log) => log.action === 'warn_and_monitor' || log.latent_toxicity).length;
+  const audioVictimCount = audioToxicityLogs.filter((log) => log.action === 'possible_victim_report' || log.fusion_result?.action_flags?.possible_victim_report).length;
 
   const safeCount = shieldRecords.filter(r => r.strategy === 'Safe').length;
   const rewrittenCount = shieldRecords.filter(r => r.strategy === 'Rewriting').length;
@@ -252,6 +260,33 @@ export default function AdminDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Audio research summary */}
+      <div className="rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-5 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-white">Audio toxicity research signals</h2>
+            <p className="text-xs text-slate-400 mt-1">Transcript and vocal-emotion decisions recorded in the shared toxicity audit table.</p>
+          </div>
+          <Link href="/admin/audio-toxicity" className="text-xs font-bold text-amber-300 hover:text-amber-200 flex items-center gap-1">
+            Open audio workspace <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-red-300">Toxic audio</p>
+            <p className="text-xl font-black text-white mt-1">{audioToxicCount}</p>
+          </div>
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-amber-300">Monitor signals</p>
+            <p className="text-xl font-black text-white mt-1">{audioMonitorCount}</p>
+          </div>
+          <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-sky-300">Victim reports</p>
+            <p className="text-xl font-black text-white mt-1">{audioVictimCount}</p>
+          </div>
+        </div>
       </div>
 
       {/* Charts Section */}

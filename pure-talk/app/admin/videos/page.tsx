@@ -2,13 +2,14 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useThemeColors } from '@/context/adminTheme';
-import { FaSearch, FaTrash, FaTimes, FaVideo, FaExclamationTriangle } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaTimes, FaVideo, FaExclamationTriangle, FaUpload } from 'react-icons/fa';
 import { BiBlock } from 'react-icons/bi';
 import StatsCards from '@/components/Admin/Videos/StatsCards';
 import VideoTable from '@/components/Admin/Videos/VideoTable';
-import { videoActions, canAdmin, canModerate, formatDate as formatDateUtil, getFullMediaUrl } from '@/app/services/videos/actions';
+import VideoScanResults from '@/components/Admin/Videos/VideoScanResults';
+import { videoActions, canAdmin, canModerate, formatDate as formatDateUtil, getFullMediaUrl, type VideoTextScan } from '@/app/services/videos/actions';
 import { useToast } from '@/context/toast'; // Adjust path as needed
 
 interface Video {
@@ -29,6 +30,8 @@ interface Video {
   flagged_reason: string | null;
   flagged_at: string | null;
   is_blocked: boolean;
+  analysis_status?: string;
+  suggested_action?: string;
   blocked_reason: string | null;
   blocked_at: string | null;
   created_at: string;
@@ -56,9 +59,43 @@ export default function AdminVideosPage() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [blockReason, setBlockReason] = useState('');
+  const [textScan, setTextScan] = useState<VideoTextScan | null>(null);
+  const [loadingTextScan, setLoadingTextScan] = useState(false);
+  const [scanningText, setScanningText] = useState(false);
+  const scanRequestId = useRef(0);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [adminVideoFile, setAdminVideoFile] = useState<File | null>(null);
+  const [adminVideoTitle, setAdminVideoTitle] = useState('');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const isAdmin = canAdmin();
   const isMod = canModerate();
+
+  useEffect(() => {
+    const requestId = ++scanRequestId.current;
+    setTextScan(null);
+    setScanningText(false);
+    if (!showDetailsModal || !selectedVideo) {
+      setLoadingTextScan(false);
+      return;
+    }
+
+    let active = true;
+    setLoadingTextScan(true);
+    videoActions.getVideoTextScan(selectedVideo.id).then((result) => {
+      if (!active || requestId !== scanRequestId.current) return;
+      setLoadingTextScan(false);
+      if (result.success) {
+        setTextScan(result.data || null);
+      } else {
+        showError(result.error || 'Could not load the saved video text scan.');
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [showDetailsModal, selectedVideo, showError]);
 
   useEffect(() => {
     fetchVideos();
@@ -112,6 +149,8 @@ export default function AdminVideosPage() {
             flagged_reason: v.flagged_reason || null,
             flagged_at: v.flagged_at || null,
             is_blocked: v.is_blocked || false,
+            analysis_status: v.analysis_status,
+            suggested_action: v.suggested_action,
             blocked_reason: v.blocked_reason || null,
             blocked_at: v.blocked_at || null,
             created_at: v.created_at,
@@ -225,6 +264,51 @@ export default function AdminVideosPage() {
         showError('Network error: Unable to delete video');
       }
     }
+  };
+
+  const handleScanVideoText = async () => {
+    if (!selectedVideo) return;
+    const requestId = ++scanRequestId.current;
+    setLoadingTextScan(false);
+    setScanningText(true);
+    setTextScan(null);
+    const result = await videoActions.scanVideoToxicity(selectedVideo.id);
+    if (requestId !== scanRequestId.current) return;
+    if (result.success && result.data) {
+      setTextScan(result.data);
+      await fetchVideos();
+      if (result.data.status === 'complete') showSuccess('Video text and audio scan completed');
+      else showError(result.data.error || 'Video analysis incomplete. Review the available evidence.');
+    } else {
+      showError(result.error || 'Failed to analyse video');
+    }
+    setScanningText(false);
+  };
+
+  const handleAdminUpload = async () => {
+    if (!adminVideoFile || !adminVideoTitle.trim()) {
+      showError('Select a video and enter a title.');
+      return;
+    }
+    setUploadingVideo(true);
+    const formData = new FormData();
+    formData.append('title', adminVideoTitle.trim());
+    formData.append('description', 'Uploaded from the admin video workspace.');
+    formData.append('video_file', adminVideoFile);
+    formData.append('privacy', 'public');
+    formData.append('allow_comments', 'true');
+    formData.append('allow_sharing', 'true');
+    const result = await videoActions.uploadVideo(formData);
+    setUploadingVideo(false);
+    if (!result.success) {
+      showError(result.error || 'Failed to upload video');
+      return;
+    }
+    showSuccess('Video uploaded successfully.');
+    setShowUploadModal(false);
+    setAdminVideoFile(null);
+    setAdminVideoTitle('');
+    fetchVideos();
   };
 
   const handleBulkDelete = async () => {
@@ -396,9 +480,14 @@ export default function AdminVideosPage() {
 
       <div className="mb-6 relative z-10">
         <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>Video Management</h1>
-        <p className="text-sm mt-1" style={{ color: colors.text.secondary }}>
-          Moderate, block, and manage all videos on your platform
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm mt-1" style={{ color: colors.text.secondary }}>
+            Moderate, block, and manage all videos on your platform
+          </p>
+          <button onClick={() => setShowUploadModal(true)} className="px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" style={{ backgroundColor: colors.primary.main, color: colors.primary.contrast }}>
+            <FaUpload /> Upload Video
+          </button>
+        </div>
       </div>
 
       <StatsCards stats={stats} />
@@ -564,6 +653,33 @@ export default function AdminVideosPage() {
                 <h3 className="text-lg font-semibold" style={{ color: colors.text.primary }}>{selectedVideo.title}</h3>
                 <p className="text-sm mt-1" style={{ color: colors.text.secondary }}>{selectedVideo.description || 'No description'}</p>
               </div>
+
+              {isMod && (
+                <div className="p-3 rounded-lg border" style={{ borderColor: colors.border.primary, backgroundColor: colors.background.primary }}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: colors.text.primary }}>Video toxicity scan</p>
+                      <p className="text-xs mt-1" style={{ color: colors.text.secondary }}>Checks on-screen text and spoken audio using the existing toxicity detectors. Longer videos may take a few minutes.</p>
+                    </div>
+                    <button
+                      onClick={handleScanVideoText}
+                      disabled={scanningText}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
+                      style={{ backgroundColor: colors.primary.main, color: colors.primary.contrast }}
+                    >
+                      {scanningText ? 'Analysing video...' : 'Scan text and audio'}
+                    </button>
+                  </div>
+
+                  {loadingTextScan && (
+                    <p className="mt-3 text-xs" style={{ color: colors.text.secondary }}>
+                      Loading saved video scan...
+                    </p>
+                  )}
+
+                  {textScan && <VideoScanResults scan={textScan} />}
+                </div>
+              )}
               
               <div className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: colors.background.primary }}>
                 <div className="relative">
@@ -640,6 +756,38 @@ export default function AdminVideosPage() {
                 <p>Created: {formatDateUtil(selectedVideo.created_at)}</p>
                 <p>Updated: {formatDateUtil(selectedVideo.updated_at)}</p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !uploadingVideo && setShowUploadModal(false)}>
+          <div className="w-full max-w-md rounded-xl p-5 space-y-4" style={{ backgroundColor: colors.surface.primary }} onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold" style={{ color: colors.text.primary }}>Upload Video</h2>
+              <button onClick={() => !uploadingVideo && setShowUploadModal(false)} className="p-1 rounded hover:bg-black/10"><FaTimes style={{ color: colors.text.secondary }} /></button>
+            </div>
+            <input
+              value={adminVideoTitle}
+              onChange={(event) => setAdminVideoTitle(event.target.value)}
+              placeholder="Video title"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: colors.background.primary, border: `1px solid ${colors.border.primary}`, color: colors.text.primary }}
+            />
+            <input
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+              onChange={(event) => setAdminVideoFile(event.target.files?.[0] || null)}
+              className="w-full text-sm"
+              style={{ color: colors.text.secondary }}
+            />
+            {adminVideoFile && <p className="text-xs" style={{ color: colors.text.secondary }}>{adminVideoFile.name}</p>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowUploadModal(false)} disabled={uploadingVideo} className="px-3 py-2 rounded-lg text-sm" style={{ color: colors.text.secondary }}>Cancel</button>
+              <button onClick={handleAdminUpload} disabled={uploadingVideo} className="px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: colors.primary.main, color: colors.primary.contrast }}>
+                {uploadingVideo ? 'Uploading...' : 'Upload'}
+              </button>
             </div>
           </div>
         </div>

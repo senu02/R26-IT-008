@@ -5,6 +5,12 @@ from .models import ToxicityLog, UserToxicityProfile
 class ToxicityLogSerializer(serializers.ModelSerializer):
     author_email = serializers.EmailField(source='author.email', read_only=True)
     reviewer_email = serializers.EmailField(source='reviewer.email', read_only=True, allow_null=True)
+    decision_status = serializers.SerializerMethodField()
+
+    def get_decision_status(self, obj):
+        if obj.content_type == 'audio' and not obj.fusion_result:
+            return 'legacy_result'
+        return obj.action
 
     class Meta:
         model = ToxicityLog
@@ -13,6 +19,10 @@ class ToxicityLogSerializer(serializers.ModelSerializer):
             'author', 'author_email',
             'analysed_text', 'is_toxic', 'max_score',
             'label_scores', 'flagged_labels',
+            'audio_emotion', 'fusion_result', 'action', 'latent_toxicity',
+            'original_is_toxic', 'original_max_score', 'original_label_scores',
+            'analysis_version',
+            'decision_status',
             'is_reviewed', 'reviewer', 'reviewer_email',
             'review_notes', 'overridden',
             'created_at',

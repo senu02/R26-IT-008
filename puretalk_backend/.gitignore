@@ -1,11 +1,47 @@
-# Environment variables (Do not commit secrets to Git)
+# Environment variables and local secrets
 .env
 .env.*
 *.env
+!.env.example
+!.env.*.example
 
-# Python & Django
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Type checkers and linters
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# Django
 *.sqlite3
 *.log
+staticfiles/
+media/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Local tooling and operating-system files
+.DS_Store
+.idea/
+.vscode/

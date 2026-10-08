@@ -154,6 +154,28 @@ def enforce_behavior(
             ml_result=None,
         )
 
+    # Audio emotion can indicate a latent risk signal without establishing
+    # enough evidence to block or rewrite the transcript. Record it for
+    # monitoring, but do not count it as an offence or trigger recovery.
+    if toxicity_result.get('fusion', {}).get('action') == 'warn_and_monitor':
+        threshold = profile.get_effective_threshold()
+        _log_event(
+            user=user, content_type=content_type,
+            post=post, comment=comment,
+            text=text, toxicity_score=toxicity_score,
+            severity=severity, threshold=threshold,
+            category_scores=label_scores,
+            flagged_labels=flagged_labels,
+            event_type='warn_and_monitor', profile=profile,
+        )
+        return _result(
+            is_blocked=False, event_type='warn_and_monitor',
+            threshold=threshold, toxicity_score=toxicity_score,
+            severity=severity, profile=profile,
+            message='Audio signal recorded for monitoring.',
+            ml_result=None,
+        )
+
     # ── 3. Dynamic threshold ───────────────────────────────
     threshold = profile.get_effective_threshold()
 
