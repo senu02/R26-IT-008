@@ -44,7 +44,7 @@ export default function ShieldChatbotWidget() {
     {
       id: 'init-1',
       sender: 'bot',
-      text: "👋 Hi! I am your **AI Toxicity Detection Assistant**.\n\nI analyze messages against our trained toxic word dataset, detect offensive terms (English & Singlish), and provide instant non-toxic rewrites.",
+      text: "👋 Hi! I am your **AI Psychological Guidance Assistant**.\n\nI analyze messages against our trained toxic word dataset, detect offensive terms (English & Singlish), provide non-toxic rewrites, and offer context-aware psychological support.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -211,7 +211,7 @@ export default function ShieldChatbotWidget() {
             <Bot className="w-6 h-6 animate-bounce" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-slate-900" />
           </div>
-          <span className="text-sm font-semibold tracking-wide">AI Toxic Detector Chat</span>
+          <span className="text-sm font-semibold tracking-wide">AI Psychological Guidance Chat</span>
         </button>
       )}
 
@@ -229,12 +229,12 @@ export default function ShieldChatbotWidget() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white">AI Shield Assistant</h3>
+                  <h3 className="text-sm font-bold text-white">AI Psychological Guidance Chat</h3>
                   <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
                     Voice Active
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">Toxic words detection bot</p>
+                <p className="text-[11px] text-slate-400">Context-aware toxic detection & wellbeing assistant</p>
               </div>
             </div>
             
