@@ -18,6 +18,7 @@ import {
   Zap
 } from 'lucide-react';
 import { adaptiveShieldingAPI, type ShieldAdminRecord, type LimeExplanation } from '@/lib/api';
+import ShieldChatbotWidget from '@/app/components/ShieldChatbotWidget';
 
 const STRATEGY_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   Safe:      { label: 'Safe',      color: 'bg-green-500/15 text-green-400 border-green-500/30',  icon: <ShieldCheck  className="w-3.5 h-3.5" /> },
@@ -438,6 +439,9 @@ export default function AdaptiveShieldingAdminPage() {
           </div>
         </div>
       )}
+
+      {/* Floating AI Toxicity Assistant Chatbot Widget */}
+      <ShieldChatbotWidget />
     </div>
   );
 }
