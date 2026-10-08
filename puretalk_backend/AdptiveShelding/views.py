@@ -215,6 +215,63 @@ class AdminAllRecordsView(APIView):
         return Response({"count": len(data), "records": data}, status=status.HTTP_200_OK)
 
 
+def generate_dynamic_psychological_suggestion(message: str, detected_words: list, strategy: str) -> dict:
+    """
+    Dynamically generates context-aware psychological support and coping advice
+    based on the specific intent and words detected in the user's comment.
+    """
+    if strategy == "Safe":
+        return None
+
+    lw = message.lower()
+    
+    # 1. Threat / Violence intent
+    violent_keywords = {"maranawa", "gahanawa", "kill", "beat", "hit", "punch", "destroy", "shoot"}
+    found_violent = [w for w in detected_words if w.lower() in violent_keywords] or [w for w in violent_keywords if w in lw]
+    
+    # 2. Personal Insults (intelligence / capability attack)
+    insult_keywords = {"idiot", "stupid", "modaya", "moda", "pakaya", "pako", "ponnaya", "dumb", "gon", "gonwa", "useless", "asshole", "bitch", "whore"}
+    found_insults = [w for w in detected_words if w.lower() in insult_keywords] or [w for w in insult_keywords if w in lw]
+    
+    # 3. Derogatory slurs / Obscene harassment
+    slur_keywords = {"wesige", "wesiyek", "wesi", "slut", "cunt", "huththo", "huththa", "huthto", "hutta", "hutto", "kari", "kariyo", "puka"}
+    found_slurs = [w for w in detected_words if w.lower() in slur_keywords] or [w for w in slur_keywords if w in lw]
+    
+    primary_word = detected_words[0] if detected_words else "aggressive phrasing"
+
+    if found_violent:
+        word_ref = f"'{found_violent[0]}'" if found_violent else f"'{primary_word}'"
+        return {
+            "title": "🌱 De-escalation & Anger Management Suggestion",
+            "reflection": f"Using violent terms like {word_ref} indicates high anger arousal or acute conflict.",
+            "coping_tip": "🧘 **5-Second De-escalation:** Take 3 deep breaths (inhale 4s, hold 4s, exhale 6s). Pausing for 5 seconds before replying lowers impulsive rage by over 70%.",
+            "benefit": "💡 Communicating without threat terms protects your personal peace and resolves disputes constructively."
+        }
+    elif found_insults:
+        word_ref = f"'{found_insults[0]}'" if found_insults else f"'{primary_word}'"
+        return {
+            "title": "🌱 Constructive Communication Suggestion",
+            "reflection": f"Attacking someone's character using terms like {word_ref} often stems from impatience or frustration.",
+            "coping_tip": "🌿 **Constructive Critique Tip:** Reframe your comment to address the specific action or disagreement rather than calling the person names.",
+            "benefit": "💡 Focusing on facts rather than personal insults makes your argument far more respected and persuasive."
+        }
+    elif found_slurs:
+        word_ref = f"'{found_slurs[0]}'" if found_slurs else f"'{primary_word}'"
+        return {
+            "title": "🌱 Emotional Self-Regulation Suggestion",
+            "reflection": f"Using intense slurs like {word_ref} reflects strong emotional reactivity or boundary distress.",
+            "coping_tip": "☕ **Self-Care Tip:** Step away for 2 minutes, drink a glass of water, and express your boundaries clearly without profanity.",
+            "benefit": "💡 Avoiding derogatory slurs preserves your own personal dignity and keeps community interactions healthy."
+        }
+    else:  # General negativity / hate speech / harsh tone
+        return {
+            "title": "🌱 Mindful Wellbeing & Tone Suggestion",
+            "reflection": f"Phrasing containing {f'\'{primary_word}\'' if primary_word != 'aggressive phrasing' else 'harsh terms'} can create unnecessary hostility.",
+            "coping_tip": "🌱 **Positive Reframing Tip:** Try phrasing your opinion using neutral language to convey your message calmly.",
+            "benefit": "💡 Neutral, respectful communication protects your emotional health and leads to 80% better responses."
+        }
+
+
 class ShieldChatbotAssistantView(APIView):
     """
     POST /api/shield/chatbot/
@@ -253,16 +310,10 @@ class ShieldChatbotAssistantView(APIView):
         final_score = result.get("final_score", 0.0)
         output = result.get("output", message)
 
-        # Psychological suggestion tailored for the commenter
-        psychological_suggestion = None
+        # Dynamically generate context-aware psychological suggestion based on the comment
+        psychological_suggestion = generate_dynamic_psychological_suggestion(message, detected_words, strategy)
 
         if strategy == "Rewriting":
-            psychological_suggestion = {
-                "title": "🌱 Psychological Wellbeing & Tone Suggestion",
-                "reflection": "It seems you might be feeling frustrated or agitated right now.",
-                "coping_tip": "🧘 **Quick Coping Tip:** Take 3 deep breaths (inhale 4s, hold 4s, exhale 6s). Pausing for 5 seconds before replying lowers anger arousal significantly.",
-                "benefit": "💡 Phrasing your thoughts neutrally protects your emotional health and prevents defensive conflict."
-            }
             bot_response = (
                 f"🛡️ **Toxic Phrasing Detected & Neutralized!** (Toxicity Score: {int(final_score * 100)}%)\n"
                 f"Detected toxic terms: `{', '.join(detected_words) if detected_words else 'Aggressive expressions'}`.\n\n"
@@ -273,41 +324,23 @@ class ShieldChatbotAssistantView(APIView):
                 f"{psychological_suggestion['benefit']}"
             )
         elif strategy == "Warning":
-            psychological_suggestion = {
-                "title": "⚠️ Mindful Communication Suggestion",
-                "reflection": "Your message carries a harsh or tense tone.",
-                "coping_tip": "🌿 **Mindfulness Tip:** Consider re-reading your message aloud before sending.",
-                "benefit": "💡 Calm communication encourages mutual understanding."
-            }
             bot_response = (
                 f"⚠️ **Borderline Language Detected!** (Score: {int(final_score * 100)}%)\n"
                 "Your message contains potentially sensitive phrasing.\n\n"
-                f"🌱 **Psychological Guidance:**\n{psychological_suggestion['coping_tip']}"
+                f"🌱 **Psychological Guidance:**\n{psychological_suggestion['reflection']}\n{psychological_suggestion['coping_tip']}"
             )
         elif strategy == "Blurring":
-            psychological_suggestion = {
-                "title": "👁️‍🗨️ Stress Management Suggestion",
-                "reflection": "Offensive slurs often stem from heightened emotional stress or impulse.",
-                "coping_tip": "☕ **Self-Care Tip:** Step away for a minute or drink a glass of water to clear your mind.",
-                "benefit": "💡 Avoiding profanity keeps your profile respected and healthy."
-            }
             bot_response = (
                 f"👁️‍🗨️ **Offensive Words Masked!** (Score: {int(final_score * 100)}%)\n"
                 f"Detected offensive slurs: `{', '.join(detected_words) if detected_words else 'Offensive language'}`.\n\n"
                 f"**Blurred Preview:**\n> {output}\n\n"
-                f"🌱 **Psychological Suggestion:**\n{psychological_suggestion['coping_tip']}"
+                f"🌱 **Psychological Suggestion:**\n{psychological_suggestion['reflection']}\n{psychological_suggestion['coping_tip']}"
             )
         elif strategy == "Filtering":
-            psychological_suggestion = {
-                "title": "⛔ Anger Management & Support Notice",
-                "reflection": "Extremely toxic language usually indicates severe anger or emotional distress.",
-                "coping_tip": "💙 **Support Tip:** Take a 10-minute break from social media. Talk to a trusted friend or professional if you feel overwhelmed.",
-                "benefit": "💡 Protecting community harmony starts with emotional self-regulation."
-            }
             bot_response = (
                 f"⛔ **High Toxicity / Severe Harm Detected!** (Score: {int(final_score * 100)}%)\n"
                 f"Severe terms found: `{', '.join(detected_words) if detected_words else 'Severe toxicity'}`.\n\n"
-                f"🌱 **Emotional Support Suggestion:**\n{psychological_suggestion['coping_tip']}"
+                f"🌱 **Emotional Support Suggestion:**\n{psychological_suggestion['reflection']}\n{psychological_suggestion['coping_tip']}"
             )
         else:  # Safe
             bot_response = (
