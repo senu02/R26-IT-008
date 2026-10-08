@@ -3,7 +3,7 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 
 # pyrefly: ignore [missing-import]
 from .engine import aesm_engine
@@ -213,3 +213,117 @@ class AdminAllRecordsView(APIView):
                 "created_at": r.created_at.isoformat(),
             })
         return Response({"count": len(data), "records": data}, status=status.HTTP_200_OK)
+
+
+class ShieldChatbotAssistantView(APIView):
+    """
+    POST /api/shield/chatbot/
+    Body: { "message": "user input text" }
+
+    AI-Assistive Chatbot Endpoint for toxic words detection & moderation assistant.
+    Analyzes text against trained toxic word dataset and AESM engine.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        import re
+        message = request.data.get("message", "").strip()
+        if not message:
+            return Response(
+                {"error": "Message content cannot be empty."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        language = request.data.get("language", "english")
+        
+        # Run AESM engine
+        result = aesm_engine(message, user_history=[], language=language)
+
+        # Detect toxic words from dataset
+        lw_text = message.lower()
+        from .engine import _REPLACEMENTS, _SINGLISH_INSULTS
+        all_toxic = _REPLACEMENTS.keys() | _SINGLISH_INSULTS
+        detected_words = [
+            w for w in all_toxic 
+            if re.search(r'\b' + re.escape(w) + r'\b', lw_text)
+        ]
+
+        strategy = result.get("strategy", "Safe")
+        toxicity = result.get("toxicity", 0.0)
+        final_score = result.get("final_score", 0.0)
+        output = result.get("output", message)
+
+        # Psychological suggestion tailored for the commenter
+        psychological_suggestion = None
+
+        if strategy == "Rewriting":
+            psychological_suggestion = {
+                "title": "🌱 Psychological Wellbeing & Tone Suggestion",
+                "reflection": "It seems you might be feeling frustrated or agitated right now.",
+                "coping_tip": "🧘 **Quick Coping Tip:** Take 3 deep breaths (inhale 4s, hold 4s, exhale 6s). Pausing for 5 seconds before replying lowers anger arousal significantly.",
+                "benefit": "💡 Phrasing your thoughts neutrally protects your emotional health and prevents defensive conflict."
+            }
+            bot_response = (
+                f"🛡️ **Toxic Phrasing Detected & Neutralized!** (Toxicity Score: {int(final_score * 100)}%)\n"
+                f"Detected toxic terms: `{', '.join(detected_words) if detected_words else 'Aggressive expressions'}`.\n\n"
+                f"**Suggested Non-Toxic Alternative:**\n> \"{output}\"\n\n"
+                f"🌱 **Psychological Suggestion for You:**\n"
+                f"{psychological_suggestion['reflection']}\n\n"
+                f"{psychological_suggestion['coping_tip']}\n\n"
+                f"{psychological_suggestion['benefit']}"
+            )
+        elif strategy == "Warning":
+            psychological_suggestion = {
+                "title": "⚠️ Mindful Communication Suggestion",
+                "reflection": "Your message carries a harsh or tense tone.",
+                "coping_tip": "🌿 **Mindfulness Tip:** Consider re-reading your message aloud before sending.",
+                "benefit": "💡 Calm communication encourages mutual understanding."
+            }
+            bot_response = (
+                f"⚠️ **Borderline Language Detected!** (Score: {int(final_score * 100)}%)\n"
+                "Your message contains potentially sensitive phrasing.\n\n"
+                f"🌱 **Psychological Guidance:**\n{psychological_suggestion['coping_tip']}"
+            )
+        elif strategy == "Blurring":
+            psychological_suggestion = {
+                "title": "👁️‍🗨️ Stress Management Suggestion",
+                "reflection": "Offensive slurs often stem from heightened emotional stress or impulse.",
+                "coping_tip": "☕ **Self-Care Tip:** Step away for a minute or drink a glass of water to clear your mind.",
+                "benefit": "💡 Avoiding profanity keeps your profile respected and healthy."
+            }
+            bot_response = (
+                f"👁️‍🗨️ **Offensive Words Masked!** (Score: {int(final_score * 100)}%)\n"
+                f"Detected offensive slurs: `{', '.join(detected_words) if detected_words else 'Offensive language'}`.\n\n"
+                f"**Blurred Preview:**\n> {output}\n\n"
+                f"🌱 **Psychological Suggestion:**\n{psychological_suggestion['coping_tip']}"
+            )
+        elif strategy == "Filtering":
+            psychological_suggestion = {
+                "title": "⛔ Anger Management & Support Notice",
+                "reflection": "Extremely toxic language usually indicates severe anger or emotional distress.",
+                "coping_tip": "💙 **Support Tip:** Take a 10-minute break from social media. Talk to a trusted friend or professional if you feel overwhelmed.",
+                "benefit": "💡 Protecting community harmony starts with emotional self-regulation."
+            }
+            bot_response = (
+                f"⛔ **High Toxicity / Severe Harm Detected!** (Score: {int(final_score * 100)}%)\n"
+                f"Severe terms found: `{', '.join(detected_words) if detected_words else 'Severe toxicity'}`.\n\n"
+                f"🌱 **Emotional Support Suggestion:**\n{psychological_suggestion['coping_tip']}"
+            )
+        else:  # Safe
+            bot_response = (
+                "✅ **No Toxic Content Detected!**\n"
+                f"Your message appears clean and respectful (Toxicity score: {int(final_score * 100)}%). "
+                "Thank you for maintaining a positive atmosphere!"
+            )
+
+        return Response({
+            "user_message": message,
+            "bot_response": bot_response,
+            "strategy": strategy,
+            "toxicity_score": round(toxicity, 4),
+            "final_score": round(final_score, 4),
+            "detected_toxic_words": detected_words,
+            "suggested_rewrite": output if strategy == "Rewriting" else None,
+            "psychological_suggestion": psychological_suggestion,
+            "support_guidance": result.get("support", "")
+        }, status=status.HTTP_200_OK)
