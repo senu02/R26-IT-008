@@ -103,7 +103,7 @@ export default function LoginPage() {
         localStorage.setItem('rememberMe', 'false');
       }
       
-      const userRole = response.user.role || response.role;
+      const userRole = (response.user as any)?.role || response.role;
       let destination = '/home';
       if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'moderator') {
         destination = '/admin/dashboard';
