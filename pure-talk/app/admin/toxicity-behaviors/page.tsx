@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Shield,
   AlertTriangle,
@@ -63,6 +64,16 @@ ChartJS.register(
   CategoryScale, LinearScale, BarElement, ArcElement,
   Title, Tooltip, Legend, PointElement, LineElement
 );
+
+// Force graph — SSR disabled
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <RefreshCw size={20} className="animate-spin opacity-50" />
+    </div>
+  ),
+});
 
 // ─────────────────────────────────────────────
 // Constants
@@ -148,6 +159,206 @@ const StatCard = ({
 };
 
 // ─────────────────────────────────────────────
+// Network Graph Component (react-force-graph-2d)
+// ─────────────────────────────────────────────
+
+const NetworkGraph = ({
+  graph,
+  onNodeClick,
+}: {
+  graph: SNAGraph | null;
+  onNodeClick?: (node: any) => void;
+}) => {
+  const { colors } = useThemeColors();
+  const graphRef = useRef<any>(null);
+  const [hoveredNode, setHoveredNode] = useState<any>(null);
+
+  // Transform graph data to react-force-graph format
+  // handles both `links` and `edges` fields
+  const graphData = useMemo(() => {
+    if (!graph?.nodes) return { nodes: [], links: [] };
+
+    // Backend may return `links` or `edges`
+    const rawLinks = (graph as any).links ?? (graph as any).edges ?? [];
+
+    const nodes = (graph.nodes as any[]).map((n: any) => {
+      const id = String(n.id ?? n.user_id);
+      return {
+        id,
+        name: n.username || n.label || `User #${n.user_id ?? n.id}`,
+        val: Math.max((n.degree_centrality ?? 0.1) * 8 + 2, 3),
+        nodeType: n.node_type ?? n.type ?? 'normal',
+        toxicRatio: n.toxic_ratio ?? 0,
+        degree: n.degree_centrality ?? 0,
+        betweenness: n.betweenness_centrality ?? 0,
+        warningLevel: n.warning_level,
+        user_id: n.user_id,
+        username: n.username,
+        raw: n,
+      };
+    });
+
+    const links = (rawLinks as any[]).map((l: any) => ({
+      source: String(l.source ?? l.from),
+      target: String(l.target ?? l.to),
+      value: l.weight ?? l.value ?? 1,
+      toxic: l.is_toxic ?? false,
+    }));
+
+    return { nodes, links };
+  }, [graph]);
+
+  // Node color logic
+  const getNodeColor = useCallback((node: any) => {
+    const t = String(node.nodeType).toLowerCase().replace('-', '_');
+    if (t === 'toxic' || node.toxicRatio >= 0.5) return '#ef4444';
+    if (t === 'at_risk' || t === 'atrisk' || node.toxicRatio >= 0.25) return '#f97316';
+    if (node.warningLevel) return getWarningLevelColor(node.warningLevel);
+    return '#22c55e';
+  }, []);
+
+  // Zoom to fit on load
+  useEffect(() => {
+    if (graphRef.current && graphData.nodes.length > 0) {
+      const t = setTimeout(() => graphRef.current?.zoomToFit(600, 80), 600);
+      return () => clearTimeout(t);
+    }
+  }, [graphData]);
+
+  if (!graph?.nodes?.length) {
+    return (
+      <div className="py-12 text-center">
+        <Network size={32} className="mx-auto mb-3 opacity-20" style={{ color: colors.text.secondary }} />
+        <p className="text-sm" style={{ color: colors.text.secondary }}>
+          No network graph data available yet.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-lg overflow-hidden border relative"
+      style={{ backgroundColor: colors.background.secondary, borderColor: colors.border.primary }}
+    >
+      <div style={{ height: 600 }}>
+        <ForceGraph2D
+          ref={graphRef}
+          graphData={graphData}
+          nodeRelSize={4}
+          nodeVal={(node: any) => node.val}
+          nodeColor={getNodeColor}
+          nodeLabel={(node: any) =>
+            `${node.name}\nDegree: ${node.degree.toFixed(3)}\nBetweenness: ${node.betweenness.toFixed(3)}\nToxic ratio: ${(node.toxicRatio * 100).toFixed(0)}%`
+          }
+          linkColor={(link: any) => (link.toxic ? 'rgba(239,68,68,0.65)' : 'rgba(150,150,150,0.25)')}
+          linkWidth={(link: any) => (link.toxic ? 2 : 0.5)}
+          linkDirectionalParticles={0}
+          linkCurvature={0.1}
+          backgroundColor="transparent"
+          onNodeClick={(node: any) => onNodeClick?.(node.raw ?? node)}
+          onNodeHover={(node: any) => setHoveredNode(node)}
+          d3AlphaDecay={0.022}
+          d3VelocityDecay={0.3}
+          cooldownTicks={120}
+          warmupTicks={40}
+          nodeCanvasObject={(node: any, ctx, globalScale) => {
+            const label = node.name;
+            const color = getNodeColor(node);
+            const r = Math.sqrt(node.val) * 1.6;
+
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            const isToxic = String(node.nodeType).toLowerCase() === 'toxic' || node.toxicRatio >= 0.5;
+            if (isToxic) {
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5 / globalScale;
+              ctx.stroke();
+            }
+
+            const fontSize = Math.max(10 / globalScale, 2);
+            if (globalScale > 0.9) {
+              ctx.font = `${fontSize}px Sans-Serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+
+              const textWidth = ctx.measureText(label).width;
+              const pad = 2 / globalScale;
+              const bgY = node.y + r + fontSize * 0.9;
+
+              ctx.fillStyle = 'rgba(0,0,0,0.55)';
+              ctx.fillRect(
+                node.x - textWidth / 2 - pad,
+                bgY - fontSize / 2 - pad,
+                textWidth + pad * 2,
+                fontSize + pad * 2
+              );
+
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(label, node.x, bgY);
+            }
+          }}
+          nodePointerAreaPaint={(node: any, color, ctx) => {
+            const r = Math.sqrt(node.val) * 1.6;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, r + 2, 0, 2 * Math.PI);
+            ctx.fill();
+          }}
+        />
+      </div>
+
+      {/* Hover tooltip */}
+      {hoveredNode && (
+        <div
+          className="absolute top-3 left-3 px-3 py-2 rounded-lg text-xs pointer-events-none border backdrop-blur-sm"
+          style={{
+            backgroundColor: `${colors.surface.primary}ee`,
+            borderColor: colors.border.primary,
+            color: colors.text.primary,
+          }}
+        >
+          <p className="font-semibold mb-1">{hoveredNode.name}</p>
+          <p style={{ color: colors.text.tertiary }}>
+            Degree: <span style={{ color: colors.text.secondary }}>{hoveredNode.degree.toFixed(3)}</span>
+          </p>
+          <p style={{ color: colors.text.tertiary }}>
+            Betweenness: <span style={{ color: colors.text.secondary }}>{hoveredNode.betweenness.toFixed(3)}</span>
+          </p>
+          <p style={{ color: colors.text.tertiary }}>
+            Toxic ratio: <span style={{ color: '#ef4444' }}>{(hoveredNode.toxicRatio * 100).toFixed(0)}%</span>
+          </p>
+        </div>
+      )}
+
+      {/* Legend */}
+      <div
+        className="flex flex-wrap gap-4 px-4 py-3 border-t"
+        style={{ borderColor: colors.border.primary, backgroundColor: colors.surface.primary }}
+      >
+        {[
+          { label: 'Toxic node', color: '#ef4444' },
+          { label: 'At-risk node', color: '#f97316' },
+          { label: 'Normal node', color: '#22c55e' },
+          { label: 'Toxic edge', color: 'rgba(239,68,68,0.65)' },
+        ].map(({ label, color }) => (
+          <span key={label} className="flex items-center gap-1.5 text-xs" style={{ color: colors.text.secondary }}>
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+            {label}
+          </span>
+        ))}
+        <span className="text-xs ml-auto" style={{ color: colors.text.tertiary }}>
+          Drag · Scroll to zoom · Click node for profile
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Suspend Modal
 // ─────────────────────────────────────────────
 
@@ -164,7 +375,6 @@ const SuspendModal = ({
   const [hours, setHours] = useState(24);
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
-
   const [confirmError, setConfirmError] = useState('');
 
   const handleConfirm = async () => {
@@ -172,7 +382,6 @@ const SuspendModal = ({
     setConfirmError('');
     try {
       await onConfirm({ hours, reason: reason || 'Manual suspension by admin.' });
-      // onConfirm (handleSuspend) closes modal by clearing suspendingProfile
       onClose();
     } catch (err: any) {
       setConfirmError(err?.message || 'Failed to suspend user. Please try again.');
@@ -363,7 +572,6 @@ const ProfileDrawer = ({
         className="w-full max-w-lg h-full overflow-y-auto border-l shadow-2xl"
         style={{ backgroundColor: colors.background.primary, borderColor: colors.border.primary }}
       >
-        {/* Header */}
         <div
           className="sticky top-0 z-10 flex items-center justify-between p-5 border-b"
           style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}
@@ -378,7 +586,6 @@ const ProfileDrawer = ({
         </div>
 
         <div className="p-5 space-y-5">
-          {/* Warning + threshold */}
           <div className="flex items-center gap-3">
             <WarningBadge level={profile.warning_level} />
             {profile.is_currently_suspended && (
@@ -388,7 +595,6 @@ const ProfileDrawer = ({
             )}
           </div>
 
-          {/* Key stats */}
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: 'Total violations', value: profile.toxic_count },
@@ -407,7 +613,6 @@ const ProfileDrawer = ({
             ))}
           </div>
 
-          {/* Effective threshold — mirrors backend model logic */}
           <div
             className="p-4 rounded-lg"
             style={{ backgroundColor: colors.surface.primary, border: `0.5px solid ${colors.border.primary}` }}
@@ -429,7 +634,6 @@ const ProfileDrawer = ({
             </p>
           </div>
 
-          {/* Suspension info */}
           {profile.is_currently_suspended && profile.suspended_until && (
             <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/10">
               <p className="text-xs font-medium text-red-400 mb-1">Active suspension</p>
@@ -442,7 +646,6 @@ const ProfileDrawer = ({
             </div>
           )}
 
-          {/* Timestamps */}
           <div className="space-y-2 text-xs" style={{ color: colors.text.tertiary }}>
             {profile.first_offence_at && (
               <p>First offence: {new Date(profile.first_offence_at).toLocaleDateString()}</p>
@@ -452,7 +655,6 @@ const ProfileDrawer = ({
             )}
           </div>
 
-          {/* Recent events for this user */}
           {userEvents.length > 0 && (
             <div>
               <h3 className="text-xs font-medium mb-2" style={{ color: colors.text.secondary }}>
@@ -483,7 +685,6 @@ const ProfileDrawer = ({
             </div>
           )}
 
-          {/* SHAP XAI explanation */}
           <div
             className="rounded-lg p-4"
             style={{ backgroundColor: colors.surface.primary, border: `0.5px solid ${colors.border.primary}` }}
@@ -525,7 +726,6 @@ const ProfileDrawer = ({
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
             {profile.is_currently_suspended ? (
               <button
@@ -608,7 +808,6 @@ const SNACard = ({ summary }: { summary: SNASummary | null }) => {
         ))}
       </div>
 
-      {/* Toxic node % */}
       <div>
         <div className="flex justify-between mb-1">
           <span className="text-xs" style={{ color: colors.text.secondary }}>Toxic node ratio</span>
@@ -619,7 +818,6 @@ const SNACard = ({ summary }: { summary: SNASummary | null }) => {
         </div>
       </div>
 
-      {/* Contagion candidates */}
       {summary.contagion_candidates?.length > 0 && (
         <div className="mt-4 pt-4 border-t" style={{ borderColor: colors.border.primary }}>
           <p className="text-xs font-medium mb-2" style={{ color: colors.text.secondary }}>
@@ -658,6 +856,7 @@ function ToxicityBehaviorContent() {
   const [profiles, setProfiles] = useState<UserBehaviorProfile[]>([]);
   const [events, setEvents] = useState<BehaviorEvent[]>([]);
   const [snaSummary, setSnaSummary] = useState<SNASummary | null>(null);
+  const [snaGraph, setSnaGraph] = useState<SNAGraph | null>(null);
 
   // ── UI state ──
   const [activeTab, setActiveTab] = useState<'profiles' | 'events' | 'sna'>('profiles');
@@ -688,12 +887,20 @@ function ToxicityBehaviorContent() {
       setProfiles(profilesRes.results);
       setEvents(eventsRes.results);
 
-      // SNA summary — non-critical, don't fail the whole load
+      // SNA summary — non-critical
       try {
         const sna = await behaviorAPI.getSNASummary();
         setSnaSummary(sna);
       } catch {
-        // SNA might not have data yet — silently skip
+        // silently skip
+      }
+
+      // SNA graph — non-critical
+      try {
+        const graph = await behaviorAPI.getSNAGraph();
+        setSnaGraph(graph);
+      } catch {
+        setSnaGraph(null);
       }
     } catch (err: any) {
       setError(err.message ?? 'Failed to load behavior data.');
@@ -714,7 +921,6 @@ function ToxicityBehaviorContent() {
     const res = await behaviorAPI.getProfiles({ page_size: 200 });
     setProfiles(res.results);
     setSuspendingProfile(null);
-    // Update drawer if it was open for this profile
     setSelectedProfile((prev) =>
       prev?.id === profileId ? (res.results.find((p) => p.id === profileId) ?? null) : prev
     );
@@ -724,7 +930,6 @@ function ToxicityBehaviorContent() {
     await behaviorAPI.liftSuspension(profileId);
     const res = await behaviorAPI.getProfiles({ page_size: 200 });
     setProfiles(res.results);
-    // Update drawer if it was open for this profile
     setSelectedProfile((prev) =>
       prev?.id === profileId ? (res.results.find((p) => p.id === profileId) ?? null) : prev
     );
@@ -862,7 +1067,6 @@ function ToxicityBehaviorContent() {
   return (
     <div className="space-y-6 pb-10" style={{ backgroundColor: colors.background.primary }}>
 
-      {/* Modals / drawers */}
       {selectedProfile && (
         <ProfileDrawer
           profile={selectedProfile}
@@ -912,8 +1116,6 @@ function ToxicityBehaviorContent() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-
-        {/* Warning level doughnut */}
         <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>Warning levels</h3>
           <p className="text-xs mb-3" style={{ color: colors.text.tertiary }}>User distribution</p>
@@ -930,7 +1132,6 @@ function ToxicityBehaviorContent() {
           </div>
         </div>
 
-        {/* Event type doughnut */}
         <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>Event outcomes</h3>
           <p className="text-xs mb-3" style={{ color: colors.text.tertiary }}>All enforcement decisions</p>
@@ -947,7 +1148,6 @@ function ToxicityBehaviorContent() {
           </div>
         </div>
 
-        {/* Daily stacked bar */}
         <div className="lg:col-span-2 rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>Daily enforcement</h3>
           <p className="text-xs mb-3" style={{ color: colors.text.tertiary }}>Blocked / warned / suspended by day</p>
@@ -979,7 +1179,6 @@ function ToxicityBehaviorContent() {
 
       {/* Category averages + SNA */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Category scores bar */}
         <div className="rounded-xl border p-5" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
           <h3 className="font-semibold text-sm mb-1" style={{ color: colors.text.primary }}>
             Avg category scores (blocked events)
@@ -1002,7 +1201,6 @@ function ToxicityBehaviorContent() {
           </div>
         </div>
 
-        {/* SNA summary */}
         <SNACard summary={snaSummary} />
       </div>
 
@@ -1012,7 +1210,7 @@ function ToxicityBehaviorContent() {
           {[
             { key: 'profiles', label: 'Behavior profiles', icon: Users, count: profiles.length },
             { key: 'events',   label: 'Event log',         icon: ListFilter, count: events.length },
-            { key: 'sna',      label: 'Network nodes',     icon: Network, count: snaSummary?.total_nodes ?? 0 },
+            { key: 'sna',      label: 'Network nodes',     icon: Network, count: (snaGraph?.nodes?.length ?? snaSummary?.total_nodes ?? 0) },
           ].map(({ key, label, icon: Icon, count }) => (
             <button
               key={key}
@@ -1035,7 +1233,7 @@ function ToxicityBehaviorContent() {
           ))}
         </div>
 
-        {/* Filter bar — shared */}
+        {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="relative flex-1 min-w-48">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: colors.text.tertiary }} />
@@ -1263,51 +1461,67 @@ function ToxicityBehaviorContent() {
           </div>
         )}
 
-        {/* ── SNA nodes tab ── */}
+        {/* ── SNA nodes tab (Interactive Graph) ── */}
         {activeTab === 'sna' && (
-          <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
-            <div className="px-4 py-3 border-b" style={{ borderColor: colors.border.primary }}>
-              <h3 className="font-semibold text-sm" style={{ color: colors.text.primary }}>Network nodes</h3>
-              <p className="text-xs mt-0.5" style={{ color: colors.text.tertiary }}>
-                Social network analysis — node centrality and influence metrics
-              </p>
-            </div>
-            {!snaSummary ? (
-              <div className="py-12 text-center">
-                <Network size={32} className="mx-auto mb-3 opacity-20" style={{ color: colors.text.secondary }} />
-                <p className="text-sm" style={{ color: colors.text.secondary }}>
-                  No SNA data available yet. Network builds once users start interacting.
+          <div className="space-y-5">
+            {/* Interactive network graph */}
+            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: colors.border.primary }}>
+                <h3 className="font-semibold text-sm" style={{ color: colors.text.primary }}>
+                  Network graph
+                </h3>
+                <p className="text-xs mt-0.5" style={{ color: colors.text.tertiary }}>
+                  Interactive social network — drag nodes, scroll to zoom, click node to view profile
                 </p>
               </div>
-            ) : (
-              <div className="p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-                  {[
-                    { title: 'Top by degree', items: snaSummary.top_degree, field: 'degree_centrality' },
-                    { title: 'Top by betweenness', items: snaSummary.top_betweenness, field: 'betweenness_centrality' },
-                    { title: 'Top toxic ratio', items: snaSummary.top_toxic_ratio, field: 'toxic_ratio' },
-                  ].map(({ title, items, field }) => (
-                    <div key={title} className="rounded-lg p-4" style={{ backgroundColor: colors.background.secondary }}>
-                      <h4 className="text-xs font-medium mb-3" style={{ color: colors.text.secondary }}>{title}</h4>
-                      {(items ?? []).slice(0, 5).map((item: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between py-1.5 text-xs border-b last:border-0" style={{ borderColor: colors.border.primary }}>
-                          <span style={{ color: colors.text.primary }}>
-                            {item.username || `User #${item.user_id ?? '?'}`}
-                          </span>
-                          <span style={{ color: colors.text.tertiary }}>
-                            {typeof item[field] === 'number' ? item[field].toFixed(3) : '—'}
-                          </span>
-                        </div>
-                      ))}
-                      {(!items || items.length === 0) && (
-                        <p className="text-xs" style={{ color: colors.text.tertiary }}>No data</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-center" style={{ color: colors.text.tertiary }}>
-                  For the full interactive graph, use <code className="bg-white/10 px-1 rounded">GET /api/behavior/sna/graph/</code>
-                </p>
+              <div className="p-4">
+                <NetworkGraph
+                  graph={snaGraph}
+                  onNodeClick={(node) => {
+                    const profile = profiles.find(
+                      (p) =>
+                        String(p.user) === String(node.user_id) ||
+                        p.user_email === node.username
+                    );
+                    if (profile) setSelectedProfile(profile);
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Top rankings */}
+            {snaSummary && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { title: 'Top by degree', items: snaSummary.top_degree, field: 'degree_centrality' },
+                  { title: 'Top by betweenness', items: snaSummary.top_betweenness, field: 'betweenness_centrality' },
+                  { title: 'Top toxic ratio', items: snaSummary.top_toxic_ratio, field: 'toxic_ratio' },
+                ].map(({ title, items, field }) => (
+                  <div
+                    key={title}
+                    className="rounded-xl border p-4"
+                    style={{ backgroundColor: colors.surface.primary, borderColor: colors.border.primary }}
+                  >
+                    <h4 className="text-xs font-medium mb-3" style={{ color: colors.text.secondary }}>{title}</h4>
+                    {(items ?? []).slice(0, 5).map((item: any, i: number) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between py-1.5 text-xs border-b last:border-0"
+                        style={{ borderColor: colors.border.primary }}
+                      >
+                        <span style={{ color: colors.text.primary }}>
+                          {item.username || `User #${item.user_id ?? '?'}`}
+                        </span>
+                        <span style={{ color: colors.text.tertiary }}>
+                          {typeof item[field] === 'number' ? item[field].toFixed(3) : '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {(!items || items.length === 0) && (
+                      <p className="text-xs" style={{ color: colors.text.tertiary }}>No data</p>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

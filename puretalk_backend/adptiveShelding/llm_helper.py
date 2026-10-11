@@ -1,46 +1,20 @@
 """
 LLM Helper — Adaptive Emotional Shielding Module (AESM)
 ========================================================
-Provides LLM-enhanced versions of the core text-processing strategies.
-
-In production these functions call an external LLM (e.g. Google Gemini /
-OpenAI GPT) to produce more natural rewrites and blurs.  When the LLM is
-unavailable (no API key, network error, etc.) every function falls back
-gracefully to the local rule-based helpers in engine.py.
-
-[SL] LLM API calls fail wuna wita local helper functions use karanawa —
-     system eka always work karanawa.
-
-Architecture note
------------------
-The tests mock this module at ``adptiveShelding.engine.llm_helper.*`` so
-the module **must** be imported into engine.py with:
-
-    from . import llm_helper
-
-and the engine must call  ``llm_helper.blur_toxic_words_with_llm(text)``
-etc., so that the test patches land correctly.
+Provides LLM-enhanced versions of the core text-processing strategies
+using Google Gemini API (or falling back gracefully to local processing).
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import re
+import json
+import urllib.request
 
 logger = logging.getLogger(__name__)
 
-# ── Optional: load your LLM client here ──────────────────────────────────
-# Example (Google Generative AI):
-#   import google.generativeai as genai
-#   genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
-#   _llm_model = genai.GenerativeModel("gemini-pro")
-#
-# Set to None to always use local fallbacks.
-_llm_available = False  # flip to True once you wire in real API calls
 
-
-# ── Local fallback imports (imported lazily to avoid circular refs) ───────
 def _local_blur(text: str) -> str:
     # pyrefly: ignore [missing-import]
     from .engine import blur_text
@@ -53,87 +27,88 @@ def _local_rewrite(text: str) -> str:
     return rewrite_text(text)
 
 
-# ─────────────────────────────────────────────────────────────────────────
-# Public API used by engine.py
-# ─────────────────────────────────────────────────────────────────────────
+def _call_gemini_api(prompt: str) -> str | None:
+    """
+    Call Google Gemini API via REST.
+    Returns generated text if GEMINI_API_KEY is present and request succeeds,
+    otherwise returns None to trigger local fallback.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return None
+
+    # Try supported Gemini models in order
+    models_to_try = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"]
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                candidates = result.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        return parts[0].get("text", "").strip()
+        except Exception as exc:
+            logger.warning("Google Gemini API call failed for model %s: %s", model_name, exc)
+
+    return None
+
 
 def translate_to_english(text: str) -> str:
     """
     Translate / transliterate Singlish (Sinhala-English mixed) text to
-    plain English so the English-trained ML model can score it more
-    accurately.
-
-    Currently uses only the local normalization map.  Swap the body for an
-    LLM call when you have an API key.
-
-    [SL] Singlish text English ekakata translate karannawa — ML model
-         better score ganna.
+    plain English so the ML model can score it more accurately.
     """
-    if not _llm_available:
-        # Fallback: just return as-is (normalization happens inside engine)
-        return text
+    prompt = (
+        "Translate the following Singlish / Sinhala-English mixed message to plain "
+        f"English only, preserving the exact emotion and meaning:\n\n{text}"
+    )
+    llm_res = _call_gemini_api(prompt)
+    if llm_res:
+        return llm_res
 
-    # ── LLM path (example skeleton) ──────────────────────────────────
-    try:
-        prompt = (
-            "Translate the following Sinhala-English mixed message to plain "
-            f"English only, preserving the meaning:\n\n{text}"
-        )
-        # response = _llm_model.generate_content(prompt)
-        # return response.text.strip()
-        return text  # placeholder until LLM is wired
-    except Exception as exc:
-        logger.warning("translate_to_english LLM call failed: %s", exc)
-        return text
+    return text
 
 
 def blur_toxic_words_with_llm(text: str) -> str:
     """
-    Use an LLM to intelligently mask toxic words.  Falls back to the
-    local word-replacement blur when the LLM is unavailable.
-
-    [SL] LLM use karala toxic words mask karanawa.  LLM nattam local
-         blur_text() use karanawa.
+    Use Google Gemini LLM to mask toxic words. Falls back to local blur_text().
     """
-    if not _llm_available:
-        return _local_blur(text)
+    prompt = (
+        "Replace each toxic, offensive, or hate-speech word in the "
+        "following message with '****'. Leave all other words exactly "
+        f"as they are:\n\n{text}"
+    )
+    llm_res = _call_gemini_api(prompt)
+    if llm_res:
+        return llm_res
 
-    try:
-        prompt = (
-            "Replace each toxic, offensive, or hate-speech word in the "
-            "following message with '****'.  Leave all other words exactly "
-            f"as they are:\n\n{text}"
-        )
-        # response = _llm_model.generate_content(prompt)
-        # return response.text.strip()
-        return _local_blur(text)  # placeholder until LLM is wired
-    except Exception as exc:
-        logger.warning("blur_toxic_words_with_llm LLM call failed: %s", exc)
-        return _local_blur(text)
+    return _local_blur(text)
 
 
 def rewrite_with_llm(text: str) -> str:
     """
-    Use an LLM to rewrite a toxic or aggressive message in a calm,
-    constructive tone.  Falls back to the local word-map rewrite.
-
-    [SL] LLM use karala toxic message neutral tone ekakata rewrite
-         karanawa.  LLM nattam local rewrite_text() use karanawa.
+    Use Google Gemini LLM to rewrite a toxic message in a calm, neutral tone.
+    Falls back gracefully to local rewrite_text().
     """
-    if not _llm_available:
-        return _local_rewrite(text)
+    prompt = (
+        "Rewrite the following message to remove all offensive, toxic, "
+        "or aggressive language. Keep the core meaning but use a calm, "
+        "respectful, and constructive tone. Do NOT add meta commentary:\n\n{text}"
+    )
+    llm_res = _call_gemini_api(prompt)
+    if llm_res:
+        return llm_res + " 🙂 Let's keep it positive."
 
-    try:
-        prompt = (
-            "Rewrite the following message to remove all offensive, toxic, "
-            "or aggressive language.  Keep the core meaning but use a calm, "
-            "respectful, and constructive tone.  Do NOT add any extra "
-            f"explanation:\n\n{text}"
-        )
-        # response = _llm_model.generate_content(prompt)
-        # rewritten = response.text.strip()
-        # return rewritten + " 🙂 Let's keep it positive."
-        return _local_rewrite(text)  # placeholder until LLM is wired
-    except Exception as exc:
-        logger.warning("rewrite_with_llm LLM call failed: %s", exc)
-        return _local_rewrite(text)
+    return _local_rewrite(text)

@@ -484,6 +484,23 @@ function detectLanguage(text: string): 'singlish' | 'english' {
   return words.some(w => SINGLISH_MARKERS.has(w)) ? 'singlish' : 'english';
 }
 
+export interface ShieldChatbotResponse {
+  user_message: string;
+  bot_response: string;
+  strategy: string;
+  toxicity_score: number;
+  final_score: number;
+  detected_toxic_words: string[];
+  suggested_rewrite?: string | null;
+  psychological_suggestion?: {
+    title: string;
+    reflection: string;
+    coping_tip: string;
+    benefit: string;
+  } | null;
+  support_guidance?: string;
+}
+
 export const adaptiveShieldingAPI = {
   // POST /api/shield/analyze/
   //
@@ -524,6 +541,14 @@ export const adaptiveShieldingAPI = {
     return await apiCall<{ lime_explanation: LimeExplanation }>('/api/shield/explain/', {
       method: 'POST',
       body: JSON.stringify({ text }),
+    });
+  },
+
+  askChatbot: async (message: string): Promise<ShieldChatbotResponse> => {
+    const language = detectLanguage(message);
+    return await apiCall<ShieldChatbotResponse>('/api/shield/chatbot/', {
+      method: 'POST',
+      body: JSON.stringify({ message, language }),
     });
   },
 };

@@ -1,0 +1,11 @@
+# Environment variables (Do not commit secrets to Git)
+.env
+.env.*
+*.env
+
+# Python & Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+*.log

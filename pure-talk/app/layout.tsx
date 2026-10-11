@@ -5,6 +5,7 @@ import '@/app/globals.css';
 import { ThemeProvider } from '@/app/providers';
 import Script from 'next/script';
 import CookieConsent from '@/components/CookieConsent';
+import ShieldChatbotWidget from '@/app/components/ShieldChatbotWidget';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         <ThemeProvider>
           <CookieConsent />
           {children}
+          <ShieldChatbotWidget />
         </ThemeProvider>
 
         {/* Google Translate container (hidden) */}

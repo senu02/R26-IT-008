@@ -137,7 +137,12 @@ class SNAService:
 
             nodes[user.id] = NodeData(
                 user_id=user.id,
-                username=user.username,
+                # CustomUser.username is unused in this project (email-based
+                # auth — see users/models.py), so it is always blank. Use
+                # get_full_name(), which already falls back to email when no
+                # full name is set, so the dashboard shows a real identifier
+                # instead of "User #<id>".
+                username=user.get_full_name(),
                 node_type=node_type,
                 toxic_count=toxic_count,
                 severity_score=round(severity, 4),
