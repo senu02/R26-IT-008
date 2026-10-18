@@ -5,6 +5,7 @@ import { ThemeColors } from '@/context/theme';
 import PostCard from './PostCard';
 import CreatePost from './CreatePost';
 import Comment from './Comment';
+import UserVideoPosts from './UserVideoPosts'; // [ADDED]
 import type { CommentData } from './Comment';
 import { 
   postAPI, 
@@ -73,6 +74,7 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
   const [loadingComments, setLoadingComments] = useState<{ [key: string]: boolean }>({});
   const [showCommentsForPost, setShowCommentsForPost] = useState<{ [key: string]: boolean }>({});
   const [shieldAlert, setShieldAlert] = useState<{ [key: string]: { type: string; message: string } | null }>({});
+  const [videoRefresh, setVideoRefresh] = useState(0); // [ADDED] bump after a video upload to refetch videos
 
   const toast = useToast();
 
@@ -682,7 +684,19 @@ const PostSectionContent: React.FC<PostSectionProps> = ({
         </div>
       )}
 
-      <CreatePost theme={theme} isDark={isDark} onPost={handleNewPost} />
+      {/* [CHANGED] added onVideoUploaded prop */}
+      <CreatePost theme={theme} isDark={isDark} onPost={handleNewPost} onVideoUploaded={() => setVideoRefresh(k => k + 1)} />
+
+      {/* [ADDED] Video posts. Hidden on "Saved" and photo-only grids. */}
+      {activeFilter !== 'Saved' && !onlyImages && (
+        (onlyMyPosts || activeFilter === 'My Posts') ? (
+          currentUserId !== null && (
+            <UserVideoPosts theme={theme} userId={currentUserId} refreshKey={videoRefresh} />
+          )
+        ) : (
+          <UserVideoPosts theme={theme} feed refreshKey={videoRefresh} />
+        )
+      )}
 
       {loading && (
         <div className="text-center py-8">

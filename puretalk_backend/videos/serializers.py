@@ -19,6 +19,8 @@ class VideoSerializer(serializers.ModelSerializer):
     can_delete = serializers.SerializerMethodField(read_only=True)
     privacy_display = serializers.SerializerMethodField(read_only=True)
     is_blocked_display = serializers.SerializerMethodField(read_only=True)
+    analysis_status = serializers.SerializerMethodField(read_only=True)
+    suggested_action = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Video
@@ -28,7 +30,9 @@ class VideoSerializer(serializers.ModelSerializer):
             'privacy', 'privacy_display', 'allow_comments', 'allow_sharing',
             'views_count', 'likes_count', 'comments_count', 'shares_count',
             'duration', 'created_at', 'updated_at', 'is_liked', 'can_view',
-            'can_edit', 'can_delete', 'is_blocked', 'is_blocked_display'
+            'can_edit', 'can_delete', 'is_blocked', 'is_blocked_display',
+            'blocked_reason', 'blocked_at', 'is_flagged', 'flagged_reason',
+            'flagged_at', 'analysis_status', 'suggested_action'
         ]
         read_only_fields = [
             'id', 'user', 'views_count', 'likes_count', 
@@ -76,6 +80,23 @@ class VideoSerializer(serializers.ModelSerializer):
         if obj.is_blocked:
             return f"Blocked: {obj.blocked_reason or 'No reason provided'}"
         return "Not blocked"
+
+    def _latest_scan(self, obj):
+        return obj.text_scans.order_by('-created_at').first()
+
+    def get_analysis_status(self, obj):
+        scan = self._latest_scan(obj)
+        return scan.status if scan else 'not_analysed'
+
+    def get_suggested_action(self, obj):
+        scan = self._latest_scan(obj)
+        if not scan:
+            return ''
+        if scan.is_toxic:
+            return 'block'
+        if scan.status != 'complete':
+            return 'review_needed'
+        return 'approve'
     
     def validate_video_file(self, value):
         max_size = 500 * 1024 * 1024

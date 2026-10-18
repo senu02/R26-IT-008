@@ -51,6 +51,17 @@ class ToxicityLog(models.Model):
     label_scores = models.JSONField(default=dict)
     flagged_labels = models.JSONField(default=list)  # list of flagged label names
 
+    # Audio-only research metadata. Kept on the same audit table so existing
+    # post/comment and audio history can be queried consistently.
+    audio_emotion = models.JSONField(default=dict, blank=True)
+    fusion_result = models.JSONField(default=dict, blank=True)
+    action = models.CharField(max_length=40, default='allow')
+    latent_toxicity = models.BooleanField(default=False)
+    original_is_toxic = models.BooleanField(null=True, blank=True)
+    original_max_score = models.FloatField(null=True, blank=True)
+    original_label_scores = models.JSONField(default=dict, blank=True)
+    analysis_version = models.CharField(max_length=40, default='text_v1')
+
     # Admin override
     is_reviewed = models.BooleanField(default=False)
     reviewer = models.ForeignKey(
