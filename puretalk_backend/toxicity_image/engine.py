@@ -35,6 +35,12 @@ def _load_pkl_model():
     if _pkl_model is None:
         with open(PKL_MODEL_PATH, "rb") as f:
             _pkl_model = pickle.load(f)
+        # The classifier was pickled with scikit-learn 1.8, which no longer
+        # stores `multi_class`; older versions (Python 3.10 can't get 1.8)
+        # read it in predict_proba. 'auto' gives the same binary output.
+        clf = _pkl_model.get("classifier") if isinstance(_pkl_model, dict) else None
+        if clf is not None and not hasattr(clf, "multi_class"):
+            clf.multi_class = "auto"
     return _pkl_model
 
 

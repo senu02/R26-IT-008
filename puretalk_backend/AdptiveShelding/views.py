@@ -264,9 +264,10 @@ def generate_dynamic_psychological_suggestion(message: str, detected_words: list
             "benefit": "💡 Avoiding derogatory slurs preserves your own personal dignity and keeps community interactions healthy."
         }
     else:  # General negativity / hate speech / harsh tone
+        word_ref = f"'{primary_word}'" if primary_word != 'aggressive phrasing' else 'harsh terms'
         return {
             "title": "🌱 Mindful Wellbeing & Tone Suggestion",
-            "reflection": f"Phrasing containing {f'\'{primary_word}\'' if primary_word != 'aggressive phrasing' else 'harsh terms'} can create unnecessary hostility.",
+            "reflection": f"Phrasing containing {word_ref} can create unnecessary hostility.",
             "coping_tip": "🌱 **Positive Reframing Tip:** Try phrasing your opinion using neutral language to convey your message calmly.",
             "benefit": "💡 Neutral, respectful communication protects your emotional health and leads to 80% better responses."
         }
