@@ -425,6 +425,36 @@ export function AudioToxicityTester() {
             </div>
           </div>
 
+          {result.fusion && (
+            <div className="p-3.5 rounded-xl border" style={{ borderColor: colors.border.primary, backgroundColor: colors.surface.primary }}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider" style={{ color: colors.text.secondary }}>Research decision</p>
+                  <p className="text-sm font-bold capitalize" style={{ color: colors.text.primary }}>
+                    {result.fusion.action.replaceAll('_', ' ')}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[10px] font-semibold">
+                  {result.fusion.dominant_emotion && (
+                    <span className="px-2 py-1 rounded-md bg-slate-500/10 border" style={{ borderColor: colors.border.primary, color: colors.text.secondary }}>
+                      Emotion: {result.fusion.dominant_emotion}
+                    </span>
+                  )}
+                  {result.fusion.action_flags.latent_toxicity && (
+                    <span className="px-2 py-1 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      Latent toxicity: monitor
+                    </span>
+                  )}
+                  {result.fusion.action_flags.possible_victim_report && (
+                    <span className="px-2 py-1 rounded-md bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                      Possible victim report
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Transcribed Text Display */}
           <div>
             <div className="flex items-center justify-between mb-1.5">

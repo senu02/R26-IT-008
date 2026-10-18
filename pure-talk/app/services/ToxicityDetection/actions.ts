@@ -61,6 +61,33 @@ export interface ToxicityLog {
   max_score: number;
   label_scores: Record<string, number>;
   flagged_labels: string[];
+  audio_emotion?: Record<string, number>;
+  fusion_result?: {
+    dominant_emotion?: string | null;
+    text_max_score?: number;
+    audio_max_evidence?: number;
+    fused_max_score?: number;
+    label_breakdown?: Record<string, {
+      text_score: number;
+      audio_evidence: number;
+      audio_contribution: number;
+      final_score: number;
+    }>;
+    fused_labels?: Record<string, number>;
+    action?: string;
+    action_flags?: {
+      latent_toxicity?: boolean;
+      possible_victim_report?: boolean;
+      rewrite_content?: boolean;
+    };
+  };
+  action?: string;
+  latent_toxicity?: boolean;
+  decision_status?: string;
+  original_is_toxic?: boolean | null;
+  original_max_score?: number | null;
+  original_label_scores?: Record<string, number>;
+  analysis_version?: string;
   is_reviewed: boolean;
   reviewer: string | null;
   reviewer_email: string | null;
@@ -105,6 +132,39 @@ export interface AudioToxicityCheckResponse {
   labels: Record<string, number>;
   flagged_labels: string[];
   error: string | null;
+  audio_emotion?: {
+    available: boolean;
+    model: string;
+    probabilities: Record<string, number>;
+    error: string | null;
+  };
+  fusion?: {
+    method: string;
+    weights: {
+      text: number;
+      audio_emotion: number;
+    };
+    dominant_emotion: string | null;
+    text_max_score?: number;
+    audio_max_evidence?: number;
+    fused_max_score?: number;
+    label_breakdown?: Record<string, {
+      text_score: number;
+      audio_evidence: number;
+      audio_contribution: number;
+      final_score: number;
+    }>;
+    fused_labels: Record<string, number>;
+    fused_flagged_labels: string[];
+    is_toxic: boolean;
+    action: string;
+    action_flags: {
+      flag_toxic_content: boolean;
+      possible_victim_report: boolean;
+      rewrite_content: boolean;
+      latent_toxicity: boolean;
+    };
+  };
 }
 
 export interface ImageToxicityCheckResponse {

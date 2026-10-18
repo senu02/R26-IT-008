@@ -2,9 +2,28 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import Video, VideoLike, VideoComment, CommentLike, VideoView, VideoReport
+from .models import (
+    Video, VideoLike, VideoComment, CommentLike, VideoView, VideoReport,
+    VideoTextScan, VideoTextObservation,
+)
 
 User = get_user_model()
+
+
+@admin.register(VideoTextScan)
+class VideoTextScanAdmin(admin.ModelAdmin):
+    list_display = ['id', 'video', 'status', 'is_toxic', 'max_score', 'action', 'created_at']
+    list_filter = ['status', 'is_toxic', 'action', 'created_at']
+    search_fields = ['video__title', 'error']
+    readonly_fields = ['created_at', 'completed_at']
+
+
+@admin.register(VideoTextObservation)
+class VideoTextObservationAdmin(admin.ModelAdmin):
+    list_display = ['id', 'scan', 'timestamp_seconds', 'ocr_confidence', 'is_toxic', 'toxicity_score']
+    list_filter = ['is_toxic', 'created_at']
+    search_fields = ['extracted_text']
+    readonly_fields = ['created_at']
 
 
 @admin.register(Video)

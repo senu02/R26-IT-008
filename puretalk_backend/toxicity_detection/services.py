@@ -5,6 +5,8 @@ import logging
 import tempfile
 import speech_recognition as sr
 
+from .emotion import analyse_audio_emotion
+
 logger = logging.getLogger(__name__)
 
 # Label names matching your training CSV columns (Kaggle Toxic Comment dataset)
@@ -18,6 +20,108 @@ TOXICITY_LABELS = [
 ]
 
 TOXICITY_THRESHOLD = 0.5  # confidence threshold
+FUSION_TEXT_WEIGHT = 1.0
+FUSION_AUDIO_WEIGHT = 0.3
+
+EMOTION_TOXICITY_WEIGHTS = {
+    'angry': {'threat': 0.9, 'insult': 0.8, 'severe_toxic': 0.6},
+    'anger': {'threat': 0.9, 'insult': 0.8, 'severe_toxic': 0.6},
+    'disgust': {'obscene': 0.9, 'insult': 0.8, 'toxic': 0.6},
+    'fear': {'threat': 0.5},
+    'sad': {},
+    'sadness': {},
+}
+
+
+def _clamp(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def fuse_text_and_emotion(text_result: dict, emotion_result: dict) -> dict:
+    """Apply transparent weighted late fusion and a deterministic action matrix."""
+    text_labels = text_result.get('labels', {})
+    emotion_probabilities = {
+        str(label).lower(): float(score)
+        for label, score in emotion_result.get('probabilities', {}).items()
+    }
+
+    fused_labels = {}
+    label_breakdown = {}
+    for label in TOXICITY_LABELS:
+        text_score = _clamp(float(text_labels.get(label, 0.0)))
+        audio_evidence = sum(
+            probability * EMOTION_TOXICITY_WEIGHTS.get(emotion, {}).get(label, 0.0)
+            for emotion, probability in emotion_probabilities.items()
+        )
+        # Text toxicity is the evidence baseline. Audio can add support, but
+        # an uninformative emotion must never dilute a strong text signal.
+        audio_contribution = (
+            FUSION_AUDIO_WEIGHT * _clamp(audio_evidence) * (1.0 - text_score)
+        )
+        final_score = round(_clamp(text_score + audio_contribution), 6)
+        fused_labels[label] = final_score
+        label_breakdown[label] = {
+            'text_score': round(text_score, 6),
+            'audio_evidence': round(_clamp(audio_evidence), 6),
+            'audio_contribution': round(audio_contribution, 6),
+            'final_score': final_score,
+        }
+
+    dominant_emotion = (
+        max(
+            emotion_probabilities,
+            key=lambda emotion: emotion_probabilities[emotion],
+        )
+        if emotion_probabilities else None
+    )
+    possible_victim_emotions = {'fear', 'sad', 'sadness'}
+    victim_signal = bool(
+        dominant_emotion in possible_victim_emotions
+        and emotion_probabilities.get(dominant_emotion, 0.0) >= 0.5
+    )
+    fused_flagged_labels = [
+        label for label, score in fused_labels.items()
+        if score >= TOXICITY_THRESHOLD
+    ]
+    latent_toxicity_signal = bool(
+        dominant_emotion in {'angry', 'anger', 'disgust'}
+        and not fused_flagged_labels
+    )
+
+    if victim_signal:
+        action = 'possible_victim_report'
+    elif fused_flagged_labels:
+        action = 'flag_toxic_content'
+    elif latent_toxicity_signal:
+        action = 'warn_and_monitor'
+    else:
+        action = 'allow'
+
+    return {
+        'method': 'unsupervised_weighted_late_fusion',
+        'weights': {
+            'text': FUSION_TEXT_WEIGHT,
+            'audio_emotion': FUSION_AUDIO_WEIGHT,
+        },
+        'dominant_emotion': dominant_emotion,
+        'text_max_score': round(max(text_labels.values(), default=0.0), 6),
+        'audio_max_evidence': round(max(
+            (item['audio_evidence'] for item in label_breakdown.values()),
+            default=0.0,
+        ), 6),
+        'fused_max_score': round(max(fused_labels.values(), default=0.0), 6),
+        'label_breakdown': label_breakdown,
+        'fused_labels': fused_labels,
+        'fused_flagged_labels': fused_flagged_labels,
+        'is_toxic': bool(fused_flagged_labels),
+        'action': action,
+        'action_flags': {
+            'flag_toxic_content': bool(fused_flagged_labels) and not victim_signal,
+            'possible_victim_report': victim_signal,
+            'rewrite_content': bool(fused_flagged_labels) and not victim_signal,
+            'latent_toxicity': latent_toxicity_signal,
+        },
+    }
 
 
 class ToxicityDetector:
@@ -185,6 +289,7 @@ def transcribe_and_analyse_audio(audio_file, language: str = 'en-US') -> dict:
     recognizer = sr.Recognizer()
     temp_path = None
     transcribed_text = ""
+    audio_bytes = None
 
     try:
         # Determine extension
@@ -208,6 +313,9 @@ def transcribe_and_analyse_audio(audio_file, language: str = 'en-US') -> dict:
 
             if temp_path is None:
                 temp_path = tmp.name
+
+        with open(temp_path, 'rb') as audio_stream:
+            audio_bytes = audio_stream.read()
 
         # Perform Speech-to-Text
         try:
@@ -261,7 +369,22 @@ def transcribe_and_analyse_audio(audio_file, language: str = 'en-US') -> dict:
 
         # Run toxicity detection on transcribed text
         analysis = analyse_toxicity(transcribed_text)
+        analysis['text_analysis'] = {
+            'is_toxic': analysis.get('is_toxic', False),
+            'max_score': analysis.get('max_score', 0.0),
+            'labels': dict(analysis.get('labels', {})),
+            'flagged_labels': list(analysis.get('flagged_labels', [])),
+        }
         analysis['transcribed_text'] = transcribed_text
+        analysis['audio_emotion'] = analyse_audio_emotion(audio_bytes)
+        analysis['fusion'] = fuse_text_and_emotion(
+            analysis,
+            analysis['audio_emotion'],
+        )
+        analysis['labels'] = analysis['fusion']['fused_labels']
+        analysis['is_toxic'] = analysis['fusion']['is_toxic']
+        analysis['flagged_labels'] = analysis['fusion']['fused_flagged_labels']
+        analysis['max_score'] = max(analysis['fusion']['fused_labels'].values())
         return analysis
 
     except Exception as e:
@@ -279,4 +402,4 @@ def transcribe_and_analyse_audio(audio_file, language: str = 'en-US') -> dict:
             try:
                 os.remove(temp_path)
             except Exception:
-                pass
+                pass

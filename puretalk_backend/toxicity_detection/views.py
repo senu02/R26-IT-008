@@ -81,10 +81,42 @@ class ToxicityViewSet(viewsets.GenericViewSet):
                     analysed_text=result['transcribed_text'],
                     is_toxic=result.get('is_toxic', False),
                     max_score=result.get('max_score', 0.0),
-                    label_scores=result.get('labels', {}),
+                    label_scores=result.get('fusion', {}).get(
+                        'fused_labels', result.get('labels', {})
+                    ),
                     flagged_labels=result.get('flagged_labels', []),
+                    audio_emotion=result.get('audio_emotion', {}),
+                    fusion_result=result.get('fusion', {}),
+                    action=result.get('fusion', {}).get('action', 'allow'),
+                    latent_toxicity=result.get('fusion', {}).get(
+                        'action_flags', {}
+                    ).get('latent_toxicity', False),
+                    original_is_toxic=result.get('text_analysis', {}).get(
+                        'is_toxic'
+                    ),
+                    original_max_score=result.get('text_analysis', {}).get(
+                        'max_score'
+                    ),
+                    original_label_scores=result.get('text_analysis', {}).get(
+                        'labels', {}
+                    ),
+                    analysis_version='audio_fusion_v1',
                     content_type='audio'
                 )
+
+                try:
+                    from toxicity_behavior.services import enforce_behavior
+                    enforce_behavior(
+                        user=request.user,
+                        text=result['transcribed_text'],
+                        toxicity_result=result,
+                        content_type='audio',
+                    )
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        "Failed to update behavior profile for audio: %s", e
+                    )
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning("Failed to save ToxicityLog for audio: %s", e)
